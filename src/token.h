@@ -17,8 +17,8 @@ typedef enum TokenType {
 
 typedef struct Token {
     TokenType type;
-    char* value;
     struct Token* next;
+    char* value;
 } Token;
 
 typedef enum TokenError {

@@ -6,13 +6,13 @@
 #include <ctype.h>
 #include <assert.h>
 
-static Token* tryGetFuncSymb();
-static Token* tryGetQualName();
-static Token* getSymbol();
-static Token* getString();
-static Token* getFuncVal();
-static Token* getNumber();
-static Token* getLiteral();
+static TokenType tryGetFuncSymb();
+static TokenType tryGetQualName();
+static TokenType getSymbol();
+static TokenType getString();
+static TokenType getFuncVal();
+static TokenType getNumber();
+static TokenType getLiteral();
 
 char* lv_tkn_getError(TokenError err) {
     
@@ -143,7 +143,7 @@ Token* lv_tkn_split(FILE* in) {
     BUFFER_LEN = 6;
     buffer = lv_alloc(BUFFER_LEN);
     memset(buffer, 0, BUFFER_LEN); //initialize buffer
-    bgn = 0;
+    bgn = idx = 0;
     
     Token* head = NULL;
     Token* tail = head;
@@ -151,37 +151,39 @@ Token* lv_tkn_split(FILE* in) {
     inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     while(buffer[bgn]) {
         char c = buffer[bgn];
-        Token* tok = NULL;
+        TokenType type = -1;
         //check for comment
         if(c == '\'') {
             //increment until next newline
-            idx = bgn;
             getInputWhile(isnotnl);
-            bgn = idx;
         } else if(isspace(c)) {
-            bgn++; //eat spaces
+            idx++; //eat spaces
         } else if(isidbgn(c)) {
-            tok = tryGetFuncSymb();
+            type = tryGetFuncSymb();
         } else if(issymb(c)) {
-            tok = getSymbol();
+            type = getSymbol();
         } else if(isdigit(c) || c == '.') {
-            tok = getNumber();
+            type = getNumber();
         } else if(c == '\\') {
-            tok = getFuncVal();
+            type = getFuncVal();
         } else if(c == '"') {
-            tok = getString();
+            type = getString();
         } else {
             //literal token
-            tok = getLiteral();
+            type = getLiteral();
         }
         //check error
         if(LV_TKN_ERROR) {
-            assert(!tok);
-            lv_free(head);
+            lv_tkn_free(head);
             lv_free(buffer);
             return NULL;
         }
-        if(tok) {
+        if(type != -1) {
+            //create token
+            Token* tok = lv_alloc(sizeof(Token));
+            tok->type = type;
+            tok->next = NULL;
+            tok->value = extractValue();
             //append to list
             if(tail)
                 tail->next = tok;
@@ -189,6 +191,8 @@ Token* lv_tkn_split(FILE* in) {
                 head = tok;
             tail = tok;
         }
+        //move to next token
+        bgn = idx;
         if(!buffer[bgn]) {
             reallocBuffer();
         }
@@ -197,26 +201,19 @@ Token* lv_tkn_split(FILE* in) {
     return head;
 }
 
-static Token* getLiteral() {
+static TokenType getLiteral() {
     
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = TTY_LITERAL;
-    tok->next = NULL;
-    tok->value = lv_alloc(2);
-    tok->value[0] = buffer[bgn];
-    tok->value[1] = '\0'; //NUL terminator
-    bgn++;
-    return tok;
+    idx++;
+    return TTY_LITERAL;
 }
 
 //returns the index of the next unprocessed char
-static Token* tryGetFuncSymb() {
+static TokenType tryGetFuncSymb() {
     //  TTY_FUNC_SYMBOL
     //fallback to
     //  TTY_IDENT
     //  TTY_QUAL_IDENT
     //  TTY_QUAL_SYMBOL
-    idx = bgn;
     assert(buffer[idx]);
     char c = buffer[idx];
     //possibly a TTY_FUNC_SYMBOL
@@ -224,36 +221,35 @@ static Token* tryGetFuncSymb() {
         idx++;
         if(!buffer[idx] && !reallocBuffer()){
             //can't be TTY_FUNC_SYMBOL
+            idx = bgn;
             return tryGetQualName();
         }
         if(buffer[idx] == '_') {
             idx++;
             if(!buffer[idx] && !reallocBuffer()){
                 //can't be TTY_FUNC_SYMBOL
+                idx = bgn;
                 return tryGetQualName();
             }
             if(issymb(buffer[idx])) {
                 //definitely a TTY_FUNC_SYMBOL
                 getInputWhile(issymb);
-                Token* tok = lv_alloc(sizeof(Token));
-                tok->type = TTY_FUNC_SYMBOL;
-                tok->value = extractValue();
-                tok->next = NULL;
-                bgn = idx;
-                return tok;
+                return TTY_FUNC_SYMBOL;
             }
         }
     }
     //not a TTY_FUNC_SYMBOL
+    idx = bgn;
     return tryGetQualName();
 }
 
-//sets LV_TKN_ERROR if an error occurs
-static TokenType qualNameType() {
+static TokenType tryGetQualName() {
     //  TTY_IDENT
     //fallback to
     //  TTY_QUAL_SYMBOL
     //  TTY_QUAL_IDENT
+    assert(buffer[bgn]);
+    assert(isidbgn(buffer[idx]));
     //assume TTY_IDENT for now
     TokenType type = TTY_IDENT;
     //get all identifier chars
@@ -265,7 +261,7 @@ static TokenType qualNameType() {
         if(!buffer[idx] && !reallocBuffer()) {
             //invalid. set error and return
             LV_TKN_ERROR = TE_BAD_QUAL;
-            return 0;
+            return -1;
         }
         if(isidbgn(buffer[idx])) {
             //alphanumeric name
@@ -278,49 +274,21 @@ static TokenType qualNameType() {
         } else {
             //error
             LV_TKN_ERROR = TE_BAD_QUAL;
-            return 0;
+            return -1;
         }
     }
     return type;
 }
 
-static Token* tryGetQualName() {
-    //  TTY_IDENT
-    //fallback to
-    //  TTY_QUAL_SYMBOL
-    //  TTY_QUAL_IDENT
-    idx = bgn;
-    assert(buffer[bgn]);
-    assert(isidbgn(buffer[idx]));
-    TokenType type = qualNameType();
-    if(LV_TKN_ERROR) {
-        //error occurred getting type
-        return NULL;
-    }
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = type;
-    tok->value = extractValue();
-    tok->next = NULL;
-    bgn = idx;
-    return tok;
-}
-
-static Token* getSymbol() {
+static TokenType getSymbol() {
     
-    idx = bgn;
     assert(issymb(buffer[idx]));
     getInputWhile(issymb);
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = TTY_SYMBOL;
-    tok->value = extractValue();
-    tok->next = NULL;
-    bgn = idx;
-    return tok;
+    return TTY_SYMBOL;
 }
 
-static Token* getNumber() {
+static TokenType getNumber() {
     
-    idx = bgn;
     if(isdigit(buffer[idx])) {
         //start with whole number
         getInputWhile(isdigit);
@@ -332,7 +300,7 @@ static Token* getNumber() {
                 //the next char is not a digit
                 //can't end a number in a decimal point
                 LV_TKN_ERROR = TE_BAD_NUM;
-                return NULL;
+                return -1;
             }
             getInputWhile(isdigit);
         }
@@ -345,7 +313,7 @@ static Token* getNumber() {
             //the next char is not a digit
             //can't end a number in a decimal point
             LV_TKN_ERROR = TE_BAD_NUM;
-            return NULL;
+            return 0;
         }
         getInputWhile(isdigit);
     }
@@ -355,7 +323,7 @@ static Token* getNumber() {
         if(!buffer[idx] && !reallocBuffer()) {
             //can't end in 'e'
             LV_TKN_ERROR = TE_BAD_EXP;
-            return NULL;
+            return -1;
         }
         if(buffer[idx] == '+' || buffer[idx] == '-') {
             //signs are ok
@@ -363,33 +331,27 @@ static Token* getNumber() {
             if(!buffer[idx] && !reallocBuffer()) {
                 //but not at the end of the number
                 LV_TKN_ERROR = TE_BAD_EXP;
-                return NULL;
+                return -1;
             }
         }
         if(!isdigit(buffer[idx])) {
             //we need digits in the exponent, people!
             LV_TKN_ERROR = TE_BAD_EXP;
-            return NULL;
+            return -1;
         }
         getInputWhile(isdigit);
     }
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = TTY_NUMBER;
-    tok->value = extractValue();
-    tok->next = NULL;
-    bgn = idx;
-    return tok;
+    return TTY_NUMBER;
 }
 
-static Token* getFuncVal() {
+static TokenType getFuncVal() {
     
-    idx = bgn;
     assert(buffer[idx] == '\\');
     idx++;
     if(!buffer[idx] && !reallocBuffer()) {
         //who is inputing these lone backslashes?
         LV_TKN_ERROR = TE_BAD_FUNC_VAL;
-        return NULL;
+        return -1;
     }
     if(issymb(buffer[idx])) {
         //plain symbolic
@@ -397,30 +359,25 @@ static Token* getFuncVal() {
     } else if(isidbgn(buffer[idx])) {
         //non-symbolic
         //we don't need the return value, just the side effect
-        qualNameType();
+        tryGetQualName();
         if(LV_TKN_ERROR) {
-            return NULL;
+            return -1;
         }
     } else {
         //again with the lone backslashes!!
         LV_TKN_ERROR = TE_BAD_FUNC_VAL;
-        return NULL;
+        return -1;
     }
     //optional trailing backslash
     if(buffer[idx] == '\\')
         idx++;
     //don't need to reallocate since it's the end :)
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = TTY_FUNC_VAL;
-    tok->value = extractValue();
-    tok->next = NULL;
-    bgn = idx;
-    return tok;
+    return TTY_FUNC_VAL;
 }
 
-static Token* getString() {
+static TokenType getString() {
     
-    idx = bgn;
+    //idx = bgn;
     assert(buffer[idx] == '"');
     do {
         if(buffer[idx] == '\\') {
@@ -438,28 +395,23 @@ static Token* getString() {
                     idx++;
                     if(!buffer[idx] && !reallocBuffer()) {
                         LV_TKN_ERROR = TE_UNTERM_STR;
-                        return NULL;
+                        return -1;
                     }
                     break;
                 default:
                     LV_TKN_ERROR = TE_BAD_STR_ESC;
-                    return NULL;
+                    return -1;
             }
         } else {
             idx++;
             if(!buffer[idx] && !reallocBuffer()) {
                 //unterminated string
                 LV_TKN_ERROR = TE_UNTERM_STR;
-                return NULL;
+                return -1;
             }
         }
     } while(buffer[idx] != '"');
     //consume the closing quote; don't need to realloc the buffer
     idx++;
-    Token* tok = lv_alloc(sizeof(Token));
-    tok->type = TTY_STRING;
-    tok->value = extractValue();
-    tok->next = NULL;
-    bgn = idx;
-    return tok;
+    return TTY_STRING;
 }
