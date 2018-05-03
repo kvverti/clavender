@@ -34,7 +34,6 @@ void lv_tkn_free(Token* head) {
     
     while(head) {
         Token* tail = head->next;
-        lv_free(head->value);
         lv_free(head);
         head = tail;
     }
@@ -88,14 +87,6 @@ static void getInputWhile(int (*pred)(int)) {
     } while(pred(buffer[idx]));
 }
 
-static char* extractValue() {
-    
-    char* res = lv_alloc(idx - bgn + 1);
-    memcpy(res, buffer + bgn, idx - bgn);
-    res[idx - bgn] = '\0';
-    return res;
-}
-
 //reallocates the buffer with the start of the buffer
 //at 'bgn'. If bgn == 0, also increases the buffer size.
 //returns whether the buffer was reallocated.
@@ -106,10 +97,10 @@ static bool reallocBuffer() {
         return false;
     if(bgn) {
         //copy elements down
-        size_t len = strlen(buffer);
-        for(int i = bgn; i < len; i++)
+        assert(idx >= bgn);
+        for(int i = bgn; i < idx; i++)
             buffer[i - bgn] = buffer[i];
-        fgets(buffer + (len - bgn), BUFFER_LEN - (len - bgn), input);
+        fgets(buffer + (idx - bgn), BUFFER_LEN - (idx - bgn), input);
     } else {
         //reallocate the whole buffer
         char* tmp = realloc(buffer, BUFFER_LEN * 2);
@@ -180,10 +171,11 @@ Token* lv_tkn_split(FILE* in) {
         }
         if(type != -1) {
             //create token
-            Token* tok = lv_alloc(sizeof(Token));
+            Token* tok = lv_alloc(sizeof(Token) + (idx - bgn + 1));
             tok->type = type;
             tok->next = NULL;
-            tok->value = extractValue();
+            memcpy(tok->value, buffer + bgn, idx - bgn);
+            tok->value[idx - bgn] = '\0';
             //append to list
             if(tail)
                 tail->next = tok;
