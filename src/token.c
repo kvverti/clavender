@@ -69,14 +69,21 @@ static int isident(int c) {
     return isidbgn(c) || isdigit(c);
 }
 
+//for line comments
+static int isnotnl(int c) {
+    
+    return c != '\n';
+}
+
 //loops over the input while the passed
-//predicate is satisfied
+//predicate is satisfied and there is input.
 static void getInputWhile(int (*pred)(int)) {
     
     do {
         idx++;
-        if(!buffer[idx]) {
-            reallocBuffer();
+        if(!buffer[idx] && !reallocBuffer()) {
+            //no more input
+            break;
         }
     } while(pred(buffer[idx]));
 }
@@ -148,8 +155,9 @@ Token* lv_tkn_split(FILE* in) {
         //check for comment
         if(c == '\'') {
             //increment until next newline
-            while(buffer[bgn] && buffer[bgn] != '\n')
-                bgn++;
+            idx = bgn;
+            getInputWhile(isnotnl);
+            bgn = idx;
         } else if(isspace(c)) {
             bgn++; //eat spaces
         } else if(isidbgn(c)) {
