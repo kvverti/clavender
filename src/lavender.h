@@ -11,5 +11,6 @@ void lv_run();
 void lv_repl();
 void lv_shutdown();
 void* lv_alloc(size_t size);
+void lv_free(void* ptr);
 
 #endif

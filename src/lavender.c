@@ -26,7 +26,7 @@ void lv_run() {
                 readInput(file, false);
             fclose(file);
         }
-        free(filename);
+        lv_free(filename);
     } else {
         if(lv_debug)
             puts("Running in debug mode");
@@ -45,6 +45,11 @@ void* lv_alloc(size_t size) {
     if(!res)
         lv_shutdown();
     return res;
+}
+
+void lv_free(void* ptr) {
+    
+    free(ptr);
 }
 
 void lv_shutdown() {

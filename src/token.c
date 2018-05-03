@@ -34,8 +34,8 @@ void lv_tkn_free(Token* head) {
     
     while(head) {
         Token* tail = head->next;
-        free(head->value);
-        free(head);
+        lv_free(head->value);
+        lv_free(head);
         head = tail;
     }
 }
@@ -114,7 +114,7 @@ static bool reallocBuffer() {
         //reallocate the whole buffer
         char* tmp = realloc(buffer, BUFFER_LEN * 2);
         if(!tmp) {
-            free(buffer);
+            lv_free(buffer);
             lv_shutdown();
         }
         buffer = tmp;
@@ -177,8 +177,8 @@ Token* lv_tkn_split(FILE* in) {
         //check error
         if(LV_TKN_ERROR) {
             assert(!tok);
-            free(head);
-            free(buffer);
+            lv_free(head);
+            lv_free(buffer);
             return NULL;
         }
         if(tok) {
@@ -193,7 +193,7 @@ Token* lv_tkn_split(FILE* in) {
             reallocBuffer();
         }
     }
-    free(buffer);
+    lv_free(buffer);
     return head;
 }
 
