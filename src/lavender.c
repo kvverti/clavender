@@ -13,7 +13,20 @@ static void readInput(FILE* in, bool repl);
 void lv_run() {
     
     if(lv_mainFile) {
-        //run main NYI
+        char ext[] = ".lv";
+        char* filename = lv_alloc(strlen(lv_mainFile) + sizeof(ext));
+        filename[0] = '\0';
+        strcat(filename, lv_mainFile);
+        strcat(filename, ext);
+        FILE* file = fopen(filename, "r");
+        if(!file) {
+            printf("Cannot read main file %s\n", filename);
+        } else {
+            while(!feof(file))
+                readInput(file, false);
+            fclose(file);
+        }
+        free(filename);
     } else {
         if(lv_debug)
             puts("Running in debug mode");

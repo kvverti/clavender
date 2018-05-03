@@ -127,7 +127,7 @@ static bool reallocBuffer() {
                 BUFFER_LEN * 2);
         BUFFER_LEN *= 2;
     }
-    inputEnd = (buffer[0] && (buffer[strlen(buffer) - 1] == '\n'));
+    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     idx -= bgn;
     bgn = 0;
     return true;
@@ -148,7 +148,7 @@ Token* lv_tkn_split(FILE* in) {
     Token* head = NULL;
     Token* tail = head;
     fgets(buffer, BUFFER_LEN, input);
-    inputEnd = (buffer[0] && (buffer[strlen(buffer) - 1] == '\n'));
+    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     while(buffer[bgn]) {
         char c = buffer[bgn];
         Token* tok = NULL;
