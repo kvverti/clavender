@@ -67,6 +67,7 @@ void lv_free(void* ptr) {
 
 void lv_startup() {
     
+    lv_op_onStartup();
 }
 
 void lv_shutdown() {

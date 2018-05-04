@@ -29,8 +29,6 @@ typedef struct LvString {
 } LvString;
 
 typedef struct Param {
-    //struct does not own memory
-    //allocated to name
     char* name;
     bool byName;
 } Param;
@@ -130,6 +128,7 @@ Token* lv_op_declareFunction(Token* tokens);
  */
 TextBufferObj* lv_op_parseExpr(Token* tokens);
 
+void lv_op_onStartup();
 //called on lv_shutdown
 void lv_op_onShutdown();
 
