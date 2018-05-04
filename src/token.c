@@ -125,12 +125,7 @@ static bool reallocBuffer() {
         fgetsWrapper(buffer + (idx - bgn), BUFFER_LEN - (idx - bgn), input);
     } else {
         //reallocate the whole buffer
-        char* tmp = realloc(buffer, BUFFER_LEN * 2);
-        if(!tmp) {
-            lv_free(buffer);
-            lv_shutdown();
-        }
-        buffer = tmp;
+        buffer = lv_realloc(buffer, BUFFER_LEN * 2);
         size_t oldLen = BUFFER_LEN;
         BUFFER_LEN *= 2;
         memset(buffer + oldLen, 0, oldLen); //initialize new memory

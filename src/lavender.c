@@ -13,6 +13,7 @@ static void readInput(FILE* in, bool repl);
 
 void lv_run() {
     
+    lv_startup();
     if(lv_mainFile) {
         char ext[] = ".lv";
         char* filename = lv_alloc(strlen(lv_mainFile) + sizeof(ext));
@@ -38,19 +39,34 @@ void lv_run() {
             lv_repl();
         }
     }
+    lv_shutdown();
 }
 
 void* lv_alloc(size_t size) {
     
-    void* res = malloc(size);
-    if(!res)
+    void* value = malloc(size);
+    if(!value)
         lv_shutdown();
-    return res;
+    return value;
+}
+
+void* lv_realloc(void* ptr, size_t size) {
+    
+    void* tmp = realloc(ptr, size);
+    if(!tmp) {
+        free(ptr);
+        lv_shutdown();
+    }
+    return tmp;
 }
 
 void lv_free(void* ptr) {
     
     free(ptr);
+}
+
+void lv_startup() {
+    
 }
 
 void lv_shutdown() {
