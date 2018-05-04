@@ -1,5 +1,6 @@
 #include "lavender.h"
 #include "token.h"
+#include "operator.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,6 +55,7 @@ void lv_free(void* ptr) {
 
 void lv_shutdown() {
     
+    lv_op_onShutdown();
     exit(0);
 }
 
@@ -68,7 +70,7 @@ static void readInput(FILE* in, bool repl) {
         printf("> ");
     Token* toks = lv_tkn_split(in);
     if(LV_TKN_ERROR) {
-        printf("Error parsing tokens: %s\n", lv_tkn_getError(LV_TKN_ERROR));
+        printf("Error parsing input: %s\n", lv_tkn_getError(LV_TKN_ERROR));
         LV_TKN_ERROR = 0;
         return;
     }
@@ -80,6 +82,17 @@ static void readInput(FILE* in, bool repl) {
         }
         printf("Type %d, value %s\n", tmp->type, tmp->value);
         tmp = tmp->next;
+    }
+    if(toks) {
+        Token* t = lv_op_declareFunction(toks);
+        if(LV_OP_ERROR) {
+            printf("Error parsing function: %s\n", lv_op_getError(LV_OP_ERROR));
+            LV_OP_ERROR = 0;
+        } else {
+            printf("First token of body: type=%d, value=%s\n",
+                t->type,
+                t->value);
+        }
     }
     lv_tkn_free(toks);
 }
