@@ -87,7 +87,8 @@ static void readInput(FILE* in, bool repl) {
         printf("> ");
     Token* toks = lv_tkn_split(in);
     if(LV_TKN_ERROR) {
-        printf("Error parsing input: %s\n", lv_tkn_getError(LV_TKN_ERROR));
+        printf("Error parsing input: %s\nHere: '%s'\n",
+            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
         LV_TKN_ERROR = 0;
         return;
     }

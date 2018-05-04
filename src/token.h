@@ -31,7 +31,9 @@ typedef enum TokenError {
     TE_UNBAL_PAREN      //unbalanced parens
 } TokenError;
 
+#define TKN_ERRCXT_LEN 8
 TokenError LV_TKN_ERROR;
+char lv_tkn_errcxt[TKN_ERRCXT_LEN];
 
 /**
  * Retrieves an error message for the specified error.
