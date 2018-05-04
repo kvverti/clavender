@@ -16,14 +16,15 @@ static TokenType getLiteral();
 
 char* lv_tkn_getError(TokenError err) {
     
-    #define LEN 6
+    #define LEN 7
     static char* msg[LEN] = {
         "Namespace without name",
         "Number ends in '.'",
         "Number has missing exponent",
         "Missing function value",
         "Unterminated string",
-        "Unknown string escape sequence"
+        "Unknown string escape sequence",
+        "Unbalanced parentheses"
     };
     assert(err > 0 && err <= LEN);
     return msg[err - 1];
@@ -45,8 +46,19 @@ static char* buffer;
 static int bgn; //start pos of the current token
 static int idx; //current index in the buffer
 static FILE* input;
+static int bracketNesting; //bracket nesting
+static int parenNesting; //paren nesting
 
 static bool reallocBuffer();
+
+static void setInputEnd() {
+    //set inputEnd for the global buffer
+    bool endOfLine = (parenNesting == 0
+        && bracketNesting == 0
+        && buffer[0]
+        && buffer[strlen(buffer) - 1] == '\n');
+    inputEnd = (feof(input) || endOfLine);
+}
 
 static int issymb(int c) {
 
@@ -106,8 +118,7 @@ static void fgetsWrapper(char* buf, int n, FILE* stream) {
         *nul = ' ';
         nul = strchr(nul, '\0');
     }
-    //set inputEnd for the global buffer
-    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
+    setInputEnd();
 }
 
 //reallocates the buffer with the start of the buffer
@@ -153,7 +164,7 @@ Token* lv_tkn_split(FILE* in) {
     BUFFER_LEN = 6;
     buffer = lv_alloc(BUFFER_LEN);
     memset(buffer, 0, BUFFER_LEN); //initialize buffer
-    bgn = idx = 0;
+    bgn = idx = parenNesting = bracketNesting = 0;
     
     Token* head = NULL;
     Token* tail = head;
@@ -214,6 +225,21 @@ Token* lv_tkn_split(FILE* in) {
 
 static TokenType getLiteral() {
     
+    switch(buffer[idx]) {
+        case '(': parenNesting++;
+            break;
+        case ')': parenNesting--;
+            break;
+        case '[': bracketNesting++;
+            break;
+        case ']': bracketNesting--;
+            break;
+    }
+    if(parenNesting < 0 || bracketNesting < 0) {
+        LV_TKN_ERROR = TE_UNBAL_PAREN;
+        return -1;
+    }
+    setInputEnd();
     idx++;
     return TTY_LITERAL;
 }

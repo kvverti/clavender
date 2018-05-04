@@ -27,7 +27,8 @@ typedef enum TokenError {
     TE_BAD_EXP,         //bad exponent format
     TE_BAD_FUNC_VAL,    //bad function value
     TE_UNTERM_STR,      //unterminated string
-    TE_BAD_STR_ESC      //bad string escape sequence
+    TE_BAD_STR_ESC,     //bad string escape sequence
+    TE_UNBAL_PAREN      //unbalanced parens
 } TokenError;
 
 TokenError LV_TKN_ERROR;
