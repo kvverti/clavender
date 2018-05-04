@@ -12,8 +12,7 @@ typedef struct OpHashtable {
     Operator** table;
 } OpHashtable;
 
-static OpHashtable prefixFuncs;
-static OpHashtable infixFuncs;
+static OpHashtable funcNamespaces[FNS_COUNT];
 //storing anonymous functions
 static Operator* anonFuncs;
 
@@ -28,17 +27,19 @@ static size_t hash(char* str) {
     return res;
 }
 
-Operator* lv_op_getOperator(char* name) {
+Operator* lv_op_getOperator(char* name, FuncNamespace ns) {
     
+    assert(ns >= 0 && ns < FNS_COUNT);
+    OpHashtable* table = &funcNamespaces[ns];
     //hash(name) % cap
-    size_t idx = hash(name) & (prefixFuncs.cap - 1);
-    Operator* head = prefixFuncs.table[idx];
+    size_t idx = hash(name) & (table->cap - 1);
+    Operator* head = table->table[idx];
     while(head && strcmp(name, head->name) != 0)
         head = head->next;
     return head;
 }
 
-bool lv_op_addOperator(Operator* op) {
+bool lv_op_addOperator(Operator* op, FuncNamespace ns) {
     
     assert(op);
     if(!op->name) {
@@ -47,11 +48,12 @@ bool lv_op_addOperator(Operator* op) {
         anonFuncs = op;
         return true;
     }
+    OpHashtable* table = &funcNamespaces[ns];
     //check table load
-    if(((double) prefixFuncs.size / prefixFuncs.cap) > TABLE_LOAD_FACT)
-        resizeTable(&prefixFuncs);
-    size_t idx = hash(op->name) & (prefixFuncs.cap - 1);
-    Operator* head = prefixFuncs.table[idx];
+    if(((double) table->size / table->cap) > TABLE_LOAD_FACT)
+        resizeTable(table);
+    size_t idx = hash(op->name) & (table->cap - 1);
+    Operator* head = table->table[idx];
     Operator* tmp = head;
     while(tmp && strcmp(op->name, tmp->name) != 0)
         tmp = tmp->next;
@@ -60,16 +62,18 @@ bool lv_op_addOperator(Operator* op) {
         return false;
     } else {
         op->next = head;
-        prefixFuncs.table[idx] = op;
-        prefixFuncs.size++;
+        table->table[idx] = op;
+        table->size++;
         return true;
     }
 }
 
-bool lv_op_removeOperator(char* name) {
+bool lv_op_removeOperator(char* name, FuncNamespace ns) {
     //the "triple ref" pointer technique
-    size_t idx = hash(name) & (prefixFuncs.cap - 1);
-    Operator** tmp = &prefixFuncs.table[idx];
+    assert(ns >= 0 && ns < FNS_COUNT);
+    OpHashtable* table = &funcNamespaces[ns];
+    size_t idx = hash(name) & (table->cap - 1);
+    Operator** tmp = &table->table[idx];
     while(*tmp && strcmp(name, (*tmp)->name) != 0) {
         tmp = &(*tmp)->next;
     }
@@ -77,7 +81,7 @@ bool lv_op_removeOperator(char* name) {
     if(toFree) {
         *tmp = toFree->next;
         lv_free(toFree);
-        prefixFuncs.size--;
+        table->size--;
         return true;
     }
     return false;
@@ -95,7 +99,7 @@ static void resizeTable(OpHashtable* table) {
         Operator* node = oldTable[i];
         while(node) {
             Operator* tmp = node->next;
-            lv_op_addOperator(node);
+            lv_op_addOperator(node, table - funcNamespaces);
             node = tmp;
         }
     }
@@ -123,16 +127,20 @@ static void freeList(Operator* head) {
 
 void lv_op_onStartup() {
     
-    prefixFuncs.table = lv_alloc(INIT_TABLE_LEN * sizeof(Operator*));
-    memset(prefixFuncs.table, 0, INIT_TABLE_LEN * sizeof(Operator*));
-    prefixFuncs.size = 0;
-    prefixFuncs.cap = INIT_TABLE_LEN;
+    for(int i = 0; i < FNS_COUNT; i++) {
+        funcNamespaces[i].table = lv_alloc(INIT_TABLE_LEN * sizeof(Operator*));
+        memset(funcNamespaces[i].table, 0, INIT_TABLE_LEN * sizeof(Operator*));
+        funcNamespaces[i].size = 0;
+        funcNamespaces[i].cap = INIT_TABLE_LEN;
+    }
 }
 
 void lv_op_onShutdown() {
     
     freeList(anonFuncs);
-    for(int i = 0; i < prefixFuncs.cap; i++)
-        freeList(prefixFuncs.table[i]);
-    lv_free(prefixFuncs.table);
+    for(int i = 0; i < FNS_COUNT; i++) {
+        for(size_t j = 0; j < funcNamespaces[i].cap; j++)
+            freeList(funcNamespaces[i].table[j]);
+        lv_free(funcNamespaces[i].table);
+    }
 }

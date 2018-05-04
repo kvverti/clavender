@@ -172,10 +172,14 @@ Token* lv_op_declareFunction(Token* head) {
     //end debug
     //check to see if this function was inconsistently defined
     Operator* funcObj = NULL;
+    FuncNamespace ns = fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
     if(fnameAlias)
-        funcObj = lv_op_getOperator(fnameAlias);
+        funcObj = lv_op_getOperator(fnameAlias, ns);
     if(funcObj) {
-        if(funcObj->type != OPT_FWD_DECL
+        //let's disallow entirely
+        LV_OP_ERROR = OPE_DUP_DECL;
+        return NULL;
+/*         if(funcObj->type != OPT_FWD_DECL
             || funcObj->decl->arity != arity
             || funcObj->decl->fixing != fixing) {
             //inconsistent
@@ -188,7 +192,7 @@ Token* lv_op_declareFunction(Token* head) {
                 LV_OP_ERROR = OPE_DUP_DECL;
                 return NULL;
             }
-        }
+        } */
     } else {
         //add a new one
         funcObj = lv_alloc(sizeof(Operator));
@@ -209,7 +213,7 @@ Token* lv_op_declareFunction(Token* head) {
             strcpy(name, args[i].name);
             funcObj->decl->params[i].name = name;
         }
-        lv_op_addOperator(funcObj);
+        lv_op_addOperator(funcObj, ns);
     }
     return head;
     #undef RETVAL

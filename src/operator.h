@@ -20,6 +20,12 @@ typedef enum Fixing {
     FIX_RIGHT_IN = 'r'
 } Fixing;
 
+typedef enum FuncNamespace {
+    FNS_PREFIX = 0,
+    FNS_INFIX,
+    FNS_COUNT       //number of namespaces
+} FuncNamespace;
+
 /**
  * Lavender's built in string object.
  */
@@ -94,7 +100,7 @@ char* lv_op_getError(OpError error);
  * Retrieves the operator with the given name.
  * Returns NULL if no such operator exists.
  */
-Operator* lv_op_getOperator(char* name);
+Operator* lv_op_getOperator(char* name, FuncNamespace ns);
 
 /**
  * Adds the operator to the hashtable.
@@ -102,14 +108,14 @@ Operator* lv_op_getOperator(char* name);
  * If the operator has no name, it is not added to the
  * table, but this function returns true.
  */
-bool lv_op_addOperator(Operator* op);
+bool lv_op_addOperator(Operator* op, FuncNamespace ns);
 
 /**
  * Removes the operator from the hashtable
  * with the given name. Returns whether
  * the operator was present.
  */
-bool lv_op_removeOperator(char* name);
+bool lv_op_removeOperator(char* name, FuncNamespace ns);
 
 /**
  * Declares a function.
