@@ -99,14 +99,15 @@ static void fgetsWrapper(char* buf, int n, FILE* stream) {
     //  b) the NUL occurs at the end of the buffer
     //  c) the NUL occurs after a newline character
     //Any other occurrences of NUL are invalid and must be purged.
-    size_t len = strlen(buf);
-    while(!feof(stream) && len != (n - 1) && (len == 0 || buf[len - 1] != '\n')) {
+    char* nul = strchr(buf, '\0');
+    while(!feof(stream) && nul != (buf + n - 1) && (nul == buf || nul[-1] != '\n')) {
         if(lv_debug)
-            printf("TOKEN: Stray NUL at position %lu of %d (%s)\n", len, n, buf);
-        buf[len] = ' ';
-        len = strlen(buf);
+            printf("TOKEN: Stray NUL at position %lu of %d (%s)\n", nul - buf, n, buf);
+        *nul = ' ';
+        nul = strchr(nul, '\0');
     }
     //set inputEnd for the global buffer
+    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
 }
 
 //reallocates the buffer with the start of the buffer
@@ -136,7 +137,7 @@ static bool reallocBuffer() {
                 oldLen,
                 BUFFER_LEN);
     }
-    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
+    //inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     idx -= bgn;
     bgn = 0;
     return true;
@@ -157,7 +158,7 @@ Token* lv_tkn_split(FILE* in) {
     Token* head = NULL;
     Token* tail = head;
     fgetsWrapper(buffer, BUFFER_LEN, input);
-    inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
+    //inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     while(buffer[bgn]) {
         char c = buffer[bgn];
         TokenType type = -1;
