@@ -87,6 +87,28 @@ static void getInputWhile(int (*pred)(int)) {
     } while(pred(buffer[idx]));
 }
 
+static void fgetsWrapper(char* buf, int n, FILE* stream) {
+    
+    fgets(buf, n, stream);
+    //if there was a NUL character in the text stream that got added into
+    //the buffer, the lexing code will get confused about the amount of
+    //text read. To remedy this, we find NUL characters that are not at
+    //the end of the buffer and replace them with spaces.
+    //A valid NUL character in the buffer is occurs when
+    //  a) the input reaches end of file
+    //  b) the NUL occurs at the end of the buffer
+    //  c) the NUL occurs after a newline character
+    //Any other occurrences of NUL are invalid and must be purged.
+    size_t len = strlen(buf);
+    while(!feof(stream) && len != (n - 1) && (len == 0 || buf[len - 1] != '\n')) {
+        if(lv_debug)
+            printf("TOKEN: Stray NUL at position %lu of %d (%s)\n", len, n, buf);
+        buf[len] = ' ';
+        len = strlen(buf);
+    }
+    //set inputEnd for the global buffer
+}
+
 //reallocates the buffer with the start of the buffer
 //at 'bgn'. If bgn == 0, also increases the buffer size.
 //returns whether the buffer was reallocated.
@@ -100,7 +122,7 @@ static bool reallocBuffer() {
         assert(idx >= bgn);
         for(int i = bgn; i < idx; i++)
             buffer[i - bgn] = buffer[i];
-        fgets(buffer + (idx - bgn), BUFFER_LEN - (idx - bgn), input);
+        fgetsWrapper(buffer + (idx - bgn), BUFFER_LEN - (idx - bgn), input);
     } else {
         //reallocate the whole buffer
         char* tmp = realloc(buffer, BUFFER_LEN * 2);
@@ -109,14 +131,15 @@ static bool reallocBuffer() {
             lv_shutdown();
         }
         buffer = tmp;
-        memset(buffer + BUFFER_LEN, 0, BUFFER_LEN); //initialize new memory
+        size_t oldLen = BUFFER_LEN;
+        BUFFER_LEN *= 2;
+        memset(buffer + oldLen, 0, oldLen); //initialize new memory
         //subtract 1 for the NUL terminator
-        fgets(buffer + BUFFER_LEN - 1, BUFFER_LEN + 1, input);
+        fgetsWrapper(buffer + oldLen - 1, oldLen + 1, input);
         if(lv_debug)
             printf("TOKEN: buffer resize, old=%lu new=%lu\n",
-                BUFFER_LEN,
-                BUFFER_LEN * 2);
-        BUFFER_LEN *= 2;
+                oldLen,
+                BUFFER_LEN);
     }
     inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     idx -= bgn;
@@ -138,7 +161,7 @@ Token* lv_tkn_split(FILE* in) {
     
     Token* head = NULL;
     Token* tail = head;
-    fgets(buffer, BUFFER_LEN, input);
+    fgetsWrapper(buffer, BUFFER_LEN, input);
     inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
     while(buffer[bgn]) {
         char c = buffer[bgn];
