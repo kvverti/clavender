@@ -203,6 +203,12 @@ Token* lv_op_declareFunction(Token* head) {
         funcObj->decl->arity = arity;
         funcObj->decl->fixing = fixing;
         memcpy(funcObj->decl->params, args, arity * sizeof(Param));
+        //copy param names
+        for(int i = 0; i < arity; i++) {
+            char* name = lv_alloc(strlen(args[i].name) + 1);
+            strcpy(name, args[i].name);
+            funcObj->decl->params[i].name = name;
+        }
         lv_op_addOperator(funcObj);
     }
     return head;

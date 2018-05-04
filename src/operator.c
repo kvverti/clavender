@@ -107,8 +107,15 @@ static void freeList(Operator* head) {
     while(head) {
         Operator* tmp = head->next;
         lv_free(head->name);
-        if(head->type == OPT_FWD_DECL)
+        if(head->type == OPT_FWD_DECL) {
+            //free param names
+            Param* params = head->decl->params;
+            int arity = head->decl->arity;
+            for(int i = 0; i < arity; i++) {
+                lv_free(params[i].name);
+            }
             lv_free(head->decl);
+        }
         lv_free(head);
         head = tmp;
     }
