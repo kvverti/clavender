@@ -48,6 +48,7 @@ typedef struct LvFunc {
 typedef struct LvFuncDecl {
     int arity;
     Fixing fixing;
+    int captureCount;
     Param params[];
 } LvFuncDecl;
 
@@ -78,6 +79,7 @@ typedef struct TextBufferObj {
         LvString* str;
         int param;
         LvFunc func;
+        LvFuncDecl* decl;
         //todo builtin type
         char literal;
     };
@@ -89,7 +91,11 @@ typedef enum OpError {
     OPE_EXPT_ARGS,      //expected an argument list
     OPE_BAD_ARGS,       //bad argument list
     OPE_MISSING_BODY,   //missing function body
-    OPE_DUP_DECL        //inconsistent function declarations
+    OPE_DUP_DECL,       //inconsistent function declarations
+    OPE_NAME_NOT_FOUND, //simple name not found
+    OPE_EXPECT_INF,     //operator expected
+    OPE_EXPECT_PRE,     //operand expected
+    OPE_UNEXPECT_TOKEN  //unexpected token
 } OpError;
 
 OpError LV_OP_ERROR;
@@ -120,19 +126,21 @@ bool lv_op_removeOperator(char* name, FuncNamespace ns);
 /**
  * Declares a function.
  * The tokens list must begin with a top-level
- * function definition. Returns a pointer to the
- * first token in the body of the function.
+ * function definition. Sets bodyTok to point to the
+ * first token in the body of the function and returns
+ * the declaration object created.
  * If an error occurs, sets LV_OP_ERROR
  * and returns NULL.
  */
-Token* lv_op_declareFunction(Token* tokens);
+Operator* lv_op_declareFunction(Token* tokens, char* nspace, Token** bodyTok);
 
 /**
  * Parses the expression defined by the token sequence.
+ * in the context of the given function declaration.
  * Returns a dynamically allocated array of
- * component operators to execute.
+ * component operators to execute, or NULL if an error occurred.
  */
-TextBufferObj* lv_op_parseExpr(Token* tokens);
+void lv_op_parseExpr(Token* tokens, Operator* decl, TextBufferObj** expr, size_t* len);
 
 void lv_op_onStartup();
 //called on lv_shutdown

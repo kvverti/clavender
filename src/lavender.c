@@ -102,14 +102,35 @@ static void readInput(FILE* in, bool repl) {
         tmp = tmp->next;
     }
     if(toks) {
-        Token* t = lv_op_declareFunction(toks);
+        Token* t;
+        Operator* decl = lv_op_declareFunction(toks, "repl", &t);
         if(LV_OP_ERROR) {
             printf("Error parsing function: %s\n", lv_op_getError(LV_OP_ERROR));
             LV_OP_ERROR = 0;
         } else {
+            printf("Function name=%s, arity=%d, fixing=%c\n",
+                decl->name, decl->decl->arity, decl->decl->fixing);
+            for(int i = 0; i < decl->decl->arity; i++) {
+                printf("Parameter %d is %s. By-name? %d\n",
+                    i, decl->decl->params[i].name, decl->decl->params[i].byName);
+            }
             printf("First token of body: type=%d, value=%s\n",
                 t->type,
                 t->value);
+            TextBufferObj* expr = NULL;
+            size_t len;
+            lv_op_parseExpr(t, decl, &expr, &len);
+            if(LV_OP_ERROR) {
+                printf("Error parsing expression: %s\n", lv_op_getError(LV_OP_ERROR));
+                if(!lv_op_removeOperator(decl->name, FNS_PREFIX))
+                    lv_op_removeOperator(decl->name, FNS_INFIX);
+                LV_OP_ERROR = 0;
+            } else {
+                for(size_t i = 0; i < len; i++) {
+                    printf("Object type %d\n", expr[i].type);
+                }
+            }
+            lv_free(expr);
         }
     }
     lv_tkn_free(toks);

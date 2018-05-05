@@ -17,6 +17,7 @@ static OpHashtable funcNamespaces[FNS_COUNT];
 static Operator* anonFuncs;
 
 static void resizeTable(OpHashtable* table);
+static void freeOp(Operator* op);
 
 static size_t hash(char* str) {
     //djb2 hash
@@ -42,7 +43,7 @@ Operator* lv_op_getOperator(char* name, FuncNamespace ns) {
 bool lv_op_addOperator(Operator* op, FuncNamespace ns) {
     
     assert(op);
-    if(!op->name) {
+    if(op->name[strlen(op->name) - 1] == ':') {
         //anonymous function
         op->next = anonFuncs;
         anonFuncs = op;
@@ -80,7 +81,7 @@ bool lv_op_removeOperator(char* name, FuncNamespace ns) {
     Operator* toFree = *tmp;
     if(toFree) {
         *tmp = toFree->next;
-        lv_free(toFree);
+        freeOp(toFree);
         table->size--;
         return true;
     }
@@ -106,21 +107,26 @@ static void resizeTable(OpHashtable* table) {
     lv_free(oldTable);
 }
 
+static void freeOp(Operator* op) {
+    
+    lv_free(op->name);
+    if(op->type == OPT_FWD_DECL) {
+        //free param names
+        Param* params = op->decl->params;
+        int arity = op->decl->arity;
+        for(int i = 0; i < arity; i++) {
+            lv_free(params[i].name);
+        }
+        lv_free(op->decl);
+    }
+    lv_free(op);
+}
+
 static void freeList(Operator* head) {
     
     while(head) {
         Operator* tmp = head->next;
-        lv_free(head->name);
-        if(head->type == OPT_FWD_DECL) {
-            //free param names
-            Param* params = head->decl->params;
-            int arity = head->decl->arity;
-            for(int i = 0; i < arity; i++) {
-                lv_free(params[i].name);
-            }
-            lv_free(head->decl);
-        }
-        lv_free(head);
+        freeOp(head);
         head = tmp;
     }
 }
