@@ -110,14 +110,14 @@ static void resizeTable(OpHashtable* table) {
 static void freeOp(Operator* op) {
     
     lv_free(op->name);
-    if(op->type == OPT_FWD_DECL) {
+    if(op->type == FUN_FWD_DECL) {
         //free param names
-        Param* params = op->decl->params;
-        int arity = op->decl->arity;
+        Param* params = op->params;
+        int arity = op->arity;
         for(int i = 0; i < arity; i++) {
             lv_free(params[i].name);
         }
-        lv_free(op->decl);
+        lv_free(params);
     }
     lv_free(op);
 }

@@ -109,10 +109,10 @@ static void readInput(FILE* in, bool repl) {
             LV_OP_ERROR = 0;
         } else {
             printf("Function name=%s, arity=%d, fixing=%c\n",
-                decl->name, decl->decl->arity, decl->decl->fixing);
-            for(int i = 0; i < decl->decl->arity; i++) {
+                decl->name, decl->arity, decl->fixing);
+            for(int i = 0; i < decl->arity; i++) {
                 printf("Parameter %d is %s. By-name? %d\n",
-                    i, decl->decl->params[i].name, decl->decl->params[i].byName);
+                    i, decl->params[i].name, decl->params[i].byName);
             }
             printf("First token of body: type=%d, value=%s\n",
                 t->type,
@@ -122,8 +122,8 @@ static void readInput(FILE* in, bool repl) {
             lv_op_parseExpr(t, decl, &expr, &len);
             if(LV_OP_ERROR) {
                 printf("Error parsing expression: %s\n", lv_op_getError(LV_OP_ERROR));
-                if(!lv_op_removeOperator(decl->name, FNS_PREFIX))
-                    lv_op_removeOperator(decl->name, FNS_INFIX);
+                FuncNamespace ns = decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
+                lv_op_removeOperator(decl->name, ns);
                 LV_OP_ERROR = 0;
             } else {
                 for(size_t i = 0; i < len; i++) {

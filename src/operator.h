@@ -9,10 +9,14 @@ typedef enum OpType {
     OPT_STRING,     //Lavender string
     OPT_PARAM,      //function parameter
     OPT_FUNCTION,   //function definition
-    OPT_BUILTIN,    //built in operator    
     OPT_LITERAL,    //literal value (not present in final code)
-    OPT_FWD_DECL    //function declaration (not present in final code)
 } OpType;
+
+typedef enum FuncType {
+    FUN_FUNCTION,   //function definition
+    FUN_BUILTIN,    //built in operator  
+    FUN_FWD_DECL    //function declaration (not present in final code)
+} FuncType;
 
 typedef enum Fixing {
     FIX_PRE = 'u',
@@ -39,29 +43,19 @@ typedef struct Param {
     bool byName;
 } Param;
 
-typedef struct LvFunc {
-    int textOffset;
-    int arity;
-    Fixing fixing;
-} LvFunc;
-
-typedef struct LvFuncDecl {
-    int arity;
-    Fixing fixing;
-    int captureCount;
-    Param params[];
-} LvFuncDecl;
-
 /**
  * A struct that stores a Lavender function and its name.
  * These values are stored in a global hashtable.
  */
 typedef struct Operator {
     char* name;
-    OpType type;
+    FuncType type;
+    int arity;
+    Fixing fixing;
+    int captureCount;
     union {
-        LvFunc func;
-        LvFuncDecl* decl;
+        int textOffset;
+        Param* params;
         //todo builtin type
     };
     struct Operator* next;
@@ -78,8 +72,7 @@ typedef struct TextBufferObj {
         double number;
         LvString* str;
         int param;
-        LvFunc func;
-        LvFuncDecl* decl;
+        Operator* func;
         //todo builtin type
         char literal;
     };
@@ -138,7 +131,7 @@ Operator* lv_op_declareFunction(Token* tokens, char* nspace, Token** bodyTok);
  * Parses the expression defined by the token sequence.
  * in the context of the given function declaration.
  * Returns a dynamically allocated array of
- * component operators to execute, or NULL if an error occurred.
+ * component operators to execute.
  */
 void lv_op_parseExpr(Token* tokens, Operator* decl, TextBufferObj** expr, size_t* len);
 

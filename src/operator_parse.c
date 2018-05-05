@@ -192,25 +192,35 @@ Operator* lv_op_declareFunction(Token* head, char* nspace, Token** bodyTok) {
         funcObj = lv_alloc(sizeof(Operator));
         funcObj->name = fqn;
         funcObj->next = NULL;
-        funcObj->type = OPT_FWD_DECL;
-        LvFuncDecl* decl = lv_alloc(sizeof(LvFuncDecl) + arity * sizeof(Param));
-        decl->arity = arity;
-        decl->fixing = fixing;
-        decl->captureCount = 0; //todo
-        memcpy(decl->params, args, arity * sizeof(Param));
+        funcObj->type = FUN_FWD_DECL;
+        funcObj->arity = arity;
+        funcObj->fixing = fixing;
+        funcObj->captureCount = 0; //todo
+        funcObj->params = lv_alloc(arity * sizeof(Param));
+        memcpy(funcObj->params, args, arity * sizeof(Param));
         //copy param names
         for(int i = 0; i < arity; i++) {
             char* name = lv_alloc(strlen(args[i].name) + 1);
             strcpy(name, args[i].name);
-            decl->params[i].name = name;
+            funcObj->params[i].name = name;
         }
-        funcObj->decl = decl;
         lv_op_addOperator(funcObj, ns);
         *bodyTok = head;
         return funcObj;
     }
     #undef RETVAL
 }
+
+static Token* pe_head;        //the current token
+static Operator* pe_decl;     //the current function declaration
+static char* pe_startOfName;  //the beginning of the simple name
+static bool pe_expectOperand; //do we expect an operand or an operator
+
+static void parseLiteral(TextBufferObj* obj);
+static void parseIdent(TextBufferObj* obj);
+static void parseFunction(TextBufferObj* obj);
+static void parseNumber(TextBufferObj* obj);
+static void parseString(TextBufferObj* obj);
 
 static int exprLength(Token* head) {
     
@@ -246,124 +256,124 @@ static char* concat(char* a, int alen, char* b, int blen) {
     return res;
 }
 
+static void parseLiteral(TextBufferObj* obj) {
+    
+    obj->type = OPT_LITERAL;
+    obj->literal = pe_head->value[0];
+    switch(obj->literal) {
+        case '(':
+        case '[':
+            //open groupings are "operands"
+            if(!pe_expectOperand) {
+                LV_OP_ERROR = OPE_EXPECT_PRE;
+            }
+            break;
+        case ')':
+        case ']':
+        case ',':
+            //close groupings are "operators"
+            if(pe_expectOperand) {
+                LV_OP_ERROR = OPE_EXPECT_INF;
+            }
+            break;
+        default:
+            LV_OP_ERROR = OPE_UNEXPECT_TOKEN;
+    }
+}
+
+static void parseFunction(TextBufferObj* obj) {
+    
+    FuncNamespace ns = pe_expectOperand ? FNS_PREFIX : FNS_INFIX;
+    //not a parameter, try simple names
+    //we find the function with the simple name
+    //in the innermost scope possible by going
+    //through outer scopes until we can't find
+    //a function definition.
+    int valueLen = strlen(pe_head->value);
+    char* nsbegin = pe_decl->name;
+    Operator* func;
+    Operator* test = NULL;
+    do {
+        func = test;
+        if(pe_startOfName == nsbegin)
+            break; //we did all the namespaces
+        //get the function with the name in the scope
+        char* fname = concat(nsbegin,   //beginning of scope
+            pe_startOfName - nsbegin,   //length of scope name
+            pe_head->value,                //name to check
+            valueLen);                  //length of name
+        test = lv_op_getOperator(fname, ns);
+        lv_free(fname);
+        nsbegin = strchr(nsbegin, ':') + 1;
+    } while(test);
+    //test is null. func should contain the function
+    if(!func) {
+        //that name does not exist!
+        LV_OP_ERROR = OPE_NAME_NOT_FOUND;
+        return;
+    }
+    obj->type = OPT_FUNCTION;
+    obj->func = func;
+    //toggle if RHS is true
+    pe_expectOperand ^= (!pe_expectOperand || func->arity == 0);
+}
+
+static void parseIdent(TextBufferObj* obj) {
+    
+    if(pe_expectOperand) {
+        //is this a def?
+        if(strcmp(pe_head->value, "def") == 0) {
+            //todo
+        }
+        //try parameter names first
+        for(int i = 0; i < pe_decl->arity; i++) {
+            if(strcmp(pe_head->value, pe_decl->params[i].name) == 0) {
+                //save param name
+                obj->type = OPT_PARAM;
+                obj->param = i;
+                pe_expectOperand = false;
+                return;
+            }
+        }
+    }
+    //not a parameter, try a function
+    parseFunction(obj);
+}
+
 void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* len) {
     
-    *len = exprLength(head);
-    char* endOfName = strrchr(decl->name, ':') + 1;
+    size_t sz = exprLength(head);
     //text object vector
     TextBufferObj* expr = lv_alloc(*len * sizeof(TextBufferObj));
-    bool expectOperand = true; //do we expect an operand or an operator
-    for(int i = 0; i < *len; i++, head = head->next) {
+    //set up global vars
+    pe_head = head;
+    pe_decl = decl;
+    pe_startOfName = strrchr(decl->name, ':') + 1;
+    pe_expectOperand = true;
+    for(int i = 0; i < sz; i++, pe_head = pe_head->next) {
         //let the 76'th hunger games begin
-        switch(head->type) {
+        switch(pe_head->type) {
             case TTY_LITERAL:
-                expr[i].type = OPT_LITERAL;
-                expr[i].literal = head->value[0];
-                switch(expr[i].literal) {
-                    case '(':
-                    case '[':
-                        //open groupings are "operands"
-                        if(!expectOperand) {
-                            LV_OP_ERROR = OPE_EXPECT_PRE;
-                            lv_free(expr);
-                            return;
-                        }
-                        break;
-                    case ')':
-                    case ']':
-                    case ',':
-                        //close groupings are "operators"
-                        if(expectOperand) {
-                            LV_OP_ERROR = OPE_EXPECT_INF;
-                            lv_free(expr);
-                            return;
-                        }
-                        break;
-                    default:
-                        LV_OP_ERROR = OPE_UNEXPECT_TOKEN;
-                        lv_free(expr);
-                        return;
-                }
+                parseLiteral(&expr[i]);
                 break;
             case TTY_IDENT:
-                if(expectOperand) {
-                    //is this a def?
-                    if(strcmp(head->value, "def") == 0) {
-                        //todo
-                    }
-                    //try parameter names first
-                    for(int ii = 0; ii < decl->decl->arity; ii++) {
-                        if(strcmp(head->value, decl->decl->params[ii].name) == 0) {
-                            //save param name
-                            expr[i].type = OPT_PARAM;
-                            expr[i].param = ii;
-                            expectOperand = false;
-                            goto end; //hack!
-                        }
-                    }
-                }
-                //fallthrough
-            case TTY_SYMBOL: {
-                FuncNamespace ns = expectOperand ? FNS_PREFIX : FNS_INFIX;
-                //not a parameter, try simple names
-                //we find the function with the simple name
-                //in the innermost scope possible by going
-                //through outer scopes until we can't find
-                //a function definition.
-                int valueLen = strlen(head->value);
-                char* nsbegin = decl->name;
-                Operator* func;
-                Operator* test = NULL;
-                do {
-                    func = test;
-                    if(endOfName == nsbegin)
-                        break; //we did all the namespaces
-                    //get the function with the name in the scope
-                    char* fname = concat(nsbegin,   //beginning of scope
-                        endOfName - nsbegin,        //length of scope name
-                        head->value,                //name to check
-                        valueLen);                  //length of name
-                    test = lv_op_getOperator(fname, ns);
-                    lv_free(fname);
-                    nsbegin = strchr(nsbegin, ':') + 1;
-                } while(test);
-                //test is null. func should contain the function
-                if(!func) {
-                    //that name does not exist!
-                    LV_OP_ERROR = OPE_NAME_NOT_FOUND;
-                    lv_free(expr);
-                    return;
-                }
-                expr[i].type = func->type;
-                int arity;
-                switch(func->type) {
-                    case OPT_FUNCTION:
-                        expr[i].func = func->func;
-                        arity = func->func.arity;
-                        break;
-                    case OPT_FWD_DECL:
-                        expr[i].decl = func->decl;
-                        arity = func->decl->arity;
-                        break;
-                    case OPT_BUILTIN:
-                        //todo
-                        arity = 2;
-                        break;
-                    default:
-                        assert(false);
-                }
-                //toggle if RHS is true
-                expectOperand ^= (!expectOperand || arity == 0);
+                parseIdent(&expr[i]);
                 break;
-            }
+            case TTY_SYMBOL:
+                parseFunction(&expr[i]);
+                break;
             default:
                 //stub
                 expr[i].type = OPT_LITERAL;
                 expr[i].literal = '?';
         }
-        end: ;
+        if(LV_OP_ERROR) {
+            lv_free(expr);
+            return;
+        }
     }
     *res = expr;
+    *len = sz;
 }
 
 #undef REQUIRE_MORE_TOKENS
