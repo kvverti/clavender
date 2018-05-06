@@ -390,15 +390,15 @@ static void pushParam(IntStack* stack, int num) {
 void handleRightBracket() {
     
     assert(isLiteral(ops.top, ']'));
-    ops.top--; //pop ']'
     //shunt over operators
-    while(!isLiteral(ops.top, '[')) {
+    do {
+        ops.top--;
         REQUIRE_NONEMPTY(ops);
         if(isLiteral(ops.top, ']'))
             handleRightBracket();
         else
-            pushStack(&out, ops.top--);
-    }
+            pushStack(&out, ops.top);
+    } while(!isLiteral(ops.top, '['));
     //todo add call
     ops.top--; //pop '['
 }
@@ -518,6 +518,7 @@ void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* l
     }
     *res = out.stack;
     *len = out.top - out.stack + 1;
+    //calling plain lv_free is ok because ops is empty
     lv_free(ops.stack);
     lv_free(params.stack);
 }
