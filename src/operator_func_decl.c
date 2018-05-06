@@ -191,5 +191,3 @@ Operator* lv_op_declareFunction(Token* head, char* nspace, Token** bodyTok) {
     }
     #undef RETVAL
 }
-
-#undef REQUIRE_MORE_TOKENS

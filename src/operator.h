@@ -5,11 +5,12 @@
 #include <stdbool.h>
 
 typedef enum OpType {
-    OPT_NUMBER,     //Lavender number
-    OPT_STRING,     //Lavender string
-    OPT_PARAM,      //function parameter
-    OPT_FUNCTION,   //function definition
-    OPT_LITERAL,    //literal value (not present in final code)
+    OPT_NUMBER,         //Lavender number
+    OPT_STRING,         //Lavender string
+    OPT_PARAM,          //function parameter
+    OPT_FUNCTION,       //function definition
+    OPT_FUNCTION_VAL,   //function value
+    OPT_LITERAL,        //literal value (not present in final code)
 } OpType;
 
 typedef enum FuncType {

@@ -44,7 +44,14 @@ static int getLexicographicPrecedence(char c) {
         default:  return 0;
     }
 }
+
+/** Whether this object represents the literal character c. */
+static bool isLiteral(TextBufferObj* obj, char c) {
     
+    return obj->type == OPT_LITERAL && obj->literal == c;
+}
+
+/** Compares a and b by precedence. */
 static int compare(TextBufferObj* a, TextBufferObj* b) {
     
     //values have highest precedence
@@ -53,22 +60,22 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
             (a->type != OPT_FUNCTION || a->func->arity == 0));
         int br = (b->type != OPT_LITERAL &&
             (b->type != OPT_FUNCTION || b->func->arity == 0));
-        if(ar || br)
+        if(ar || br) {
+            assert(false);
             return ar - br;
+        }
     }
     //close groupers ']' and ')' have next highest
     {
-        int ac = (a->type == OPT_LITERAL &&
-            (a->literal == ')' || a->literal == ']'));
-        int bc = (b->type == OPT_LITERAL &&
-            (b->literal == ')' || b->literal == ']'));
+        int ac = (isLiteral(a, ')') || isLiteral(a, ']'));
+        int bc = (isLiteral(b, ')') || isLiteral(b, ']'));
         if(ac || bc)
             return ac - bc;
     }
     //openers '(' and '[' have the lowest
-    if(a->type == OPT_LITERAL && (a->literal == '(' || a->literal == '['))
+    if(isLiteral(a, '(') || isLiteral(a, '['))
         return -1;
-    if(b->type == OPT_LITERAL && (b->literal == '(' || b->literal == '['))
+    if(isLiteral(b, '(') || isLiteral(b, '['))
         return 1;
     assert(a->type == OPT_FUNCTION);
     assert(b->type == OPT_FUNCTION);
@@ -99,6 +106,7 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
     }
 }
 
+/** Returns a new string with concatenation of a and b */
 static char* concat(char* a, int alen, char* b, int blen) {
     
     char* res = lv_alloc(alen + blen + 1);
@@ -228,6 +236,7 @@ static void parseFuncValue(TextBufferObj* obj) {
     //undo substringing
     if(ns == FNS_INFIX)
         pe_head->value[len - 1] = '\\';
+    obj->type = OPT_FUNCTION_VAL;
     pe_expectOperand = false;
     pe_value = true;
 }
@@ -381,14 +390,19 @@ static void pushParam(IntStack* stack, int num) {
 #define REQUIRE_NONEMPTY(s) \
     if(s.top == s.stack) { LV_OP_ERROR = OPE_UNBAL_GROUP; return; } else (void)0
 
+/**
+ * Handles Lavender square bracket notation.
+ * Lavender requires that expressions in square brackets
+ * be moved verbatim to the right of the next sub-expression.
+ */
 void handleRightBracket() {
     
-    assert(ops.top->type == OPT_LITERAL && ops.top->literal == ']');
+    assert(isLiteral(ops.top, ']'));
     ops.top--; //pop ']'
     //shunt over operators
-    while(ops.top->type != OPT_LITERAL || ops.top->literal != '[') {
+    while(!isLiteral(ops.top, '[')) {
         REQUIRE_NONEMPTY(ops);
-        if(ops.top->type == OPT_LITERAL && ops.top->literal == ']')
+        if(isLiteral(ops.top, ']'))
             handleRightBracket();
         else
             pushStack(&out, ops.top--);
@@ -397,59 +411,74 @@ void handleRightBracket() {
     ops.top--; //pop '['
 }
 
+/**
+ * A modified version of Dijkstra's shunting yard algorithm for
+ * converting infix to postfix. The differences from the original
+ * algorithm are:
+ *  1. Support for Lavender's square bracket notation.
+ *      See handleRightBracket() for details.
+ *  2. Validation that the number of parameters passed
+ *      to functions match arity. (NYI)
+ */
 void shuntingYard(TextBufferObj* obj) {
     
-    if(pe_value) {
+    if(obj->type == OPT_LITERAL) {
+        switch(obj->literal) {
+            case '(':
+                //push left paren and push new param count
+                pushStack(&ops, obj);
+                pushParam(&params, 0);
+                break;
+            case '[':
+                //push to op stack and add to out
+                pushStack(&ops, obj);
+                pushStack(&out, obj);
+                pushParam(&params, 0);
+                break;
+            case ']':
+                //pop out onto op until '['
+                //then push ']' onto op
+                while(!isLiteral(out.top, '[')) {
+                    REQUIRE_NONEMPTY(out);
+                    pushStack(&ops, out.top--);
+                }
+                REQUIRE_NONEMPTY(out);
+                out.top--;
+                pushParam(&params, 0);
+                pushStack(&ops, obj);
+                break;
+            case ')':
+                //shunt over all operators until we hit left paren
+                //if we underflow, then unbalanced parens
+                while(!isLiteral(ops.top, '(')) {
+                    REQUIRE_NONEMPTY(ops);
+                    if(isLiteral(ops.top, ']'))
+                        handleRightBracket();
+                    else
+                        pushStack(&out, ops.top--);
+                }
+                REQUIRE_NONEMPTY(ops);
+                ops.top--;
+                break;
+        }
+    } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
         pushStack(&out, obj);
         ++*params.top;
-    } else if(obj->type == OPT_LITERAL && obj->literal == '(') {
-        //push left paren and push new param count
-        pushStack(&ops, obj);
-        pushParam(&params, 0);
-    } else if(obj->type == OPT_LITERAL && obj->literal == '[') {
-        //push to op stack and add to out
-        pushStack(&ops, obj);
-        pushStack(&out, obj);
-        pushParam(&params, 0);
-    } else if(obj->type == OPT_LITERAL && obj->literal == ']') {
-        //pop out onto op until '['
-        //then push ']' onto op
-        while(out.top->type != OPT_LITERAL || out.top->literal != '[') {
-            REQUIRE_NONEMPTY(out);
-            pushStack(&ops, out.top--);
-        }
-        REQUIRE_NONEMPTY(out);
-        out.top--;
-        pushParam(&params, 0);
-        pushStack(&ops, obj);
-    } else if(obj->type == OPT_LITERAL && obj->literal == ')') {
-        //shunt over all operators until we hit left paren
-        //if we underflow, then unbalanced parens
-        while(ops.top->type != OPT_LITERAL || ops.top->literal != '(') {
-            REQUIRE_NONEMPTY(ops);
-            if(ops.top->type == OPT_LITERAL && ops.top->literal == ']')
-                handleRightBracket();
-            else
-                pushStack(&out, ops.top--);
-        }
-        REQUIRE_NONEMPTY(ops);
-        ops.top--;
-    } else if(obj->type == OPT_LITERAL && obj->literal == ',') {
-        //we literally don't need commas
-    } else {
+    } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
         //and greater or equal precedence if left assoc.
-        assert(obj->type == OPT_FUNCTION);
         int sub = (obj->func->fixing == FIX_RIGHT_IN ? 0 : 1);
         while(ops.top != ops.stack && (compare(obj, ops.top) - sub) < 0) {
-            if(ops.top->type == OPT_LITERAL && ops.top->literal == ']')
+            if(isLiteral(ops.top, ']'))
                 handleRightBracket();
             else
                 pushStack(&out, ops.top--);
         }
         //push the actual operator on ops
         pushStack(&ops, obj);
+    } else {
+        assert(false);
     }
 }
 
@@ -479,20 +508,19 @@ void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* l
         //get the next text object
         TextBufferObj obj;
         parseTextObj(&obj);
+        if(!LV_OP_ERROR)
+            shuntingYard(&obj);
         if(LV_OP_ERROR) {
-            //lv_op_freeTree(tree);
-            lv_free(out.stack);
-            lv_free(ops.stack);
+            lv_op_free(out.stack, out.top - out.stack + 1);
+            lv_op_free(ops.stack, ops.top - ops.stack + 1);
             lv_free(params.stack);
             return;
         }
-        //pushStack(&out, &obj);
-        shuntingYard(&obj);
         pe_head = pe_head->next;
     } while(pe_head && pe_nesting >= 0);
     //get leftover ops over
     while(ops.top != ops.stack) {
-        if(ops.top->type == OPT_LITERAL && ops.top->literal == ']')
+        if(isLiteral(ops.top, ']'))
             handleRightBracket();
         else
             pushStack(&out, ops.top--);
@@ -505,7 +533,7 @@ void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* l
 
 void lv_op_free(TextBufferObj* obj, size_t len) {
     
-    for(size_t i = 0; i < len; i++) {
+    for(size_t i = 1; i < len; i++) {
         if(obj[i].type == OPT_STRING)
             lv_free(obj[i].str);
     }

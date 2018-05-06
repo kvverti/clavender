@@ -162,6 +162,14 @@ LvString* lv_op_getString(TextBufferObj* obj) {
             return res;
         }
         case OPT_NUMBER: {
+            //because rather nontrivial to find the length of a
+            //floating-point value before putting it into a string,
+            //we first make a reasonable (read: arbitrary) guess as
+            //to the buffer length required. Then, we take the actual
+            //number of characters printed by snprintf and reallocate
+            //the buffer to that length (plus 1 for the terminator).
+            //If our initial guess was to little, we call snprintf
+            //again in order to get all the characters.
             #define GUESS_LEN 16
             res = lv_alloc(sizeof(LvString) + GUESS_LEN); //first guess
             int len = snprintf(res->value, GUESS_LEN, "%g", obj->number);
@@ -173,7 +181,8 @@ LvString* lv_op_getString(TextBufferObj* obj) {
             return res;
             #undef GUESS_LEN
         }
-        case OPT_FUNCTION: {
+        case OPT_FUNCTION:
+        case OPT_FUNCTION_VAL: {
             size_t len = strlen(obj->func->name);
             res = lv_alloc(sizeof(LvString) + len + 1);
             res->len = len;
