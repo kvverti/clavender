@@ -79,12 +79,6 @@ typedef struct TextBufferObj {
     };
 } TextBufferObj;
 
-typedef struct TextBufferTree {
-    TextBufferObj obj;
-    size_t numChildren;
-    struct TextBufferTree* children;
-} TextBufferTree;
-
 typedef enum OpError {
     OPE_NOT_FUNCT = 1,  //expr does not define a function
     OPE_UNTERM_EXPR,    //unterminated expression
