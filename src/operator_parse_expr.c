@@ -9,7 +9,6 @@ static Operator* pe_decl;     //the current function declaration
 static char* pe_startOfName;  //the beginning of the simple name
 static bool pe_expectOperand; //do we expect an operand or an operator
 static int pe_nesting;        //how nested in brackets we are
-static bool pe_value;         //whether the current obj is a value
 
 static int compare(TextBufferObj* a, TextBufferObj* b);
 static void parseLiteral(TextBufferObj* obj);
@@ -144,7 +143,6 @@ static void parseLiteral(TextBufferObj* obj) {
     }
     if(obj->literal == ']')
         pe_expectOperand = true;
-    pe_value = false; //literals are never values
 }
 
 static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name) {
@@ -180,7 +178,6 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name) {
     obj->func = func;
     //toggle if RHS is true
     pe_expectOperand ^= (!pe_expectOperand || func->arity == 0);
-    pe_value = (func->arity == 0);
 }
 
 static void parseSymbol(TextBufferObj* obj) {
@@ -203,7 +200,6 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name) 
     obj->func = func;
     //toggle if RHS is true
     pe_expectOperand ^= (!pe_expectOperand || func->arity == 0);
-    pe_value = (func->arity == 0);
 }
 
 static void parseQualName(TextBufferObj* obj) {
@@ -238,7 +234,6 @@ static void parseFuncValue(TextBufferObj* obj) {
         pe_head->value[len - 1] = '\\';
     obj->type = OPT_FUNCTION_VAL;
     pe_expectOperand = false;
-    pe_value = true;
 }
 
 static void parseIdent(TextBufferObj* obj) {
@@ -255,7 +250,6 @@ static void parseIdent(TextBufferObj* obj) {
                 obj->type = OPT_PARAM;
                 obj->param = i;
                 pe_expectOperand = false;
-                pe_value = true;
                 return;
             }
         }
@@ -274,7 +268,6 @@ static void parseNumber(TextBufferObj* obj) {
     obj->type = OPT_NUMBER;
     obj->number = num;
     pe_expectOperand = false;
-    pe_value = true;
 }
 
 static void parseString(TextBufferObj* obj) {
@@ -314,7 +307,6 @@ static void parseString(TextBufferObj* obj) {
     obj->type = OPT_STRING;
     obj->str = newStr;
     pe_expectOperand = false;
-    pe_value = true;
 }
 
 static void parseTextObj(TextBufferObj* obj) {
@@ -494,7 +486,6 @@ void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* l
     pe_startOfName = strrchr(decl->name, ':') + 1;
     pe_expectOperand = true;
     pe_nesting = 0;
-    pe_value = false;
     out.len = INIT_STACK_LEN;
     out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     out.top = out.stack;
