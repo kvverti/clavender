@@ -35,7 +35,7 @@ void lv_run() {
         puts("Lavender runtime v. 1.0 by Chris Nero\n"
              "Open source at https://github.com/kvverti/clavender\n"
              "Enter function definitions or expressions");
-        while(true) {
+        while(!feof(stdin)) {
             lv_repl();
         }
     }
