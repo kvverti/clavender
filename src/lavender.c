@@ -1,6 +1,5 @@
 #include "lavender.h"
-#include "token.h"
-#include "operator.h"
+#include "expression.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,10 +102,10 @@ static void readInput(FILE* in, bool repl) {
     }
     if(toks) {
         Token* t;
-        Operator* decl = lv_op_declareFunction(toks, "repl", &t);
-        if(LV_OP_ERROR) {
-            printf("Error parsing function: %s\n", lv_op_getError(LV_OP_ERROR));
-            LV_OP_ERROR = 0;
+        Operator* decl = lv_expr_declareFunction(toks, "repl", &t);
+        if(LV_EXPR_ERROR) {
+            printf("Error parsing function: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+            LV_EXPR_ERROR = 0;
         } else {
             printf("Function name=%s, arity=%d, fixing=%c\n",
                 decl->name, decl->arity, decl->fixing);
@@ -119,22 +118,27 @@ static void readInput(FILE* in, bool repl) {
                 t->value);
             TextBufferObj* expr = NULL;
             size_t len = 0;
-            lv_op_parseExpr(t, decl, &expr, &len);
-            if(LV_OP_ERROR) {
-                printf("Error parsing expression: %s\n", lv_op_getError(LV_OP_ERROR));
+            t = lv_expr_parseExpr(t, decl, &expr, &len);
+            if(LV_EXPR_ERROR) {
+                printf("Error parsing expression: %s\n",
+                    lv_expr_getError(LV_EXPR_ERROR));
                 FuncNamespace ns = decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
                 lv_op_removeOperator(decl->name, ns);
-                LV_OP_ERROR = 0;
+                LV_EXPR_ERROR = 0;
             } else {
                 for(size_t i = 1; i < len; i++) {
-                    LvString* str = lv_op_getString(&expr[i]);
+                    LvString* str = lv_tb_getString(&expr[i]);
                     printf("Object type=%d, value=%s\n",
                         expr[i].type,
                         str->value);
                     lv_free(str);
                 }
+                if(t)
+                    printf("First token past body: type=%d, value=%s\n",
+                        t->type,
+                        t->value);
             }
-            lv_op_free(expr, len);
+            lv_expr_free(expr, len);
         }
     }
     lv_tkn_free(toks);
