@@ -78,17 +78,24 @@ typedef struct TextBufferObj {
     };
 } TextBufferObj;
 
+typedef struct TextBufferTree {
+    TextBufferObj obj;
+    size_t numChildren;
+    struct TextBufferTree* children;
+} TextBufferTree;
+
 typedef enum OpError {
     OPE_NOT_FUNCT = 1,  //expr does not define a function
     OPE_UNTERM_EXPR,    //unterminated expression
     OPE_EXPT_ARGS,      //expected an argument list
     OPE_BAD_ARGS,       //bad argument list
     OPE_MISSING_BODY,   //missing function body
-    OPE_DUP_DECL,       //inconsistent function declarations
+    OPE_DUP_DECL,       //duplicate function definitions
     OPE_NAME_NOT_FOUND, //simple name not found
     OPE_EXPECT_INF,     //operator expected
     OPE_EXPECT_PRE,     //operand expected
-    OPE_UNEXPECT_TOKEN  //unexpected token
+    OPE_UNEXPECT_TOKEN, //unexpected token
+    OPE_UNBAL_GROUP     //unbalanced parens or brackets
 } OpError;
 
 OpError LV_OP_ERROR;
@@ -117,6 +124,12 @@ bool lv_op_addOperator(Operator* op, FuncNamespace ns);
 bool lv_op_removeOperator(char* name, FuncNamespace ns);
 
 /**
+ * Returns a Lavender string representation of the
+ * given object.
+ */
+LvString* lv_op_getString(TextBufferObj* obj);
+
+/**
  * Declares a function.
  * The tokens list must begin with a top-level
  * function definition. Sets bodyTok to point to the
@@ -130,10 +143,11 @@ Operator* lv_op_declareFunction(Token* tokens, char* nspace, Token** bodyTok);
 /**
  * Parses the expression defined by the token sequence.
  * in the context of the given function declaration.
- * Returns a dynamically allocated array of
- * component operators to execute.
+ * Returns a dynamically allocated list of components.
  */
-void lv_op_parseExpr(Token* tokens, Operator* decl, TextBufferObj** expr, size_t* len);
+void lv_op_parseExpr(Token* tokens, Operator* decl, TextBufferObj** res, size_t* len);
+
+void lv_op_free(TextBufferObj* obj, size_t len);
 
 void lv_op_onStartup();
 //called on lv_shutdown

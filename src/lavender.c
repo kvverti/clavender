@@ -118,7 +118,7 @@ static void readInput(FILE* in, bool repl) {
                 t->type,
                 t->value);
             TextBufferObj* expr = NULL;
-            size_t len;
+            size_t len = 0;
             lv_op_parseExpr(t, decl, &expr, &len);
             if(LV_OP_ERROR) {
                 printf("Error parsing expression: %s\n", lv_op_getError(LV_OP_ERROR));
@@ -126,11 +126,15 @@ static void readInput(FILE* in, bool repl) {
                 lv_op_removeOperator(decl->name, ns);
                 LV_OP_ERROR = 0;
             } else {
-                for(size_t i = 0; i < len; i++) {
-                    printf("Object type %d\n", expr[i].type);
+                for(size_t i = 1; i < len; i++) {
+                    LvString* str = lv_op_getString(&expr[i]);
+                    printf("Object type=%d, value=%s\n",
+                        expr[i].type,
+                        str->value);
+                    lv_free(str);
                 }
             }
-            lv_free(expr);
+            lv_op_free(expr, len);
         }
     }
     lv_tkn_free(toks);
