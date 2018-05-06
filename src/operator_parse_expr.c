@@ -4,23 +4,42 @@
 #include <assert.h>
 #include <stdlib.h>
 
-static Token* pe_head;        //the current token
-static Operator* pe_decl;     //the current function declaration
-static char* pe_startOfName;  //the beginning of the simple name
-static bool pe_expectOperand; //do we expect an operand or an operator
-static int pe_nesting;        //how nested in brackets we are
+#define INIT_STACK_LEN 16
+typedef struct TextStack {
+    size_t len;
+    TextBufferObj* top;
+    TextBufferObj* stack;
+} TextStack;
+
+typedef struct IntStack {
+    size_t len;
+    int* top;
+    int* stack;
+} IntStack;
+
+/** Expression context passed to functions. */
+typedef struct ExprContext {
+    Token* head;            //the current token
+    Operator* decl;         //the current function declaration
+    char* startOfName;      //the beginning of the simple name
+    bool expectOperand;     //do we expect an operand or an operator
+    int nesting;            //how nested in brackets we are
+    TextStack ops;          //the temporary operator stack
+    TextStack out;          //the output stack
+    IntStack params;        //the parameter stack
+} ExprContext;
 
 static int compare(TextBufferObj* a, TextBufferObj* b);
-static void parseLiteral(TextBufferObj* obj);
-static void parseIdent(TextBufferObj* obj);
-static void parseSymbol(TextBufferObj* obj);
-static void parseQualName(TextBufferObj* obj);
-static void parseNumber(TextBufferObj* obj);
-static void parseString(TextBufferObj* obj);
-static void parseFuncValue(TextBufferObj* obj);
-static void parseTextObj(TextBufferObj* obj); //calls above functions
+static void parseLiteral(TextBufferObj* obj, ExprContext* cxt);
+static void parseIdent(TextBufferObj* obj, ExprContext* cxt);
+static void parseSymbol(TextBufferObj* obj, ExprContext* cxt);
+static void parseQualName(TextBufferObj* obj, ExprContext* cxt);
+static void parseNumber(TextBufferObj* obj, ExprContext* cxt);
+static void parseString(TextBufferObj* obj, ExprContext* cxt);
+static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt);
+static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above functions
 //runs one cycle of shunting yard
-static void shuntingYard(TextBufferObj* obj);
+static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
     
 static int getLexicographicPrecedence(char c) {
     
@@ -115,26 +134,26 @@ static char* concat(char* a, int alen, char* b, int blen) {
     return res;
 }
 
-static void parseLiteral(TextBufferObj* obj) {
+static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
     
     obj->type = OPT_LITERAL;
-    obj->literal = pe_head->value[0];
+    obj->literal = cxt->head->value[0];
     switch(obj->literal) {
         case '(':
         case '[':
-            pe_nesting++;
+            cxt->nesting++;
             //open groupings are "operands"
-            if(!pe_expectOperand) {
+            if(!cxt->expectOperand) {
                 LV_OP_ERROR = OPE_EXPECT_PRE;
             }
             break;
         case ')':
         case ']':
-            pe_nesting--;
+            cxt->nesting--;
             //fallthrough
         case ',':
             //close groupings are "operators"
-            if(pe_expectOperand) {
+            if(cxt->expectOperand) {
                 LV_OP_ERROR = OPE_EXPECT_INF;
             }
             break;
@@ -142,26 +161,26 @@ static void parseLiteral(TextBufferObj* obj) {
             LV_OP_ERROR = OPE_UNEXPECT_TOKEN;
     }
     if(obj->literal == ']')
-        pe_expectOperand = true;
+        cxt->expectOperand = true;
 }
 
-static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name) {
+static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
     
     //we find the function with the simple name
     //in the innermost scope possible by going
     //through outer scopes until we can't find
     //a function definition.
     size_t valueLen = strlen(name);
-    char* nsbegin = pe_decl->name;
+    char* nsbegin = cxt->decl->name;
     Operator* func;
     Operator* test = NULL;
     do {
         func = test;
-        if(pe_startOfName == nsbegin)
+        if(cxt->startOfName == nsbegin)
             break; //we did all the namespaces
         //get the function with the name in the scope
         char* fname = concat(nsbegin,   //beginning of scope
-            pe_startOfName - nsbegin,   //length of scope name
+            cxt->startOfName - nsbegin,   //length of scope name
             name,                       //name to check
             valueLen);                  //length of name
         test = lv_op_getOperator(fname, ns);
@@ -177,16 +196,16 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name) {
     obj->type = OPT_FUNCTION;
     obj->func = func;
     //toggle if RHS is true
-    pe_expectOperand ^= (!pe_expectOperand || func->arity == 0);
+    cxt->expectOperand ^= (!cxt->expectOperand || func->arity == 0);
 }
 
-static void parseSymbol(TextBufferObj* obj) {
+static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
     
-    FuncNamespace ns = pe_expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseSymbolImpl(obj, ns, pe_head->value);
+    FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
+    parseSymbolImpl(obj, ns, cxt->head->value, cxt);
 }
 
-static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name) {
+static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
     
     //since it's a qualified name, we don't need to
     //guess what function it could be!
@@ -199,84 +218,84 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name) 
     obj->type = OPT_FUNCTION;
     obj->func = func;
     //toggle if RHS is true
-    pe_expectOperand ^= (!pe_expectOperand || func->arity == 0);
+    cxt->expectOperand ^= (!cxt->expectOperand || func->arity == 0);
 }
 
-static void parseQualName(TextBufferObj* obj) {
+static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
     
-    FuncNamespace ns = pe_expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseQualNameImpl(obj, ns, pe_head->value);
+    FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
+    parseQualNameImpl(obj, ns, cxt->head->value, cxt);
 }
 
-static void parseFuncValue(TextBufferObj* obj) {
+static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
     
-    if(!pe_expectOperand) {
+    if(!cxt->expectOperand) {
         LV_OP_ERROR = OPE_EXPECT_PRE;
         return;
     }
-    size_t len = strlen(pe_head->value);
+    size_t len = strlen(cxt->head->value);
     FuncNamespace ns;
     //values ending in '\' are infix functions
     //subtract 1 from length so we can skip the initial '\'
-    if(pe_head->value[len - 1] == '\\') {
+    if(cxt->head->value[len - 1] == '\\') {
         ns = FNS_INFIX;
         //substringing
-        pe_head->value[len - 1] = '\0';
+        cxt->head->value[len - 1] = '\0';
     } else {
         ns = FNS_PREFIX;
     }
-    if(pe_head->type == TTY_QUAL_FUNC_VAL)
-        parseQualNameImpl(obj, ns, pe_head->value + 1);
+    if(cxt->head->type == TTY_QUAL_FUNC_VAL)
+        parseQualNameImpl(obj, ns, cxt->head->value + 1, cxt);
     else
-        parseSymbolImpl(obj, ns, pe_head->value + 1);
+        parseSymbolImpl(obj, ns, cxt->head->value + 1, cxt);
     //undo substringing
     if(ns == FNS_INFIX)
-        pe_head->value[len - 1] = '\\';
+        cxt->head->value[len - 1] = '\\';
     obj->type = OPT_FUNCTION_VAL;
-    pe_expectOperand = false;
+    cxt->expectOperand = false;
 }
 
-static void parseIdent(TextBufferObj* obj) {
+static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
     
-    if(pe_expectOperand) {
+    if(cxt->expectOperand) {
         //is this a def?
-        if(strcmp(pe_head->value, "def") == 0) {
+        if(strcmp(cxt->head->value, "def") == 0) {
             //todo
         }
         //try parameter names first
-        for(int i = 0; i < pe_decl->arity; i++) {
-            if(strcmp(pe_head->value, pe_decl->params[i].name) == 0) {
+        for(int i = 0; i < cxt->decl->arity; i++) {
+            if(strcmp(cxt->head->value, cxt->decl->params[i].name) == 0) {
                 //save param name
                 obj->type = OPT_PARAM;
                 obj->param = i;
-                pe_expectOperand = false;
+                cxt->expectOperand = false;
                 return;
             }
         }
     }
     //not a parameter, try a function
-    parseSymbol(obj);
+    parseSymbol(obj, cxt);
 }
 
-static void parseNumber(TextBufferObj* obj) {
+static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
     
-    if(!pe_expectOperand) {
+    if(!cxt->expectOperand) {
         LV_OP_ERROR = OPE_EXPECT_PRE;
         return;
     }
-    double num = strtod(pe_head->value, NULL);
+    double num = strtod(cxt->head->value, NULL);
     obj->type = OPT_NUMBER;
     obj->number = num;
-    pe_expectOperand = false;
+    cxt->expectOperand = false;
 }
 
-static void parseString(TextBufferObj* obj) {
+static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     
-    if(!pe_expectOperand) {
+    if(!cxt->expectOperand) {
         LV_OP_ERROR = OPE_EXPECT_PRE;
         return;
     }
-    char* c = pe_head->value + 1; //skip open quote
+    char* c = cxt->head->value + 1; //skip open quote
     LvString* newStr = lv_alloc(sizeof(LvString) + strlen(c) + 1);
     size_t len = 0;
     while(*c != '"') {
@@ -306,58 +325,40 @@ static void parseString(TextBufferObj* obj) {
     newStr->len = len;
     obj->type = OPT_STRING;
     obj->str = newStr;
-    pe_expectOperand = false;
+    cxt->expectOperand = false;
 }
 
-static void parseTextObj(TextBufferObj* obj) {
+static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
     
-    switch(pe_head->type) {
+    switch(cxt->head->type) {
         case TTY_LITERAL:
-            parseLiteral(obj);
+            parseLiteral(obj, cxt);
             break;
         case TTY_IDENT:
-            parseIdent(obj);
+            parseIdent(obj, cxt);
             break;
         case TTY_SYMBOL:
-            parseSymbol(obj);
+            parseSymbol(obj, cxt);
             break;
         case TTY_QUAL_IDENT:
         case TTY_QUAL_SYMBOL:
-            parseQualName(obj);
+            parseQualName(obj, cxt);
             break;
         case TTY_NUMBER:
-            parseNumber(obj);
+            parseNumber(obj, cxt);
             break;
         case TTY_STRING:
-            parseString(obj);
+            parseString(obj, cxt);
             break;
         case TTY_FUNC_VAL:
         case TTY_QUAL_FUNC_VAL:
-            parseFuncValue(obj);
+            parseFuncValue(obj, cxt);
             break;
         case TTY_FUNC_SYMBOL:
             LV_OP_ERROR = OPE_UNEXPECT_TOKEN;
             break;
     }
 }
-
-typedef struct TextStack {
-    size_t len;
-    TextBufferObj* top;
-    TextBufferObj* stack;
-} TextStack;
-
-typedef struct IntStack {
-    size_t len;
-    int* top;
-    int* stack;
-} IntStack;
-
-#define INIT_STACK_LEN 16
-
-static TextStack ops;
-static TextStack out;
-static IntStack params;
 
 static void pushStack(TextStack* stack, TextBufferObj* obj) {
     
@@ -387,20 +388,20 @@ static void pushParam(IntStack* stack, int num) {
  * Lavender requires that expressions in square brackets
  * be moved verbatim to the right of the next sub-expression.
  */
-void handleRightBracket() {
+void handleRightBracket(ExprContext* cxt) {
     
-    assert(isLiteral(ops.top, ']'));
+    assert(isLiteral(cxt->ops.top, ']'));
     //shunt over operators
     do {
-        ops.top--;
-        REQUIRE_NONEMPTY(ops);
-        if(isLiteral(ops.top, ']'))
-            handleRightBracket();
+        cxt->ops.top--;
+        REQUIRE_NONEMPTY(cxt->ops);
+        if(isLiteral(cxt->ops.top, ']'))
+            handleRightBracket(cxt);
         else
-            pushStack(&out, ops.top);
-    } while(!isLiteral(ops.top, '['));
+            pushStack(&cxt->out, cxt->ops.top);
+    } while(!isLiteral(cxt->ops.top, '['));
     //todo add call
-    ops.top--; //pop '['
+    cxt->ops.top--; //pop '['
 }
 
 /**
@@ -412,115 +413,118 @@ void handleRightBracket() {
  *  2. Validation that the number of parameters passed
  *      to functions match arity. (NYI)
  */
-void shuntingYard(TextBufferObj* obj) {
+void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
     
     if(obj->type == OPT_LITERAL) {
         switch(obj->literal) {
             case '(':
                 //push left paren and push new param count
-                pushStack(&ops, obj);
-                pushParam(&params, 0);
+                pushStack(&cxt->ops, obj);
+                pushParam(&cxt->params, 0);
                 break;
             case '[':
                 //push to op stack and add to out
-                pushStack(&ops, obj);
-                pushStack(&out, obj);
-                pushParam(&params, 0);
+                pushStack(&cxt->ops, obj);
+                pushStack(&cxt->out, obj);
+                pushParam(&cxt->params, 0);
                 break;
             case ']':
                 //pop out onto op until '['
                 //then push ']' onto op
-                while(!isLiteral(out.top, '[')) {
-                    REQUIRE_NONEMPTY(out);
-                    pushStack(&ops, out.top--);
+                while(!isLiteral(cxt->out.top, '[')) {
+                    REQUIRE_NONEMPTY(cxt->out);
+                    pushStack(&cxt->ops, cxt->out.top--);
                 }
-                REQUIRE_NONEMPTY(out);
-                out.top--;
-                pushParam(&params, 0);
-                pushStack(&ops, obj);
+                REQUIRE_NONEMPTY(cxt->out);
+                cxt->out.top--;
+                pushParam(&cxt->params, 0);
+                pushStack(&cxt->ops, obj);
                 break;
             case ')':
                 //shunt over all operators until we hit left paren
                 //if we underflow, then unbalanced parens
-                while(!isLiteral(ops.top, '(')) {
-                    REQUIRE_NONEMPTY(ops);
-                    if(isLiteral(ops.top, ']'))
-                        handleRightBracket();
+                while(!isLiteral(cxt->ops.top, '(')) {
+                    REQUIRE_NONEMPTY(cxt->ops);
+                    if(isLiteral(cxt->ops.top, ']'))
+                        handleRightBracket(cxt);
                     else
-                        pushStack(&out, ops.top--);
+                        pushStack(&cxt->out, cxt->ops.top--);
                 }
-                REQUIRE_NONEMPTY(ops);
-                ops.top--;
+                REQUIRE_NONEMPTY(cxt->ops);
+                cxt->ops.top--;
                 break;
         }
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
-        pushStack(&out, obj);
-        ++*params.top;
+        pushStack(&cxt->out, obj);
+        ++*cxt->params.top;
     } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
         //and greater or equal precedence if left assoc.
         int sub = (obj->func->fixing == FIX_RIGHT_IN ? 0 : 1);
-        while(ops.top != ops.stack && (compare(obj, ops.top) - sub) < 0) {
-            if(isLiteral(ops.top, ']'))
-                handleRightBracket();
+        while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - sub) < 0) {
+            if(isLiteral(cxt->ops.top, ']'))
+                handleRightBracket(cxt);
             else
-                pushStack(&out, ops.top--);
+                pushStack(&cxt->out, cxt->ops.top--);
         }
         //push the actual operator on ops
-        pushStack(&ops, obj);
+        pushStack(&cxt->ops, obj);
     } else {
         assert(false);
     }
 }
 
-#undef REQUIRE_NONEMPTY
-
 void lv_op_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* len) {
     
     if(LV_OP_ERROR)
         return;
-    //set up global vars
-    pe_head = head;
-    pe_decl = decl;
-    pe_startOfName = strrchr(decl->name, ':') + 1;
-    pe_expectOperand = true;
-    pe_nesting = 0;
-    out.len = INIT_STACK_LEN;
-    out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
-    out.top = out.stack;
-    ops.len = INIT_STACK_LEN;
-    ops.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
-    ops.top = ops.stack;
-    params.len = INIT_STACK_LEN;
-    params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
-    params.top = params.stack;
+    //set up required environment
+    //this is function local because
+    //recursive calls are possible
+    ExprContext cxt;
+    cxt.head = head;
+    cxt.decl = decl;
+    cxt.startOfName = strrchr(decl->name, ':') + 1;
+    cxt.expectOperand = true;
+    cxt.nesting = 0;
+    cxt.out.len = INIT_STACK_LEN;
+    cxt.out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
+    cxt.out.top = cxt.out.stack;
+    cxt.ops.len = INIT_STACK_LEN;
+    cxt.ops.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
+    cxt.ops.top = cxt.ops.stack;
+    cxt.params.len = INIT_STACK_LEN;
+    cxt.params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
+    cxt.params.top = cxt.params.stack;
+    //loop over each token until we reach the end of the expression
+    //(end-of-stream, closing grouper ')', or expression split ';') (expr-split NYI)
     do {
         //get the next text object
         TextBufferObj obj;
-        parseTextObj(&obj);
+        parseTextObj(&obj, &cxt);
         if(!LV_OP_ERROR)
-            shuntingYard(&obj);
+            shuntingYard(&obj, &cxt);
         if(LV_OP_ERROR) {
-            lv_op_free(out.stack, out.top - out.stack + 1);
-            lv_op_free(ops.stack, ops.top - ops.stack + 1);
-            lv_free(params.stack);
+            lv_op_free(cxt.out.stack, cxt.out.top - cxt.out.stack + 1);
+            lv_op_free(cxt.ops.stack, cxt.ops.top - cxt.ops.stack + 1);
+            lv_free(cxt.params.stack);
             return;
         }
-        pe_head = pe_head->next;
-    } while(pe_head && pe_nesting >= 0);
+        cxt.head = cxt.head->next;
+    } while(cxt.head && cxt.nesting >= 0);  //todo implement end on ';'
     //get leftover ops over
-    while(ops.top != ops.stack) {
-        if(isLiteral(ops.top, ']'))
-            handleRightBracket();
+    while(cxt.ops.top != cxt.ops.stack) {
+        if(isLiteral(cxt.ops.top, ']'))
+            handleRightBracket(&cxt);
         else
-            pushStack(&out, ops.top--);
+            pushStack(&cxt.out, cxt.ops.top--);
     }
-    *res = out.stack;
-    *len = out.top - out.stack + 1;
+    *res = cxt.out.stack;
+    *len = cxt.out.top - cxt.out.stack + 1;
     //calling plain lv_free is ok because ops is empty
-    lv_free(ops.stack);
-    lv_free(params.stack);
+    lv_free(cxt.ops.stack);
+    lv_free(cxt.params.stack);
 }
 
 void lv_op_free(TextBufferObj* obj, size_t len) {
