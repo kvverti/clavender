@@ -102,16 +102,19 @@ static void readInput(FILE* in, bool repl) {
         tmp = tmp->next;
     }
     if(toks) {
-        Token* end = lv_tb_defineFunction(toks, "repl", NULL);
+        Operator* op;
+        Token* end = lv_tb_defineFunction(toks, "repl", &op);
         if(LV_EXPR_ERROR) {
             printf("Error parsing function: %s\n",
                 lv_expr_getError(LV_EXPR_ERROR));
             LV_EXPR_ERROR = 0;
+        } else {
+            puts(op->name);
+            if(end)
+                printf("First token past body: type=%d, value=%s\n",
+                    end->type,
+                    end->value);
         }
-        if(end)
-            printf("First token past body: type=%d, value=%s\n",
-                end->type,
-                end->value);
     }
     lv_tkn_free(toks);
 }

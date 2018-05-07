@@ -502,13 +502,13 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     Operator* func = NULL;
     do {
         //get the function with the name in the scope
+        nsbegin = strchr(nsbegin, ':') + 1;
         char* fname = concat(cxt->decl->name,   //beginning of scope
             nsbegin - cxt->decl->name,          //length of scope name
             name,                               //name to check
             valueLen);                          //length of name
         Operator* test = lv_op_getOperator(fname, ns);
         lv_free(fname);
-        nsbegin = strchr(nsbegin, ':') + 1;
         if(test)
             func = test;
     } while(cxt->startOfName != nsbegin);
