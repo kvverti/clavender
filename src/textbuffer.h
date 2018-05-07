@@ -38,9 +38,23 @@ typedef struct TextBufferObj {
 } TextBufferObj;
 
 /**
+ * The global buffer where all Lavender function
+ * code is stored.
+ */
+TextBufferObj* TEXT_BUFFER;
+
+/**
  * Returns a Lavender string representation of the
  * given object.
  */
 LvString* lv_tb_getString(TextBufferObj* obj);
+
+/**
+ * Defines the function described by the given token
+ * sequence in the given scope. Returns a pointer to
+ * the first unprocessed token in tokens, or NULL if
+ * all tokens were processed.
+ */
+Token* lv_tb_defineFunction(Token* tokens, char* scope);
 
 #endif

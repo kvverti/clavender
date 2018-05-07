@@ -5,7 +5,7 @@
 #include <stdlib.h>
 
 char* lv_expr_getError(ExprError error) {
-    #define LEN 11
+    #define LEN 12
     static char* msg[LEN] = {
         "Expr does not define a function",
         "Reached end of input while parsing",
@@ -17,7 +17,8 @@ char* lv_expr_getError(ExprError error) {
         "Expected operator",
         "Expected operand",
         "Encountered unexpected token",
-        "Unbalanced parens or brackets"
+        "Unbalanced parens or brackets",
+        "Wrong number of parameters to function"
     };
     assert(error > 0 && error <= LEN);
     return msg[error - 1];
@@ -266,6 +267,7 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above fu
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
 static void handleRightBracket(ExprContext* cxt);
 static bool isLiteral(TextBufferObj* obj, char c);
+static bool shuntOps(ExprContext* cxts);
 
 #define IF_ERROR_CLEANUP \
     if(LV_EXPR_ERROR) { \
@@ -298,7 +300,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
     cxt.params.top = cxt.params.stack;
     //loop over each token until we reach the end of the expression
-    //(end-of-stream, closing grouper ')', or expression split ';') (expr-split NYI)
+    //(end-of-stream, closing grouper ')', or expression split ';')
     do {
         //get the next text object
         TextBufferObj obj;
@@ -313,10 +315,8 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     } while(cxt.head);
     //get leftover ops over
     while(cxt.ops.top != cxt.ops.stack) {
-        if(isLiteral(cxt.ops.top, ']'))
-            handleRightBracket(&cxt);
-        else
-            pushStack(&cxt.out, cxt.ops.top--);
+        shuntOps(&cxt);
+        IF_ERROR_CLEANUP;
     }
     *res = cxt.out.stack;
     *len = cxt.out.top - cxt.out.stack + 1;
@@ -398,8 +398,8 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
     //check fixing
     //prefix > infix = postfix
     {
-        int afix = (a->func->fixing == FIX_PRE);
-        int bfix = (b->func->fixing == FIX_PRE);
+        int afix = (a->func->fixing == FIX_PRE || a->func->arity == 1);
+        int bfix = (b->func->fixing == FIX_PRE || b->func->arity == 1);
         if(afix ^ bfix)
             return afix - bfix;
         if(afix) //prefix functions always have equal precedence
@@ -466,7 +466,7 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
         default:
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
     }
-    if(obj->literal == ']')
+    if(obj->literal == ']' || obj->literal == ',')
         cxt->expectOperand = true;
 }
 
@@ -486,7 +486,7 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
             break; //we did all the namespaces
         //get the function with the name in the scope
         char* fname = concat(nsbegin,   //beginning of scope
-            cxt->startOfName - nsbegin,   //length of scope name
+            cxt->startOfName - nsbegin, //length of scope name
             name,                       //name to check
             valueLen);                  //length of name
         test = lv_op_getOperator(fname, ns);
@@ -502,7 +502,8 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     obj->type = OPT_FUNCTION;
     obj->func = func;
     //toggle if RHS is true
-    cxt->expectOperand ^= (!cxt->expectOperand || func->arity == 0);
+    cxt->expectOperand ^=
+        ((!cxt->expectOperand && func->arity != 1) || func->arity == 0);
 }
 
 static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
@@ -524,7 +525,8 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, 
     obj->type = OPT_FUNCTION;
     obj->func = func;
     //toggle if RHS is true
-    cxt->expectOperand ^= (!cxt->expectOperand || func->arity == 0);
+    cxt->expectOperand ^=
+        ((!cxt->expectOperand && func->arity != 1) || func->arity == 0);
 }
 
 static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
@@ -670,8 +672,10 @@ static void pushStack(TextStack* stack, TextBufferObj* obj) {
     
     if(stack->top + 1 == stack->stack + stack->len) {
         stack->len *= 2;
+        size_t sz = stack->top - stack->stack;
         stack->stack = lv_realloc(stack->stack,
             stack->len * sizeof(TextBufferObj));
+        stack->top = stack->stack + sz;
     }
     *++stack->top = *obj;
 }
@@ -680,8 +684,10 @@ static void pushParam(IntStack* stack, int num) {
     
     if(stack->top + 1 == stack->stack + stack->len) {
         stack->len *= 2;
+        size_t sz = stack->top - stack->stack;
         stack->stack = lv_realloc(stack->stack,
             stack->len * sizeof(TextBufferObj));
+        stack->top = stack->stack + sz;
     }
     *++stack->top = num;
 }
@@ -689,24 +695,54 @@ static void pushParam(IntStack* stack, int num) {
 #define REQUIRE_NONEMPTY(s) \
     if(s.top == s.stack) { LV_EXPR_ERROR = XPE_UNBAL_GROUP; return; } else (void)0
 
+//shunts over one op (or handles right bracket)
+//optionally removing the top operator
+//and checks function arity if applicable.
+//Returns whether an error occurred.
+static bool shuntOps(ExprContext* cxt) {
+    
+    if(isLiteral(cxt->ops.top, ']'))
+        handleRightBracket(cxt);
+    else {
+        TextBufferObj* tmp = cxt->ops.top--;
+        pushStack(&cxt->out, tmp);
+        if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
+            int ar = *cxt->params.top--;
+            printf("DEBUG: func=%s, arity=%d, ar=%d\n",
+                tmp->func->name, tmp->func->arity, ar);
+            if(tmp->func->arity != ar) {
+                LV_EXPR_ERROR = XPE_BAD_ARITY;
+                return false;
+            }
+        }
+    }
+    return LV_EXPR_ERROR == 0;
+}
+
 /**
  * Handles Lavender square bracket notation.
  * Lavender requires that expressions in square brackets
  * be moved verbatim to the right of the next sub-expression.
  */
-void handleRightBracket(ExprContext* cxt) {
+static void handleRightBracket(ExprContext* cxt) {
     
     assert(isLiteral(cxt->ops.top, ']'));
+    assert(cxt->params.top != cxt->params.stack);
+    int arity = *cxt->params.top--;
+    cxt->ops.top--; //pop ']'
+    REQUIRE_NONEMPTY(cxt->ops);
     //shunt over operators
     do {
-        cxt->ops.top--;
-        REQUIRE_NONEMPTY(cxt->ops);
+        //no need to check arity, since it was already checked
         if(isLiteral(cxt->ops.top, ']'))
             handleRightBracket(cxt);
-        else
-            pushStack(&cxt->out, cxt->ops.top);
+        else {
+            pushStack(&cxt->out, cxt->ops.top--);
+            REQUIRE_NONEMPTY(cxt->ops);
+        }
     } while(!isLiteral(cxt->ops.top, '['));
     //todo add call
+    printf("Right bracket arity is %d\n", arity);
     cxt->ops.top--; //pop '['
 }
 
@@ -717,22 +753,20 @@ void handleRightBracket(ExprContext* cxt) {
  *  1. Support for Lavender's square bracket notation.
  *      See handleRightBracket() for details.
  *  2. Validation that the number of parameters passed
- *      to functions match arity. (NYI)
+ *      to functions match arity.
  */
-void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
+static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
     
     if(obj->type == OPT_LITERAL) {
         switch(obj->literal) {
             case '(':
                 //push left paren and push new param count
                 pushStack(&cxt->ops, obj);
-                pushParam(&cxt->params, 0);
                 break;
             case '[':
                 //push to op stack and add to out
                 pushStack(&cxt->ops, obj);
                 pushStack(&cxt->out, obj);
-                pushParam(&cxt->params, 0);
                 break;
             case ']':
                 //pop out onto op until '['
@@ -743,7 +777,7 @@ void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 }
                 REQUIRE_NONEMPTY(cxt->out);
                 cxt->out.top--;
-                pushParam(&cxt->params, 0);
+                pushParam(&cxt->params, 1);
                 pushStack(&cxt->ops, obj);
                 break;
             case ')':
@@ -751,31 +785,40 @@ void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 //if we underflow, then unbalanced parens
                 while(!isLiteral(cxt->ops.top, '(')) {
                     REQUIRE_NONEMPTY(cxt->ops);
-                    if(isLiteral(cxt->ops.top, ']'))
-                        handleRightBracket(cxt);
-                    else
-                        pushStack(&cxt->out, cxt->ops.top--);
+                    if(!shuntOps(cxt))
+                        return;
                 }
                 REQUIRE_NONEMPTY(cxt->ops);
                 cxt->ops.top--;
+                break;
+            case ',':
+                //shunt ops until a left paren
+                while(!isLiteral(cxt->ops.top, '(')) {
+                    REQUIRE_NONEMPTY(cxt->ops);
+                    if(!shuntOps(cxt))
+                        return;
+                }
+                REQUIRE_NONEMPTY(cxt->params);
+                ++*cxt->params.top;
                 break;
         }
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
         pushStack(&cxt->out, obj);
-        ++*cxt->params.top;
     } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
         //and greater or equal precedence if left assoc.
         int sub = (obj->func->fixing == FIX_RIGHT_IN ? 0 : 1);
         while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - sub) < 0) {
-            if(isLiteral(cxt->ops.top, ']'))
-                handleRightBracket(cxt);
-            else
-                pushStack(&cxt->out, cxt->ops.top--);
+            if(!shuntOps(cxt))
+                return;
         }
         //push the actual operator on ops
         pushStack(&cxt->ops, obj);
+        if(obj->func->fixing == FIX_PRE || obj->func->arity == 1)
+            pushParam(&cxt->params, 1);
+        else
+            pushParam(&cxt->params, 2);
     } else {
         assert(false);
     }
