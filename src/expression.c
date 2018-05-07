@@ -290,15 +290,19 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.startOfName = strrchr(decl->name, ':') + 1;
     cxt.expectOperand = true;
     cxt.nesting = 0;
+    //initialize stacks. Set the zeroth element to a sentinel value.
     cxt.out.len = INIT_STACK_LEN;
     cxt.out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     cxt.out.top = cxt.out.stack;
+    cxt.out.stack[0].type = OPT_LITERAL;
     cxt.ops.len = INIT_STACK_LEN;
     cxt.ops.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     cxt.ops.top = cxt.ops.stack;
+    cxt.ops.stack[0].type = OPT_LITERAL;
     cxt.params.len = INIT_STACK_LEN;
     cxt.params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
     cxt.params.top = cxt.params.stack;
+    cxt.params.stack[0] = 0;
     //loop over each token until we reach the end of the expression
     //(end-of-stream, closing grouper ')', or expression split ';')
     do {
@@ -330,7 +334,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
 
 void lv_expr_free(TextBufferObj* obj, size_t len) {
     
-    for(size_t i = 1; i < len; i++) {
+    for(size_t i = 0; i < len; i++) {
         if(obj[i].type == OPT_STRING)
             lv_free(obj[i].str);
     }
@@ -708,8 +712,6 @@ static bool shuntOps(ExprContext* cxt) {
         pushStack(&cxt->out, tmp);
         if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
             int ar = *cxt->params.top--;
-            printf("DEBUG: func=%s, arity=%d, ar=%d\n",
-                tmp->func->name, tmp->func->arity, ar);
             if(tmp->func->arity != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;
@@ -745,7 +747,6 @@ static void handleRightBracket(ExprContext* cxt) {
     call.type = OPT_FUNC_CALL;
     call.callArity = arity;
     pushStack(&cxt->out, &call);
-    printf("Right bracket arity is %d\n", arity);
     cxt->ops.top--; //pop '['
 }
 

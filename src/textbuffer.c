@@ -1,6 +1,27 @@
 #include "textbuffer.h"
 #include "lavender.h"
+#include "expression.h"
 #include <string.h>
+#include <stdio.h>
+
+//redeclaration of the global text buffer
+TextBufferObj* TEXT_BUFFER;
+#define INIT_TEXT_BUFFER_LEN 8
+static size_t textBufferLen;    //one past the end of the buffer
+static size_t textBufferTop;    //one past the top of the buffer
+
+static void pushText(TextBufferObj* text, size_t len) {
+    
+    if(textBufferLen - textBufferTop < len) {
+        //we must reallocate the buffer
+        TEXT_BUFFER =
+            lv_realloc(TEXT_BUFFER, textBufferLen * 2 * sizeof(TextBufferObj));
+        memset(TEXT_BUFFER + textBufferLen, 0, textBufferLen * sizeof(TextBufferObj));
+        textBufferLen *= 2;
+    }
+    memcpy(TEXT_BUFFER + textBufferTop, text, len);
+    textBufferTop += len;
+}
 
 //calculate the number of decimal digits
 //in practice the index is usually < 10
@@ -79,4 +100,45 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             return res;
         }
     }
+}
+
+Token* lv_tb_defineFunction(Token* head, char* scope) {
+    //get the function declaration
+    Operator* decl = lv_expr_declareFunction(head, scope, &head);
+    if(LV_EXPR_ERROR) {
+        return NULL;
+    }
+    if(lv_debug) {
+        printf("Function name=%s, arity=%d, fixing=%c\n",
+            decl->name, decl->arity, decl->fixing);
+        for(int i = 0; i < decl->arity; i++) {
+            printf("Parameter %d is %s. By-name? %d\n",
+                i, decl->params[i].name, decl->params[i].byName);
+        }
+    }
+    //get the function body (piecewise will come later)
+    TextBufferObj* text = NULL;
+    size_t len = 0;
+    head = lv_expr_parseExpr(head, decl, &text, &len);
+    if(LV_EXPR_ERROR) {
+        FuncNamespace ns = decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
+        lv_op_removeOperator(decl->name, ns);
+        return NULL;
+    }
+    pushText(text + 1, len - 1);
+    lv_free(text);
+    return head;
+}
+
+void lv_tb_onStartup() {
+ 
+    TEXT_BUFFER = lv_alloc(INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
+    memset(TEXT_BUFFER, 0, INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
+    textBufferLen = INIT_TEXT_BUFFER_LEN;
+    textBufferTop = 0;
+}
+
+void lv_tb_onShutdown() {
+    
+    lv_expr_free(TEXT_BUFFER, textBufferTop);
 }

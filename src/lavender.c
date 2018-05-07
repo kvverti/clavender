@@ -67,10 +67,12 @@ void lv_free(void* ptr) {
 void lv_startup() {
     
     lv_op_onStartup();
+    lv_tb_onStartup();
 }
 
 void lv_shutdown() {
     
+    lv_tb_onShutdown();
     lv_op_onShutdown();
     exit(0);
 }
@@ -97,49 +99,19 @@ static void readInput(FILE* in, bool repl) {
             lv_tkn_free(toks);
             lv_shutdown();
         }
-        printf("Type %d, value %s\n", tmp->type, tmp->value);
         tmp = tmp->next;
     }
     if(toks) {
-        Token* t;
-        Operator* decl = lv_expr_declareFunction(toks, "repl", &t);
+        Token* end = lv_tb_defineFunction(toks, "repl");
         if(LV_EXPR_ERROR) {
-            printf("Error parsing function: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+            printf("Error parsing function: %s\n",
+                lv_expr_getError(LV_EXPR_ERROR));
             LV_EXPR_ERROR = 0;
-        } else {
-            printf("Function name=%s, arity=%d, fixing=%c\n",
-                decl->name, decl->arity, decl->fixing);
-            for(int i = 0; i < decl->arity; i++) {
-                printf("Parameter %d is %s. By-name? %d\n",
-                    i, decl->params[i].name, decl->params[i].byName);
-            }
-            printf("First token of body: type=%d, value=%s\n",
-                t->type,
-                t->value);
-            TextBufferObj* expr = NULL;
-            size_t len = 0;
-            t = lv_expr_parseExpr(t, decl, &expr, &len);
-            if(LV_EXPR_ERROR) {
-                printf("Error parsing expression: %s\n",
-                    lv_expr_getError(LV_EXPR_ERROR));
-                FuncNamespace ns = decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
-                lv_op_removeOperator(decl->name, ns);
-                LV_EXPR_ERROR = 0;
-            } else {
-                for(size_t i = 1; i < len; i++) {
-                    LvString* str = lv_tb_getString(&expr[i]);
-                    printf("Object type=%d, value=%s\n",
-                        expr[i].type,
-                        str->value);
-                    lv_free(str);
-                }
-                if(t)
-                    printf("First token past body: type=%d, value=%s\n",
-                        t->type,
-                        t->value);
-            }
-            lv_expr_free(expr, len);
         }
+        if(end)
+            printf("First token past body: type=%d, value=%s\n",
+                end->type,
+                end->value);
     }
     lv_tkn_free(toks);
 }

@@ -59,4 +59,7 @@ LvString* lv_tb_getString(TextBufferObj* obj);
  */
 Token* lv_tb_defineFunction(Token* tokens, char* scope);
 
+void lv_tb_onStartup();
+void lv_tb_onShutdown();
+
 #endif
