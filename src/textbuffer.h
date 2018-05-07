@@ -9,6 +9,7 @@ typedef enum OpType {
     OPT_PARAM,          //function parameter
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
+    OPT_FUNC_CALL,      //call value as function
     OPT_LITERAL,        //literal value (not present in final code)
 } OpType;
 
@@ -32,6 +33,7 @@ typedef struct TextBufferObj {
         LvString* str;
         int param;
         Operator* func;
+        int callArity;
         //todo builtin type
         char literal;
     };

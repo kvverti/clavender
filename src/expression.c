@@ -741,7 +741,10 @@ static void handleRightBracket(ExprContext* cxt) {
             REQUIRE_NONEMPTY(cxt->ops);
         }
     } while(!isLiteral(cxt->ops.top, '['));
-    //todo add call
+    TextBufferObj call;
+    call.type = OPT_FUNC_CALL;
+    call.callArity = arity;
+    pushStack(&cxt->out, &call);
     printf("Right bracket arity is %d\n", arity);
     cxt->ops.top--; //pop '['
 }

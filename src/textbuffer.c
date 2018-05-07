@@ -2,6 +2,16 @@
 #include "lavender.h"
 #include <string.h>
 
+//calculate the number of decimal digits
+//in practice the index is usually < 10
+static size_t length(int number) {
+    
+    size_t len = 1;
+    while((number /= 10) != 0)
+        len++;
+    return len;
+}
+
 LvString* lv_tb_getString(TextBufferObj* obj) {
     
     LvString* res;
@@ -38,6 +48,27 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             res = lv_alloc(sizeof(LvString) + len + 1);
             res->len = len;
             strcpy(res->value, obj->func->name);
+            return res;
+        }
+        //not called outside of debug mode
+        case OPT_PARAM: {
+            static char str[] = "param ";
+            size_t len = length(obj->param);
+            len += sizeof(str) - 1;
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            res->len = len;
+            strcpy(res->value, str);
+            sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
+            return res;
+        }
+        case OPT_FUNC_CALL: {
+            static char str[] = " CALL";
+            size_t len = length(obj->callArity);
+            len += sizeof(str) - 1;
+            res = lv_alloc(sizeof(LvString) + len + sizeof(str));
+            res->len = len;
+            sprintf(res->value, "%d", obj->callArity);
+            strcat(res->value, str);
             return res;
         }
         default: {
