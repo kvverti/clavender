@@ -102,19 +102,11 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
     }
 }
 
-Token* lv_tb_defineFunction(Token* head, char* scope) {
+Token* lv_tb_defineFunction(Token* head, char* scope, Operator** res) {
     //get the function declaration
     Operator* decl = lv_expr_declareFunction(head, scope, &head);
     if(LV_EXPR_ERROR) {
         return NULL;
-    }
-    if(lv_debug) {
-        printf("Function name=%s, arity=%d, fixing=%c\n",
-            decl->name, decl->arity, decl->fixing);
-        for(int i = 0; i < decl->arity; i++) {
-            printf("Parameter %d is %s. By-name? %d\n",
-                i, decl->params[i].name, decl->params[i].byName);
-        }
     }
     //get the function body (piecewise will come later)
     TextBufferObj* text = NULL;
@@ -125,8 +117,26 @@ Token* lv_tb_defineFunction(Token* head, char* scope) {
         lv_op_removeOperator(decl->name, ns);
         return NULL;
     }
+    if(lv_debug) {
+        //print function info
+        printf("Function name=%s, arity=%d, fixing=%c\n",
+            decl->name, decl->arity, decl->fixing);
+        for(int i = 0; i < decl->arity; i++) {
+            printf("Parameter %d is %s. By-name? %d\n",
+                i, decl->params[i].name, decl->params[i].byName);
+        }
+        for(size_t i = 1; i < len; i++) {
+            LvString* str = lv_tb_getString(&text[i]);
+            printf("Object type=%d, value=%s\n",
+                text[i].type,
+                str->value);
+            lv_free(str);
+        }
+    }
     pushText(text + 1, len - 1);
     lv_free(text);
+    if(res)
+        *res = decl;
     return head;
 }
 

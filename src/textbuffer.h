@@ -55,9 +55,10 @@ LvString* lv_tb_getString(TextBufferObj* obj);
  * Defines the function described by the given token
  * sequence in the given scope. Returns a pointer to
  * the first unprocessed token in tokens, or NULL if
- * all tokens were processed.
+ * all tokens were processed. If res is not NULL,
+ * stores the created function in res.
  */
-Token* lv_tb_defineFunction(Token* tokens, char* scope);
+Token* lv_tb_defineFunction(Token* tokens, char* scope, Operator** res);
 
 void lv_tb_onStartup();
 void lv_tb_onShutdown();

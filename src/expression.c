@@ -306,16 +306,33 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     //loop over each token until we reach the end of the expression
     //(end-of-stream, closing grouper ')', or expression split ';')
     do {
-        //get the next text object
+        //is this a def?
         TextBufferObj obj;
-        parseTextObj(&obj, &cxt);
-        IF_ERROR_CLEANUP;
-        //detect end of expr before we parse
-        if(cxt.nesting < 0 || cxt.head->value[0] == ';')
-            break;
-        shuntingYard(&obj, &cxt);
-        IF_ERROR_CLEANUP;
-        cxt.head = cxt.head->next;
+        if(strcmp(cxt.head->value, "def") == 0) {
+            //recursive call to lv_tb_defineFunction
+            size_t len = strlen(cxt.decl->name) + 1;
+            char* scope = lv_alloc(len);
+            strcpy(scope, cxt.decl->name);
+            Operator* op;
+            cxt.head = lv_tb_defineFunction(cxt.head, scope, &op);
+            cxt.expectOperand = false;
+            lv_free(scope);
+            IF_ERROR_CLEANUP;
+            obj.type = OPT_FUNCTION_VAL;
+            obj.func = op;
+            shuntingYard(&obj, &cxt);
+            IF_ERROR_CLEANUP;
+        } else {
+            //get the next text object
+            parseTextObj(&obj, &cxt);
+            IF_ERROR_CLEANUP;
+            //detect end of expr before we parse
+            if(cxt.nesting < 0 || cxt.head->value[0] == ';')
+                break;
+            shuntingYard(&obj, &cxt);
+            IF_ERROR_CLEANUP;
+            cxt.head = cxt.head->next;
+        }
     } while(cxt.head);
     //get leftover ops over
     while(cxt.ops.top != cxt.ops.stack) {
@@ -482,21 +499,19 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     //a function definition.
     size_t valueLen = strlen(name);
     char* nsbegin = cxt->decl->name;
-    Operator* func;
-    Operator* test = NULL;
+    Operator* func = NULL;
     do {
-        func = test;
-        if(cxt->startOfName == nsbegin)
-            break; //we did all the namespaces
         //get the function with the name in the scope
-        char* fname = concat(nsbegin,   //beginning of scope
-            cxt->startOfName - nsbegin, //length of scope name
-            name,                       //name to check
-            valueLen);                  //length of name
-        test = lv_op_getOperator(fname, ns);
+        char* fname = concat(cxt->decl->name,   //beginning of scope
+            nsbegin - cxt->decl->name,          //length of scope name
+            name,                               //name to check
+            valueLen);                          //length of name
+        Operator* test = lv_op_getOperator(fname, ns);
         lv_free(fname);
         nsbegin = strchr(nsbegin, ':') + 1;
-    } while(test);
+        if(test)
+            func = test;
+    } while(cxt->startOfName != nsbegin);
     //test is null. func should contain the function
     if(!func) {
         //that name does not exist!
@@ -570,10 +585,6 @@ static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
 static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
     
     if(cxt->expectOperand) {
-        //is this a def?
-        if(strcmp(cxt->head->value, "def") == 0) {
-            //todo
-        }
         //try parameter names first
         for(int i = 0; i < cxt->decl->arity; i++) {
             if(strcmp(cxt->head->value, cxt->decl->params[i].name) == 0) {

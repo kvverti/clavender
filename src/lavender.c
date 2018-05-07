@@ -102,7 +102,7 @@ static void readInput(FILE* in, bool repl) {
         tmp = tmp->next;
     }
     if(toks) {
-        Token* end = lv_tb_defineFunction(toks, "repl");
+        Token* end = lv_tb_defineFunction(toks, "repl", NULL);
         if(LV_EXPR_ERROR) {
             printf("Error parsing function: %s\n",
                 lv_expr_getError(LV_EXPR_ERROR));
