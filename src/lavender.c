@@ -102,8 +102,12 @@ static void readInput(FILE* in, bool repl) {
         tmp = tmp->next;
     }
     if(toks) {
+        //it's not going into the list, auto alloc is fine
+        Operator scope;
         Operator* op;
-        Token* end = lv_tb_defineFunction(toks, "repl", &op);
+        memset(&scope, 0, sizeof(Operator));
+        scope.name = "repl";
+        Token* end = lv_tb_defineFunction(toks, &scope, &op);
         if(LV_EXPR_ERROR) {
             printf("Error parsing function: %s\n",
                 lv_expr_getError(LV_EXPR_ERROR));

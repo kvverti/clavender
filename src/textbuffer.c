@@ -102,7 +102,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
     }
 }
 
-Token* lv_tb_defineFunction(Token* head, char* scope, Operator** res) {
+Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //get the function declaration
     Operator* decl = lv_expr_declareFunction(head, scope, &head);
     if(LV_EXPR_ERROR) {

@@ -33,7 +33,7 @@ char* lv_expr_getError(ExprError error) {
 static bool specifiesFixing(Token* head);
 static int getArity(Token* head);
 
-Operator* lv_expr_declareFunction(Token* head, char* nspace, Token** bodyTok) {
+Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok) {
     
     #define RETVAL NULL
     if(LV_EXPR_ERROR)
@@ -118,8 +118,8 @@ Operator* lv_expr_declareFunction(Token* head, char* nspace, Token** bodyTok) {
     REQUIRE_MORE_TOKENS(head);
     //build the function name
     FuncNamespace ns = fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
-    int nsOffset = strlen(nspace) + 1;
-    char* fqn = lv_alloc(strlen(nspace) + strlen(fnameAlias) + 2);
+    int nsOffset = strlen(nspace->name) + 1;
+    char* fqn = lv_alloc(strlen(nspace->name) + strlen(fnameAlias) + 2);
     strcpy(fqn + nsOffset, fnameAlias);
     //change ':' in symbolic name to '#'
     //because namespaces use ':' as a separator
@@ -127,7 +127,7 @@ Operator* lv_expr_declareFunction(Token* head, char* nspace, Token** bodyTok) {
     while((colon = strchr(colon, ':')))
         *colon = '#';
     //add namespace
-    strcpy(fqn, nspace);
+    strcpy(fqn, nspace->name);
     fqn[nsOffset - 1] = ':';
     //check to see if this function was defined twice
     Operator* funcObj = lv_op_getOperator(fqn, ns);
@@ -310,13 +310,9 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
         TextBufferObj obj;
         if(strcmp(cxt.head->value, "def") == 0) {
             //recursive call to lv_tb_defineFunction
-            size_t len = strlen(cxt.decl->name) + 1;
-            char* scope = lv_alloc(len);
-            strcpy(scope, cxt.decl->name);
             Operator* op;
-            cxt.head = lv_tb_defineFunction(cxt.head, scope, &op);
+            cxt.head = lv_tb_defineFunction(cxt.head, cxt.decl, &op);
             cxt.expectOperand = false;
-            lv_free(scope);
             IF_ERROR_CLEANUP;
             obj.type = OPT_FUNCTION_VAL;
             obj.func = op;

@@ -30,7 +30,7 @@ char* lv_expr_getError(ExprError error);
  * If an error occurs, sets LV_OP_ERROR
  * and returns NULL.
  */
-Operator* lv_expr_declareFunction(Token* tokens, char* nspace, Token** bodyTok);
+Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyTok);
 
 /**
  * Parses the expression defined by the token sequence.

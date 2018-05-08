@@ -10,6 +10,7 @@ typedef enum OpType {
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
     OPT_FUNC_CALL,      //call value as function
+    OPT_FUNC_CAP,       //capture function with values
     OPT_LITERAL,        //literal value (not present in final code)
 } OpType;
 
@@ -58,7 +59,7 @@ LvString* lv_tb_getString(TextBufferObj* obj);
  * all tokens were processed. If res is not NULL,
  * stores the created function in res.
  */
-Token* lv_tb_defineFunction(Token* tokens, char* scope, Operator** res);
+Token* lv_tb_defineFunction(Token* tokens, Operator* scope, Operator** res);
 
 void lv_tb_onStartup();
 void lv_tb_onShutdown();
