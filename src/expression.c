@@ -39,6 +39,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
     if(LV_EXPR_ERROR)
         return NULL;
     assert(head);
+    assert(nspace->type == FUN_FWD_DECL);
     char* fnameAlias;       //function name alias (not separately allocated!)
     int arity;              //function arity
     Fixing fixing;          //function fixing
@@ -90,7 +91,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
     if(LV_EXPR_ERROR)
         return NULL;
     //holds the arguments and their names
-    Param args[arity];
+    Param args[arity + nspace->arity];
     if(arity == 0) {
         //incr past close paren
         head = head->next;
@@ -105,6 +106,8 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
             assert(head->next->type == TTY_LITERAL);
             head = head->next->next; //skip comma or close paren
         }
+        //copy over captured params (if any)
+        memcpy(args + arity, nspace->params, nspace->arity * sizeof(Param));
     }
     REQUIRE_MORE_TOKENS(head);
     if(strcmp(head->value, "=>") != 0) {
@@ -142,13 +145,13 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
         funcObj->name = fqn;
         funcObj->next = NULL;
         funcObj->type = FUN_FWD_DECL;
-        funcObj->arity = arity;
+        funcObj->arity = arity + nspace->arity;
         funcObj->fixing = fixing;
-        funcObj->captureCount = 0; //todo
-        funcObj->params = lv_alloc(arity * sizeof(Param));
-        memcpy(funcObj->params, args, arity * sizeof(Param));
+        funcObj->captureCount = nspace->arity;
+        funcObj->params = lv_alloc((arity + nspace->arity) * sizeof(Param));
+        memcpy(funcObj->params, args, (arity + nspace->arity) * sizeof(Param));
         //copy param names
-        for(int i = 0; i < arity; i++) {
+        for(int i = 0; i < (arity + nspace->arity); i++) {
             char* name = lv_alloc(strlen(args[i].name) + 1);
             strcpy(name, args[i].name);
             funcObj->params[i].name = name;

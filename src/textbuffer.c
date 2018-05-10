@@ -10,17 +10,21 @@ TextBufferObj* TEXT_BUFFER;
 static size_t textBufferLen;    //one past the end of the buffer
 static size_t textBufferTop;    //one past the top of the buffer
 
+/**
+ * Adds the text to the buffer and appends a return object to the end.
+ */
 static void pushText(TextBufferObj* text, size_t len) {
     
-    if(textBufferLen - textBufferTop < len) {
+    if(textBufferLen - textBufferTop < len + 1) {
         //we must reallocate the buffer
         TEXT_BUFFER =
             lv_realloc(TEXT_BUFFER, textBufferLen * 2 * sizeof(TextBufferObj));
         memset(TEXT_BUFFER + textBufferLen, 0, textBufferLen * sizeof(TextBufferObj));
         textBufferLen *= 2;
     }
-    memcpy(TEXT_BUFFER + textBufferTop, text, len);
-    textBufferTop += len;
+    memcpy(TEXT_BUFFER + textBufferTop, text, len * sizeof(TextBufferObj));
+    TEXT_BUFFER[textBufferTop + len].type = OPT_RETURN;
+    textBufferTop += len + 1;
 }
 
 //calculate the number of decimal digits
@@ -92,6 +96,13 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             strcat(res->value, str);
             return res;
         }
+        case OPT_RETURN: {
+            static char str[] = "return";
+            res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->len = sizeof(str) - 1;
+            strcpy(res->value, str);
+            return res;
+        }
         default: {
             static char str[] = "<internal operator>";
             res = lv_alloc(sizeof(LvString) + sizeof(str));
@@ -117,26 +128,28 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
         lv_op_removeOperator(decl->name, ns);
         return NULL;
     }
-    if(lv_debug) {
-        //print function info
-        printf("Function name=%s, arity=%d, fixing=%c\n",
-            decl->name, decl->arity, decl->fixing);
-        for(int i = 0; i < decl->arity; i++) {
-            printf("Parameter %d is %s. By-name? %d\n",
-                i, decl->params[i].name, decl->params[i].byName);
-        }
-        for(size_t i = 1; i < len; i++) {
-            LvString* str = lv_tb_getString(&text[i]);
-            printf("Object type=%d, value=%s\n",
-                text[i].type,
-                str->value);
-            lv_free(str);
-        }
-    }
+    for(int i = 0; i < decl->arity; i++)
+        lv_free(decl->params[i].name);
+    lv_free(decl->params);
+    decl->type = FUN_FUNCTION;
+    decl->textOffset = textBufferTop;
     pushText(text + 1, len - 1);
     lv_free(text);
     if(res)
         *res = decl;
+    if(lv_debug) {
+        //print function info
+        printf("Function name=%s, arity=%d, fixing=%c, offset=%u\n",
+            decl->name, decl->arity, decl->fixing, decl->textOffset);
+        for(size_t i = 0; i < textBufferTop; i++) {
+            LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
+            printf("%lu: type=%d, value=%s\n",
+                i,
+                TEXT_BUFFER[i].type,
+                str->value);
+            lv_free(str);
+        }
+    }
     return head;
 }
 

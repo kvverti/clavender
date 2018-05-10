@@ -107,6 +107,7 @@ static void readInput(FILE* in, bool repl) {
         Operator* op;
         memset(&scope, 0, sizeof(Operator));
         scope.name = "repl";
+        scope.type = FUN_FWD_DECL;  //because its a "declaration"
         Token* end = lv_tb_defineFunction(toks, &scope, &op);
         if(LV_EXPR_ERROR) {
             printf("Error parsing function: %s\n",
