@@ -11,6 +11,7 @@ typedef enum OpType {
     OPT_FUNCTION_VAL,   //function value
     OPT_FUNC_CALL,      //call value as function
     OPT_RETURN,         //return from function
+    OPT_BEQZ,           //relative branch if zero
     OPT_LITERAL,        //literal value (not present in final code)
 } OpType;
 
@@ -35,6 +36,7 @@ typedef struct TextBufferObj {
         int param;
         Operator* func;
         int callArity;
+        int branchAddr;
         char literal;
     };
 } TextBufferObj;

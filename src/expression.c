@@ -321,6 +321,9 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
             obj.func = op;
             shuntingYard(&obj, &cxt);
             IF_ERROR_CLEANUP;
+        } else if(strcmp(cxt.head->value, "=>") == 0) {
+            //end of conditional
+            break;
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);

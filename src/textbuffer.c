@@ -15,7 +15,7 @@ static size_t textBufferTop;    //one past the top of the buffer
  */
 static void pushText(TextBufferObj* text, size_t len) {
     
-    if(textBufferLen - textBufferTop < len + 1) {
+    if(textBufferLen - textBufferTop < len) {
         //we must reallocate the buffer
         TEXT_BUFFER =
             lv_realloc(TEXT_BUFFER, textBufferLen * 2 * sizeof(TextBufferObj));
@@ -23,8 +23,7 @@ static void pushText(TextBufferObj* text, size_t len) {
         textBufferLen *= 2;
     }
     memcpy(TEXT_BUFFER + textBufferTop, text, len * sizeof(TextBufferObj));
-    TEXT_BUFFER[textBufferTop + len].type = OPT_RETURN;
-    textBufferTop += len + 1;
+    textBufferTop += len;
 }
 
 //calculate the number of decimal digits
@@ -103,6 +102,15 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             strcpy(res->value, str);
             return res;
         }
+        case OPT_BEQZ: {
+            static char str[] = "beqz ";
+            size_t len = length(obj->branchAddr) + sizeof(str) - 1;
+            res = lv_alloc(sizeof(LvString) + len + sizeof(str));
+            res->len = len;
+            strcpy(res->value, str);
+            sprintf(res->value + sizeof(str) - 1, "%d", obj->branchAddr);
+            return res;
+        }
         default: {
             static char str[] = "<internal operator>";
             res = lv_alloc(sizeof(LvString) + sizeof(str));
@@ -113,28 +121,113 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
     }
 }
 
+static void rollback(Operator* decl, size_t top) {
+    
+    lv_op_removeOperator(decl->name,
+        decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX);
+    //reset the text buffer
+    for(size_t i = top; i < textBufferTop; i++) {
+        if(TEXT_BUFFER[i].type == OPT_STRING)
+            lv_free(TEXT_BUFFER[i].str);
+    }
+    textBufferTop = top;
+}
+
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //get the function declaration
     Operator* decl = lv_expr_declareFunction(head, scope, &head);
     if(LV_EXPR_ERROR) {
         return NULL;
     }
-    //get the function body (piecewise will come later)
-    TextBufferObj* text = NULL;
-    size_t len = 0;
-    head = lv_expr_parseExpr(head, decl, &text, &len);
-    if(LV_EXPR_ERROR) {
-        FuncNamespace ns = decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
-        lv_op_removeOperator(decl->name, ns);
-        return NULL;
+    //save the top so we can roll back if necessary
+    size_t top = textBufferTop;
+    //function begin, often the same as top, but
+    //different if there are nested functions.
+    size_t fbgn;
+    bool setbgn = false;
+    bool conditional = false;
+    //the index of the previous conditional branch
+    //the value requires modification if there are
+    //nested functions within this piecewise function
+    size_t prevCondBranch = 0;
+    //')' and ']' mark the end of the expression (';' marks a conditional)
+    while(head && head->value[0] != ')' && head->value[0] != ']') {
+        TextBufferObj* text;
+        size_t len;
+        head = lv_expr_parseExpr(head, decl, &text, &len);
+        if(LV_EXPR_ERROR) {
+            rollback(decl, top);
+            return NULL;
+        }
+        TextBufferObj end;
+        if(head && head->value[0] == ';') {
+            conditional = true;
+            head = head->next;
+            if(!head) { //a body is required
+                LV_EXPR_ERROR = XPE_MISSING_BODY;
+                return NULL;
+            }
+            //it's a conditional
+            TextBufferObj* cond;
+            size_t clen;
+            head = lv_expr_parseExpr(head, decl, &cond, &clen);
+            if(LV_EXPR_ERROR) {
+                rollback(decl, top);
+                lv_free(text);
+                return NULL;
+            }
+            if(prevCondBranch) {
+                //set the previous beanch statement's relative address.
+                //The beginning of the current condition will be placed
+                //at textBufferTop.
+                TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
+            }
+            //set the branch to the next condition, which usually
+            //occurs at (len + 1) after the branch instruction,
+            //but may be later becuase of nested function definitions.
+            end.type = OPT_BEQZ;
+            end.branchAddr = 0; //sentinel, will update later
+            if(!setbgn) {
+                //only set fbgn on first run
+                fbgn = textBufferTop;
+            }
+            pushText(cond + 1, clen - 1);
+            pushText(&end, 1);
+            lv_free(cond);
+            prevCondBranch = textBufferTop - 1;
+            //another function body?
+            if(head && strcmp(head->value, "=>") == 0)
+                head = head->next;
+        } else {
+            if(!setbgn) {
+                //only set fbgn on first run
+                fbgn = textBufferTop;
+            }
+        }
+        pushText(text + 1, len - 1);
+        end.type = OPT_RETURN;
+        pushText(&end, 1);
+        lv_free(text);
     }
+    if(conditional) {
+        if(prevCondBranch) {
+            //set the last conditional branch
+            TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
+        }
+        //push the default case (return undefined)
+        TextBufferObj nan[2];
+        nan[0].type = OPT_NUMBER;
+        nan[0].number = 0.0 / 0.0; //todo properly impl undefined value
+        nan[1].type = OPT_RETURN;
+        pushText(nan, 2);
+    }
+    //free param metadata
     for(int i = 0; i < decl->arity; i++)
         lv_free(decl->params[i].name);
     lv_free(decl->params);
+    //set out param value
     decl->type = FUN_FUNCTION;
-    decl->textOffset = textBufferTop;
-    pushText(text + 1, len - 1);
-    lv_free(text);
+    decl->textOffset = fbgn;
     if(res)
         *res = decl;
     if(lv_debug) {
@@ -152,6 +245,8 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     }
     return head;
 }
+
+#undef RETURN_IF_ERROR
 
 void lv_tb_onStartup() {
  
