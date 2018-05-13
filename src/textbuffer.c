@@ -165,6 +165,7 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             head = head->next;
             if(!head) { //a body is required
                 LV_EXPR_ERROR = XPE_MISSING_BODY;
+                rollback(decl, top);
                 return NULL;
             }
             //it's a conditional
@@ -190,6 +191,7 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             if(!setbgn) {
                 //only set fbgn on first run
                 fbgn = textBufferTop;
+                setbgn = true;
             }
             pushText(cond + 1, clen - 1);
             pushText(&end, 1);
@@ -202,6 +204,7 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             if(!setbgn) {
                 //only set fbgn on first run
                 fbgn = textBufferTop;
+                setbgn = true;
             }
         }
         pushText(text + 1, len - 1);
@@ -245,8 +248,6 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     }
     return head;
 }
-
-#undef RETURN_IF_ERROR
 
 void lv_tb_onStartup() {
  
