@@ -133,6 +133,12 @@ static void rollback(Operator* decl, size_t top) {
     textBufferTop = top;
 }
 
+static bool isExprEnd(Token* head) {
+    
+    //')' and ']' mark the end of the expression, ';' delimits conditionals
+    return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == ';';
+}
+
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //get the function declaration
     Operator* decl = lv_expr_declareFunction(head, scope, &head);
@@ -150,8 +156,13 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //the value requires modification if there are
     //nested functions within this piecewise function
     size_t prevCondBranch = 0;
-    //')' and ']' mark the end of the expression (';' marks a conditional)
-    while(head && head->value[0] != ')' && head->value[0] != ']') {
+    if(isExprEnd(head)) {
+        //no empty bodies allowed
+        LV_EXPR_ERROR = XPE_MISSING_BODY;
+        rollback(decl, top);
+        return NULL;
+    }
+    while(!isExprEnd(head)) {
         TextBufferObj* text;
         size_t len;
         head = lv_expr_parseExpr(head, decl, &text, &len);
@@ -160,52 +171,81 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             return NULL;
         }
         TextBufferObj end;
-        if(head && head->value[0] == ';') {
-            conditional = true;
-            head = head->next;
-            if(!head) { //a body is required
-                LV_EXPR_ERROR = XPE_MISSING_BODY;
+        if(head) {
+            if(strcmp(head->value, "=>") == 0) {
+                //can't have two bodies
+                LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 rollback(decl, top);
+                lv_expr_free(text, len);
                 return NULL;
-            }
-            //it's a conditional
-            TextBufferObj* cond;
-            size_t clen;
-            head = lv_expr_parseExpr(head, decl, &cond, &clen);
-            if(LV_EXPR_ERROR) {
-                rollback(decl, top);
-                lv_free(text);
-                return NULL;
-            }
-            if(prevCondBranch) {
-                //set the previous beanch statement's relative address.
-                //The beginning of the current condition will be placed
-                //at textBufferTop.
-                TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
-            }
-            //set the branch to the next condition, which usually
-            //occurs at (len + 1) after the branch instruction,
-            //but may be later becuase of nested function definitions.
-            end.type = OPT_BEQZ;
-            end.branchAddr = 0; //sentinel, will update later
-            if(!setbgn) {
-                //only set fbgn on first run
-                fbgn = textBufferTop;
-                setbgn = true;
-            }
-            pushText(cond + 1, clen - 1);
-            pushText(&end, 1);
-            lv_free(cond);
-            prevCondBranch = textBufferTop - 1;
-            //another function body?
-            if(head && strcmp(head->value, "=>") == 0)
+            } else if(head->value[0] == ';') {
+                conditional = true;
                 head = head->next;
-        } else {
-            if(!setbgn) {
-                //only set fbgn on first run
-                fbgn = textBufferTop;
-                setbgn = true;
+                if(!head) { //a body is required
+                    LV_EXPR_ERROR = XPE_MISSING_BODY;
+                    rollback(decl, top);
+                    lv_expr_free(text, len);
+                    return NULL;
+                }
+                //it's a conditional
+                TextBufferObj* cond;
+                size_t clen;
+                head = lv_expr_parseExpr(head, decl, &cond, &clen);
+                if(LV_EXPR_ERROR) {
+                    rollback(decl, top);
+                    lv_expr_free(text, len);
+                    return NULL;
+                }
+                if(prevCondBranch) {
+                    //set the previous beanch statement's relative address.
+                    //The beginning of the current condition will be placed
+                    //at textBufferTop.
+                    TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
+                }
+                //set the branch to the next condition, which usually
+                //occurs at (len + 1) after the branch instruction,
+                //but may be later becuase of nested function definitions.
+                end.type = OPT_BEQZ;
+                end.branchAddr = 0; //sentinel, will update later
+                if(!setbgn) {
+                    //only set fbgn on first run
+                    fbgn = textBufferTop;
+                    setbgn = true;
+                }
+                pushText(cond + 1, clen - 1);
+                pushText(&end, 1);
+                prevCondBranch = textBufferTop - 1;
+                //another function body?
+                if(head) {
+                    if(strcmp(head->value, "=>") == 0) {
+                        head = head->next;
+                        if(isExprEnd(head)) {
+                            LV_EXPR_ERROR = XPE_MISSING_BODY;
+                            rollback(decl, top);
+                            lv_expr_free(text, len);
+                            lv_expr_free(cond, clen);
+                            return NULL;
+                        }
+                    } else if(head->value[0] == ';') {
+                        LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                        rollback(decl, top);
+                        lv_expr_free(text, len);
+                        lv_expr_free(cond, clen);
+                        return NULL;
+                    }
+                }
+                lv_free(cond);
             }
+        } else if(conditional) {
+            //function did not have a condition for one of its bodies
+            LV_EXPR_ERROR = XPE_MISSING_BODY;
+            rollback(decl, top);
+            lv_expr_free(text, len);
+            return NULL;
+        }
+        if(!setbgn) {
+            fbgn = textBufferTop;
+            setbgn = true;
         }
         pushText(text + 1, len - 1);
         end.type = OPT_RETURN;
