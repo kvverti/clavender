@@ -512,6 +512,12 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     size_t valueLen = strlen(name);
     char* nsbegin = cxt->decl->name;
     Operator* func = NULL;
+    //change ':' to '#' in names
+    {
+        char* c = name;
+        while((c = strchr(c, ':')))
+            *c = '#';
+    }
     do {
         //get the function with the name in the scope
         nsbegin = strchr(nsbegin, ':') + 1;
@@ -545,6 +551,12 @@ static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
 
 static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
     
+    //change ':' to '#' in names, but only after the namespace separator
+    {
+        char* c = strchr(name, ':') + 1;
+        while((c = strchr(c, ':')))
+            *c = '#';
+    }
     //since it's a qualified name, we don't need to
     //guess what function it could be!
     Operator* func = lv_op_getOperator(name, ns);
