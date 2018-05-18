@@ -42,6 +42,14 @@ Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyT
  */
 Token* lv_expr_parseExpr(Token* tokens, Operator* decl, TextBufferObj** res, size_t* len);
 
+/**
+ * Calls lv_expr_cleanup and additionally frees obj.
+ */
 void lv_expr_free(TextBufferObj* obj, size_t len);
+
+/**
+ * Frees data associated with the objects given.
+ */
+void lv_expr_cleanup(TextBufferObj* obj, size_t len);
 
 #endif

@@ -274,8 +274,10 @@ static bool shuntOps(ExprContext* cxts);
 
 #define IF_ERROR_CLEANUP \
     if(LV_EXPR_ERROR) { \
-        lv_expr_free(cxt.out.stack, cxt.out.top - cxt.out.stack + 1); \
-        lv_expr_free(cxt.ops.stack, cxt.ops.top - cxt.ops.stack + 1); \
+        lv_expr_cleanup(cxt.out.stack, cxt.out.top - cxt.out.stack + 1); \
+        lv_expr_cleanup(cxt.ops.stack, cxt.ops.top - cxt.ops.stack + 1); \
+        lv_free(cxt.out.stack); \
+        lv_free(cxt.ops.stack); \
         lv_free(cxt.params.stack); \
         return NULL; \
     } else (void)0
@@ -351,12 +353,17 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
 
 #undef IF_ERROR_CLEANUP
 
-void lv_expr_free(TextBufferObj* obj, size_t len) {
+void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
     
     for(size_t i = 0; i < len; i++) {
         if(obj[i].type == OPT_STRING)
             lv_free(obj[i].str);
     }
+}
+
+void lv_expr_free(TextBufferObj* obj, size_t len) {
+    
+    lv_expr_cleanup(obj, len);
     lv_free(obj);
 }
 

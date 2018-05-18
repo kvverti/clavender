@@ -258,11 +258,9 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
         }
         //push the default case (return undefined)
-        TextBufferObj nan[2];
-        nan[0].type = OPT_NUMBER;
-        nan[0].number = 0.0 / 0.0; //todo properly impl undefined value
-        nan[1].type = OPT_RETURN;
-        pushText(nan, 2);
+        TextBufferObj nan;
+        nan.type = OPT_UNDEFINED;
+        pushText(&nan, 1);
     }
     //free param metadata
     for(int i = 0; i < decl->arity; i++)
@@ -277,6 +275,27 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
         //print function info
         printf("Function name=%s, arity=%d, fixing=%c, offset=%u\n",
             decl->name, decl->arity, decl->fixing, decl->textOffset);
+    }
+    return head;
+}
+
+static size_t startOfTmpExpr;
+
+Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* end) {
+    
+    TextBufferObj* tmp;
+    size_t tlen;
+    Token* ret = lv_expr_parseExpr(tokens, scope, &tmp, &tlen);
+    if(LV_EXPR_ERROR) {
+        return NULL;
+    }
+    //add expr to buffer and set start of expr
+    startOfTmpExpr = textBufferTop;
+    pushText(tmp + 1, tlen - 1);
+    lv_free(tmp);
+    *start = startOfTmpExpr;
+    *end = textBufferTop;
+    if(lv_debug) {
         for(size_t i = 0; i < textBufferTop; i++) {
             LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
             printf("%lu: type=%d, value=%s\n",
@@ -286,7 +305,14 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             lv_free(str);
         }
     }
-    return head;
+    return ret;
+}
+
+void lv_tb_clearExpr() {
+    
+    lv_expr_cleanup(TEXT_BUFFER + startOfTmpExpr, textBufferTop - startOfTmpExpr);
+    textBufferTop = startOfTmpExpr;
+    startOfTmpExpr = textBufferTop;
 }
 
 void lv_tb_onStartup() {
@@ -295,6 +321,7 @@ void lv_tb_onStartup() {
     memset(TEXT_BUFFER, 0, INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
     textBufferLen = INIT_TEXT_BUFFER_LEN;
     textBufferTop = 0;
+    startOfTmpExpr = 0;
 }
 
 void lv_tb_onShutdown() {

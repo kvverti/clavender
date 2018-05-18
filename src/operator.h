@@ -27,6 +27,10 @@ typedef struct Param {
     bool byName;
 } Param;
 
+//builtin callback type
+struct TextBufferObj;
+typedef struct TextBufferObj (*Builtin)(struct TextBufferObj*);
+
 /**
  * A struct that stores a Lavender function and its name.
  * These values are stored in a global hashtable.
@@ -40,7 +44,7 @@ typedef struct Operator {
     union {
         int textOffset;
         Param* params;
-        //todo builtin type
+        Builtin builtin;
     };
     struct Operator* next;
 } Operator;
