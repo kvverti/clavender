@@ -65,6 +65,7 @@ static TextBufferObj plus(TextBufferObj* args) {
         size_t alen = args[0].str->len;
         size_t blen = args[1].str->len;
         LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
+        str->refCount = 0;
         str->len = alen + blen;
         memcpy(str->value, args[0].str->value, alen);
         memcpy(str->value + alen, args[1].str->value, blen);
@@ -106,33 +107,6 @@ void lv_blt_onStartup() {
     MK_FUNCN(plus, 2);
     MK_FUNCN(str, 1);
     MK_FUNC_IMPL(bool_, 1, "__bool__");
-    //defined
-    // op = lv_alloc(sizeof(Operator));
-    // COPY_NAME(op->name, "defined");
-    // op->type = FUN_BUILTIN;
-    // op->arity = 1;
-    // op->fixing = FIX_PRE;
-    // op->captureCount = 0;
-    // op->builtin = defined;
-    // lv_op_addOperator(op, FNS_PREFIX);
-    //undefined
-    // op = lv_alloc(sizeof(Operator));
-    // COPY_NAME(op->name, "undefined");
-    // op->type = FUN_BUILTIN;
-    // op->arity = 0;
-    // op->fixing = FIX_PRE;
-    // op->captureCount = 0;
-    // op->builtin = undefined;
-    // lv_op_addOperator(op, FNS_PREFIX);
-    //add
-    // op = lv_alloc(sizeof(Operator));
-    // COPY_NAME(op->name, "__plus__");
-    // op->type = FUN_BUILTIN;
-    // op->arity = 2;
-    // op->fixing = FIX_PRE;
-    // op->captureCount = 0;
-    // op->builtin = plus;
-    // lv_op_addOperator(op, FNS_PREFIX);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNC_IMPL

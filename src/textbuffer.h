@@ -22,6 +22,7 @@ typedef enum OpType {
  */
 typedef struct LvString {
     size_t len;
+    size_t refCount;
     char value[];
 } LvString;
 

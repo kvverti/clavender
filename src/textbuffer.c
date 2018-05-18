@@ -40,10 +40,8 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
     
     LvString* res;
     switch(obj->type) {
-        case OPT_STRING: { //do we really need to copy string?
-            size_t sz = sizeof(LvString) + obj->str->len + 1;
-            res = lv_alloc(sz);
-            memcpy(res, obj->str, sz);
+        case OPT_STRING: {
+            res = obj->str;
             return res;
         }
         case OPT_NUMBER: {
@@ -57,6 +55,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             //again in order to get all the characters.
             #define GUESS_LEN 16
             res = lv_alloc(sizeof(LvString) + GUESS_LEN); //first guess
+            res->refCount = 0;
             int len = snprintf(res->value, GUESS_LEN, "%g", obj->number);
             res = lv_realloc(res, sizeof(LvString) + len + 1);
             if(len >= GUESS_LEN) {
@@ -70,6 +69,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         case OPT_FUNCTION_VAL: {
             size_t len = strlen(obj->func->name);
             res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
             res->len = len;
             strcpy(res->value, obj->func->name);
             return res;
@@ -80,6 +80,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             size_t len = length(obj->param);
             len += sizeof(str) - 1;
             res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
             res->len = len;
             strcpy(res->value, str);
             sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
@@ -90,6 +91,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             size_t len = length(obj->callArity);
             len += sizeof(str) - 1;
             res = lv_alloc(sizeof(LvString) + len + sizeof(str));
+            res->refCount = 0;
             res->len = len;
             sprintf(res->value, "%d", obj->callArity);
             strcat(res->value, str);
@@ -98,6 +100,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         case OPT_RETURN: {
             static char str[] = "return";
             res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
             res->len = sizeof(str) - 1;
             strcpy(res->value, str);
             return res;
@@ -106,6 +109,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             static char str[] = "beqz ";
             size_t len = length(obj->branchAddr) + sizeof(str) - 1;
             res = lv_alloc(sizeof(LvString) + len + sizeof(str));
+            res->refCount = 0;
             res->len = len;
             strcpy(res->value, str);
             sprintf(res->value + sizeof(str) - 1, "%d", obj->branchAddr);
@@ -114,6 +118,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         default: {
             static char str[] = "<internal operator>";
             res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
             res->len = sizeof(str) - 1;
             strcpy(res->value, str);
             return res;
@@ -303,7 +308,8 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
                 i,
                 TEXT_BUFFER[i].type,
                 str->value);
-            lv_free(str);
+            if(str->refCount == 0)
+                lv_free(str);
         }
     }
     return ret;

@@ -356,8 +356,11 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
 void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
     
     for(size_t i = 0; i < len; i++) {
-        if(obj[i].type == OPT_STRING)
-            lv_free(obj[i].str);
+        if(obj[i].type == OPT_STRING) {
+            assert(obj[i].str->refCount);
+            if(--obj[i].str->refCount == 0)
+                lv_free(obj[i].str);
+        }
     }
 }
 
@@ -629,6 +632,7 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     }
     char* c = cxt->head->value + 1; //skip open quote
     LvString* newStr = lv_alloc(sizeof(LvString) + strlen(c) + 1);
+    newStr->refCount = 1; //it will be added to the text buffer
     size_t len = 0;
     while(*c != '"') {
         if(*c == '\\') {

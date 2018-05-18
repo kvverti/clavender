@@ -28,17 +28,25 @@ static void push(TextBufferObj* obj) {
         stack.data = lv_realloc(stack.data, stack.cap * 2 * sizeof(TextBufferObj));
         stack.cap *= 2;
     }
+    if(obj->type == OPT_STRING)
+        obj->str->refCount++;
     stack.data[stack.len++] = *obj;
 }
 
 static void popAll(size_t numToPop) {
     
     TextBufferObj* start = stack.data + (stack.len - numToPop);
-    //lv_expr_cleanup(start, numToPop);
+    lv_expr_cleanup(start, numToPop);
     stack.len -= numToPop;
 }
 
-#define STACK_REMOVE_TOP (stack.data[--stack.len])
+static TextBufferObj* removeTop() {
+    
+    TextBufferObj* res = &stack.data[--stack.len];
+    if(res->type == OPT_STRING)
+        res->str->refCount--;
+    return res;
+}
 
 void lv_run() {
     
@@ -113,6 +121,7 @@ void lv_shutdown() {
     lv_blt_onShutdown();
     lv_tb_onShutdown();
     lv_op_onShutdown();
+    lv_expr_cleanup(stack.data, stack.len);
     lv_free(stack.data);
     exit(0);
 }
@@ -187,9 +196,10 @@ static void readInput(FILE* in, bool repl) {
                     runCycle();
                 }
                 assert(stack.len == 1);
-                LvString* str = lv_tb_getString(&STACK_REMOVE_TOP);
+                LvString* str = lv_tb_getString(removeTop());
                 puts(str->value);
-                lv_free(str);
+                if(str->refCount == 0)
+                    lv_free(str);
                 lv_tb_clearExpr();
                 if(end)
                     printf("First token past body: type=%d, value=%s\n",
@@ -217,13 +227,13 @@ static void runCycle() {
             push(&stack.data[fp + value->param]);
             break;
         case OPT_BEQZ: {
-            TextBufferObj* obj = &STACK_REMOVE_TOP;
+            TextBufferObj* obj = removeTop();
             if(!lv_blt_toBool(obj))
                 pc += value->branchAddr - 1;
             break;
         }
         case OPT_FUNC_CALL: {
-            TextBufferObj* func = &STACK_REMOVE_TOP;
+            TextBufferObj* func = removeTop();
             if(value->callArity != func->func->arity) {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
@@ -273,10 +283,10 @@ static void runCycle() {
             break;
         }
         case OPT_RETURN: {
-            TextBufferObj* retVal = &STACK_REMOVE_TOP;
+            TextBufferObj* retVal = removeTop();
             //reset pc and fp
-            pc = STACK_REMOVE_TOP.addr;
-            size_t tmpFp = STACK_REMOVE_TOP.addr;
+            pc = removeTop()->addr;
+            size_t tmpFp = removeTop()->addr;
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
