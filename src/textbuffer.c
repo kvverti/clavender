@@ -258,9 +258,10 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
             TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
         }
         //push the default case (return undefined)
-        TextBufferObj nan;
-        nan.type = OPT_UNDEFINED;
-        pushText(&nan, 1);
+        TextBufferObj nan[2];
+        nan[0].type = OPT_UNDEFINED;
+        nan[1].type = OPT_RETURN;
+        pushText(nan, 2);
     }
     //free param metadata
     for(int i = 0; i < decl->arity; i++)

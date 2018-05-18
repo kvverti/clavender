@@ -1,4 +1,4 @@
-#include "textbuffer.h"
+#include "builtin.h"
 #include "lavender.h"
 #include <string.h>
 
@@ -20,6 +20,24 @@ static TextBufferObj undefined(TextBufferObj* args) {
     
     TextBufferObj res;
     res.type = OPT_UNDEFINED;
+    return res;
+}
+
+bool lv_blt_toBool(TextBufferObj* obj) {
+    
+    return (obj->type != OPT_UNDEFINED)
+        && (obj->type != OPT_NUMBER || obj->number != 0.0)
+        && (obj->type != OPT_STRING || obj->str->len != 0);
+}
+
+/**
+ * Converts to bool.
+ */
+static TextBufferObj bool_(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_NUMBER;
+    res.number = lv_blt_toBool(&args[0]);
     return res;
 }
 
@@ -87,6 +105,7 @@ void lv_blt_onStartup() {
     MK_FUNC(undefined, 0);
     MK_FUNCN(plus, 2);
     MK_FUNCN(str, 1);
+    MK_FUNC_IMPL(bool_, 1, "__bool__");
     //defined
     // op = lv_alloc(sizeof(Operator));
     // COPY_NAME(op->name, "defined");

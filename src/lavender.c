@@ -74,8 +74,10 @@ void lv_run() {
 void* lv_alloc(size_t size) {
     
     void* value = malloc(size);
-    if(!value)
+    if(!value) {
+        printf("Allocation failed: %lu bytes\n", size);
         lv_shutdown();
+    }
     return value;
 }
 
@@ -84,6 +86,7 @@ void* lv_realloc(void* ptr, size_t size) {
     void* tmp = realloc(ptr, size);
     if(!tmp) {
         free(ptr);
+        printf("Allocation failed: %lu bytes\n", size);
         lv_shutdown();
     }
     return tmp;
@@ -213,9 +216,12 @@ static void runCycle() {
             //push i'th param
             push(&stack.data[fp + value->param]);
             break;
-        case OPT_BEQZ:
-            value += value->branchAddr - 1;
+        case OPT_BEQZ: {
+            TextBufferObj* obj = &STACK_REMOVE_TOP;
+            if(!lv_blt_toBool(obj))
+                pc += value->branchAddr - 1;
             break;
+        }
         case OPT_FUNC_CALL: {
             TextBufferObj* func = &STACK_REMOVE_TOP;
             if(value->callArity != func->func->arity) {
