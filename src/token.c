@@ -393,6 +393,7 @@ static TokenType getFuncVal() {
     
     assert(buffer[idx] == '\\');
     idx++;
+    TokenType res;
     if(!buffer[idx] && !reallocBuffer()) {
         //who is inputing these lone backslashes?
         LV_TKN_ERROR = TE_BAD_FUNC_VAL;
@@ -401,13 +402,17 @@ static TokenType getFuncVal() {
     if(issymb(buffer[idx])) {
         //plain symbolic
         getInputWhile(issymb);
+        res = TTY_FUNC_VAL;
     } else if(isidbgn(buffer[idx])) {
         //non-symbolic
-        //we don't need the return value, just the side effect
-        tryGetQualName();
+        TokenType tmp = tryGetQualName();
         if(LV_TKN_ERROR) {
             return -1;
         }
+        if(tmp == TTY_QUAL_IDENT || tmp == TTY_QUAL_SYMBOL)
+            res = TTY_QUAL_FUNC_VAL;
+        else
+            res = TTY_FUNC_VAL;
     } else {
         //again with the lone backslashes!!
         LV_TKN_ERROR = TE_BAD_FUNC_VAL;
@@ -417,7 +422,7 @@ static TokenType getFuncVal() {
     if(buffer[idx] == '\\')
         idx++;
     //don't need to reallocate since it's the end :)
-    return TTY_FUNC_VAL;
+    return res;
 }
 
 static TokenType getString() {
