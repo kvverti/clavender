@@ -14,6 +14,29 @@ static TextBufferObj defined(TextBufferObj* args) {
 }
 
 /**
+ * Returns the undefined value.
+ */
+static TextBufferObj undefined(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_UNDEFINED;
+    return res;
+}
+
+/**
+ * Converts object to string.
+ */
+static TextBufferObj str(TextBufferObj* args) {
+    
+    if(args[0].type == OPT_STRING)
+        return args[0];
+    TextBufferObj res;
+    res.type = OPT_STRING;
+    res.str = lv_tb_getString(&args[0]);
+    return res;
+}
+
+/**
  * Addition and string concatenation. Assumes two arguments.
  */
 static TextBufferObj plus(TextBufferObj* args) {
@@ -44,30 +67,56 @@ static TextBufferObj plus(TextBufferObj* args) {
 void lv_blt_onStartup() {
     
     #define BUILTIN_NS "sys:"
-    #define COPY_NAME(d, s) \
-        (d) = lv_alloc(sizeof(BUILTIN_NS s)); \
-        memcpy(d, BUILTIN_NS s, sizeof(BUILTIN_NS s))
-        
+    //creates a builtin function with given impl, arity, and name
+    #define MK_FUNC_IMPL(fnc, ar, nm) \
+        op = lv_alloc(sizeof(Operator)); \
+        op->name = lv_alloc(sizeof(BUILTIN_NS nm)); \
+        memcpy(op->name, BUILTIN_NS nm, sizeof(BUILTIN_NS nm)); \
+        op->type = FUN_BUILTIN; \
+        op->arity = ar; \
+        op->fixing = FIX_PRE; \
+        op->captureCount = 0; \
+        op->builtin = fnc; \
+        lv_op_addOperator(op, FNS_PREFIX)
+    //creates "external" builtin function
+    #define MK_FUNC(fnc, ar) MK_FUNC_IMPL(fnc, ar, #fnc)
+    //creates "internal" builtin function
+    #define MK_FUNCN(fnc, ar) MK_FUNC_IMPL(fnc, ar, "__"#fnc"__")
     Operator* op;
+    MK_FUNC(defined, 1);
+    MK_FUNC(undefined, 0);
+    MK_FUNCN(plus, 2);
+    MK_FUNCN(str, 1);
     //defined
-    op = lv_alloc(sizeof(Operator));
-    COPY_NAME(op->name, "defined");
-    op->type = FUN_BUILTIN;
-    op->arity = 1;
-    op->fixing = FIX_PRE;
-    op->captureCount = 0;
-    op->builtin = defined;
-    lv_op_addOperator(op, FNS_PREFIX);
+    // op = lv_alloc(sizeof(Operator));
+    // COPY_NAME(op->name, "defined");
+    // op->type = FUN_BUILTIN;
+    // op->arity = 1;
+    // op->fixing = FIX_PRE;
+    // op->captureCount = 0;
+    // op->builtin = defined;
+    // lv_op_addOperator(op, FNS_PREFIX);
+    //undefined
+    // op = lv_alloc(sizeof(Operator));
+    // COPY_NAME(op->name, "undefined");
+    // op->type = FUN_BUILTIN;
+    // op->arity = 0;
+    // op->fixing = FIX_PRE;
+    // op->captureCount = 0;
+    // op->builtin = undefined;
+    // lv_op_addOperator(op, FNS_PREFIX);
     //add
-    op = lv_alloc(sizeof(Operator));
-    COPY_NAME(op->name, "__plus__");
-    op->type = FUN_BUILTIN;
-    op->arity = 2;
-    op->fixing = FIX_PRE;
-    op->captureCount = 0;
-    op->builtin = plus;
-    lv_op_addOperator(op, FNS_PREFIX);
-    #undef COPY_NAME
+    // op = lv_alloc(sizeof(Operator));
+    // COPY_NAME(op->name, "__plus__");
+    // op->type = FUN_BUILTIN;
+    // op->arity = 2;
+    // op->fixing = FIX_PRE;
+    // op->captureCount = 0;
+    // op->builtin = plus;
+    // lv_op_addOperator(op, FNS_PREFIX);
+    #undef MK_FUNC
+    #undef MK_FUNCN
+    #undef MK_FUNC_IMPL
     #undef BUILTIN_NS
 }
 
