@@ -848,7 +848,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
     } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
         //and greater or equal precedence if left assoc.
-        int sub = (obj->func->fixing == FIX_RIGHT_IN ? 0 : 1);
+        int sub = (obj->func->fixing != FIX_LEFT_IN ? 0 : 1);
         while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - sub) < 0) {
             if(!shuntOps(cxt))
                 return;
