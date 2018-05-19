@@ -54,6 +54,41 @@ static TextBufferObj str(TextBufferObj* args) {
     return res;
 }
 
+/** Converts object to number. */
+static TextBufferObj num(TextBufferObj* args) {
+    
+    if(args[0].type == OPT_NUMBER)
+        return args[0];
+    //todo
+    TextBufferObj res;
+    res.type = OPT_UNDEFINED;
+    return res;
+}
+
+/**
+ * Returns length of object if defined.
+ */
+static TextBufferObj len(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    switch(args[0].type) {
+        case OPT_STRING:
+            //length of string
+            res.type = OPT_NUMBER;
+            res.number = args[0].str->len;
+            break;
+        case OPT_FUNCTION_VAL:
+            //arity of function
+            res.type = OPT_NUMBER;
+            res.number = args[0].func->arity;
+            break;
+            //todo vectors
+        default:
+            res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 /**
  * Compares two objects for equality.
  */
@@ -149,7 +184,7 @@ static TextBufferObj ge(TextBufferObj* args) {
 /**
  * Addition and string concatenation. Assumes two arguments.
  */
-static TextBufferObj plus(TextBufferObj* args) {
+static TextBufferObj add(TextBufferObj* args) {
     
     TextBufferObj res;
     if(args[0].type == OPT_STRING && args[1].type == OPT_STRING) {
@@ -170,6 +205,47 @@ static TextBufferObj plus(TextBufferObj* args) {
         res.number = args[0].number + args[1].number;
     } else {
         //undefined
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/**
+ * Subtraction. Assumes two arguments.
+ */
+static TextBufferObj sub(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = args[0].number - args[1].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Multiplication */
+static TextBufferObj mul(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = args[0].number * args[1].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Division */
+static TextBufferObj div(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = args[0].number / args[1].number;
+    } else {
         res.type = OPT_UNDEFINED;
     }
     return res;
@@ -196,12 +272,16 @@ void lv_blt_onStartup() {
     Operator* op;
     MK_FUNC(defined, 1);
     MK_FUNC(undefined, 0);
-    MK_FUNCN(plus, 2);
     MK_FUNCN(str, 1);
     MK_FUNC_IMPL(bool_, 1, "__bool__");
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
     MK_FUNCN(ge, 2);
+    MK_FUNCN(add, 2);
+    MK_FUNCN(sub, 2);
+    MK_FUNCN(mul, 2);
+    MK_FUNCN(div, 2);
+    MK_FUNCN(len, 1);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNC_IMPL
