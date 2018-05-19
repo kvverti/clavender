@@ -40,6 +40,14 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
     
     LvString* res;
     switch(obj->type) {
+        case OPT_UNDEFINED: {
+            static char str[] = "<undefined>";
+            res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
+            res->len = sizeof(str) - 1;
+            strcpy(res->value, str);
+            return res;
+        }
         case OPT_STRING: {
             res = obj->str;
             return res;

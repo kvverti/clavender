@@ -55,6 +55,98 @@ static TextBufferObj str(TextBufferObj* args) {
 }
 
 /**
+ * Compares two objects for equality.
+ */
+static TextBufferObj eq(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_NUMBER;
+    if(args[0].type != args[1].type) {
+        //can't be equal if they have different types
+        res.number = 0.0;
+        return res;
+    }
+    switch(args[0].type) {
+        case OPT_UNDEFINED:
+            res.number = 1.0;
+            break;
+        case OPT_NUMBER:
+            res.number = (args[0].number == args[1].number);
+            break;
+        case OPT_STRING:
+            //strings use value equality
+            res.number = (args[0].str->len == args[1].str->len)
+                && (strcmp(args[0].str->value, args[1].str->value) == 0);
+            break;
+        case OPT_FUNCTION:
+            //todo capture values
+            res.number = (args[0].func == args[1].func);
+            break;
+        default:
+            res.number = 0.0;
+    }
+    return res;
+}
+
+/**
+ * Compares two objects for less than.
+ */
+static bool ltImpl(TextBufferObj* args) {
+    
+    if(args[0].type != args[1].type) {
+        return (args[0].type < args[1].type);
+    }
+    switch(args[0].type) {
+        case OPT_UNDEFINED:
+            return false;
+            break;
+        case OPT_NUMBER:
+            return (args[0].number < args[1].number);
+            break;
+        case OPT_STRING:
+            return (strcmp(args[0].str->value, args[1].str->value) < 0);
+            break;
+        case OPT_FUNCTION:
+            //todo capture values
+            return (strcmp(args[0].func->name, args[1].func->name) < 0);
+            break;
+        default:
+            return false;
+    }
+}
+
+static TextBufferObj lt(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_NUMBER;
+    if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
+    && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
+        //one of them is NaN
+        res.number = 0.0;
+        return res;
+    }
+    res.number = ltImpl(args);
+    return res;
+}
+
+//we need both lt and ge because NaN always compares false.
+//the Lavender comparison functions use either lt or ge
+//as appropriate.
+static TextBufferObj ge(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_NUMBER;
+    if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
+    && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
+        //one of them is NaN
+        res.number = 0.0;
+        return res;
+    }
+    res.number = !ltImpl(args);
+    return res;
+}
+
+/**
  * Addition and string concatenation. Assumes two arguments.
  */
 static TextBufferObj plus(TextBufferObj* args) {
@@ -107,6 +199,9 @@ void lv_blt_onStartup() {
     MK_FUNCN(plus, 2);
     MK_FUNCN(str, 1);
     MK_FUNC_IMPL(bool_, 1, "__bool__");
+    MK_FUNCN(eq, 2);
+    MK_FUNCN(lt, 2);
+    MK_FUNCN(ge, 2);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNC_IMPL
