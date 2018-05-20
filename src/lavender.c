@@ -1,6 +1,7 @@
 #include "lavender.h"
 #include "expression.h"
 #include "builtin.h"
+#include "command.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -152,20 +153,26 @@ static void readInput(FILE* in, bool repl) {
         LV_TKN_ERROR = 0;
         return;
     }
-    Token* tmp = toks;
+/*     Token* tmp = toks;
     while(tmp) {
         if(strcmp(tmp->value, "@") == 0) {
             lv_tkn_free(toks);
             lv_shutdown();
         }
         tmp = tmp->next;
-    }
+    } */
     if(toks) {
         //it's not going into the list, auto alloc is fine
         Operator scope;
         memset(&scope, 0, sizeof(Operator));
         scope.type = FUN_FWD_DECL;  //because its a "declaration"
-        if(isFuncDef(toks)) {
+        if(toks->value[0] == '@') {
+            Token* cmd = toks->next;
+            lv_free(toks); //free '@' token because we may not return
+            lv_cmd_run(cmd);
+            puts(lv_cmd_message);
+            toks = cmd; //so it's freed later
+        } else if(isFuncDef(toks)) {
             //define function
             Operator* op;
             scope.name = "repl";    //namespace
