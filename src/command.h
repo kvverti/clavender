@@ -16,4 +16,7 @@ bool lv_cmd_run(Token* first);
  */
 char* lv_cmd_message;
 
+void lv_cmd_onStartup();
+void lv_cmd_onShutdown();
+
 #endif

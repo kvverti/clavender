@@ -508,7 +508,9 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     //we find the function with the simple name
     //in the innermost scope possible by going
     //through outer scopes until we can't find
-    //a function definition.
+    //a function definition. Only if there is
+    //no function name in the scope ladder do
+    //we go for imported function names.
     size_t valueLen = strlen(name);
     char* nsbegin = cxt->decl->name;
     Operator* func = NULL;
@@ -532,6 +534,8 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     } while(cxt->startOfName != nsbegin);
     //test is null. func should contain the function
     if(!func) {
+        //try imported function names
+        //TODO ...
         //that name does not exist!
         LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
         return;

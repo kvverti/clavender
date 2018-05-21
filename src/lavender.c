@@ -115,10 +115,12 @@ void lv_startup() {
     lv_op_onStartup();
     lv_tb_onStartup();
     lv_blt_onStartup();
+    lv_cmd_onStartup();
 }
 
 void lv_shutdown() {
     
+    lv_cmd_onShutdown();
     lv_blt_onShutdown();
     lv_tb_onShutdown();
     lv_op_onShutdown();

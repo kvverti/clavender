@@ -1,6 +1,7 @@
 #include "builtin.h"
 #include "lavender.h"
 #include <string.h>
+#include <assert.h>
 
 /**
  * Returns whether the argument is defined (i.e. not undefined).
@@ -20,6 +21,50 @@ static TextBufferObj undefined(TextBufferObj* args) {
     
     TextBufferObj res;
     res.type = OPT_UNDEFINED;
+    return res;
+}
+
+#define NUM_TYPES 4
+static LvString* types[NUM_TYPES];
+
+static void mkTypes() {
+    
+    #define INIT(i, n) \
+        types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
+        types[i]->len = sizeof(n) - 1; \
+        types[i]->refCount = 1; \
+        memcpy(types[i]->value, n, sizeof(n) - 1)
+    INIT(0, "undefined");
+    INIT(1, "number");
+    INIT(2, "string");
+    INIT(3, "function");
+    #undef INIT
+}
+
+/**
+ * Returns the type of this object, as a string.
+ * Possible types are: "undefined", "number", "string", "function"
+ */
+static TextBufferObj typeof_(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_STRING;
+    switch(args[0].type) {
+        case OPT_UNDEFINED:
+            res.str = types[0];
+            break;
+        case OPT_NUMBER:
+            res.str = types[1];
+            break;
+        case OPT_STRING:
+            res.str = types[2];
+            break;
+        case OPT_FUNCTION_VAL:
+            res.str = types[3];
+            break;
+        default:
+            assert(false);
+    }
     return res;
 }
 
@@ -113,7 +158,7 @@ static TextBufferObj eq(TextBufferObj* args) {
             res.number = (args[0].str->len == args[1].str->len)
                 && (strcmp(args[0].str->value, args[1].str->value) == 0);
             break;
-        case OPT_FUNCTION:
+        case OPT_FUNCTION_VAL:
             //todo capture values
             res.number = (args[0].func == args[1].func);
             break;
@@ -141,7 +186,7 @@ static bool ltImpl(TextBufferObj* args) {
         case OPT_STRING:
             return (strcmp(args[0].str->value, args[1].str->value) < 0);
             break;
-        case OPT_FUNCTION:
+        case OPT_FUNCTION_VAL:
             //todo capture values
             return (strcmp(args[0].func->name, args[1].func->name) < 0);
             break;
@@ -253,6 +298,7 @@ static TextBufferObj div(TextBufferObj* args) {
 
 void lv_blt_onStartup() {
     
+    mkTypes();
     #define BUILTIN_NS "sys:"
     //creates a builtin function with given impl, arity, and name
     #define MK_FUNC_IMPL(fnc, ar, nm) \
@@ -272,6 +318,7 @@ void lv_blt_onStartup() {
     Operator* op;
     MK_FUNC(defined, 1);
     MK_FUNC(undefined, 0);
+    MK_FUNC_IMPL(typeof_, 1, "typeof");
     MK_FUNCN(str, 1);
     MK_FUNC_IMPL(bool_, 1, "__bool__");
     MK_FUNCN(eq, 2);
@@ -290,4 +337,6 @@ void lv_blt_onStartup() {
 
 void lv_blt_onShutdown() {
     
+    for(int i = 0; i < NUM_TYPES; i++)
+        lv_free(types[i]);
 }
