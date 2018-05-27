@@ -232,7 +232,7 @@ void lv_cmd_getUsingScopes(char*** scopes, size_t* len) {
 static bool using(Token* head) {
     
     head = head->next;
-    if(!head) {
+    if(!head || head->next) {
         lv_cmd_message = "Usage: @using <name(space)>";
         return false;
     }
@@ -252,32 +252,28 @@ static bool using(Token* head) {
         case TTY_QUAL_IDENT:
         case TTY_QUAL_SYMBOL: {
             //using specific
-            bool addedAtLeastOneName = false;
-            for(FuncNamespace ns = 0; ns < FNS_COUNT; ns++) {
-                Operator* op = lv_op_getOperator(head->value, ns);
-                if(!op) {
-                    continue;
-                }
-                addedAtLeastOneName = true;
-                char* qualName;
-                {
-                    size_t len = strlen(head->value) + 1;
-                    qualName = lv_alloc(len);
-                    memcpy(qualName, head->value, len);
-                }
-                char* simpleName;
-                {
-                    char* tmp = strchr(qualName, ':') + 1;
-                    size_t len = strlen(tmp) + 1;
-                    simpleName = lv_alloc(len);
-                    memcpy(simpleName, tmp, len);
-                }
-                tableAdd(&usingNames, simpleName, qualName);
+            Operator* op = NULL;
+            for(FuncNamespace ns = 0; (ns < FNS_COUNT) && !op; ns++) {
+                op = lv_op_getOperator(head->value, ns);
             }
-            if(!addedAtLeastOneName) {
+            if(!op) {
                 lv_cmd_message = "Error: name not found";
                 return false;
             }
+            char* qualName;
+            {
+                size_t len = strlen(head->value) + 1;
+                qualName = lv_alloc(len);
+                memcpy(qualName, head->value, len);
+            }
+            char* simpleName;
+            {
+                char* tmp = strchr(qualName, ':') + 1;
+                size_t len = strlen(tmp) + 1;
+                simpleName = lv_alloc(len);
+                memcpy(simpleName, tmp, len);
+            }
+            tableAdd(&usingNames, simpleName, qualName);
             lv_cmd_message = "Using successful";
             return true;
         }
