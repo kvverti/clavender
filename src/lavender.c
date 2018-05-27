@@ -155,14 +155,6 @@ static void readInput(FILE* in, bool repl) {
         LV_TKN_ERROR = 0;
         return;
     }
-/*     Token* tmp = toks;
-    while(tmp) {
-        if(strcmp(tmp->value, "@") == 0) {
-            lv_tkn_free(toks);
-            lv_shutdown();
-        }
-        tmp = tmp->next;
-    } */
     if(toks) {
         //it's not going into the list, auto alloc is fine
         Operator scope;
@@ -243,7 +235,8 @@ static void runCycle() {
         }
         case OPT_FUNC_CALL: {
             TextBufferObj* func = removeTop();
-            if(value->callArity != func->func->arity) {
+            //todo: handle strings
+            if(value->type != OPT_FUNCTION_VAL || value->callArity != func->func->arity) {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
                 TextBufferObj nan;

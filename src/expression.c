@@ -1,5 +1,6 @@
 #include "expression.h"
 #include "lavender.h"
+#include "command.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -535,7 +536,20 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     //test is null. func should contain the function
     if(!func) {
         //try imported function names
-        //TODO ...
+        char* n = lv_cmd_getQualNameFor(name);
+        if(n) {
+            func = lv_op_getOperator(n, ns);
+            assert(func);
+        } else {
+            char** scopes;
+            size_t len;
+            lv_cmd_getUsingScopes(&scopes, &len);
+            for(size_t i = 0; (i < len) && !func; i++) {
+                func = lv_op_getScopedOperator(scopes[i], name, ns);
+            }
+        }
+    }
+    if(!func) {
         //that name does not exist!
         LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
         return;

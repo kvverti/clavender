@@ -5,7 +5,7 @@
 
 typedef struct CommandElement {
     char* name;
-    bool (*func)(Token*);
+    bool (*run)(Token*);
 } CommandElement;
 
 static bool quit(Token* head);
@@ -27,7 +27,7 @@ bool lv_cmd_run(Token* head) {
     }
     for(size_t i = 0; i < NUM_COMMANDS; i++) {
         if(strcmp(head->value, COMMANDS[i].name) == 0) {
-            return COMMANDS[i].func(head);
+            return COMMANDS[i].run(head);
         }
     }
     lv_cmd_message = "No command found";
@@ -80,7 +80,7 @@ static char* tableGet(StrHashtable* table, char* key) {
     StrHashNode* head = table->table[idx];
     while(head && strcmp(key, head->key) != 0)
         head = head->next;
-    return head->value;
+    return head ? head->value : NULL;
 }
 
 static bool tableAdd(StrHashtable* table, char* key, char* value) {
@@ -166,6 +166,14 @@ static void nodeFree(StrHashNode* node) {
 static StrHashtable importNames;
 static StrHashtable usingNames;
 
+//number of imported scopes should be small
+#define INIT_NUM_SCOPES 8
+static struct Scopes {
+    char** data;
+    size_t cap;
+    size_t len;
+} nameScopes;
+
 void lv_cmd_onStartup() {
     
     importNames.table = lv_alloc(INIT_TABLE_LEN * sizeof(StrHashNode*));
@@ -176,10 +184,17 @@ void lv_cmd_onStartup() {
     memset(usingNames.table, 0, INIT_TABLE_LEN * sizeof(StrHashNode*));
     usingNames.cap = INIT_TABLE_LEN;
     usingNames.size = 0;
+    nameScopes.data = lv_alloc(INIT_NUM_SCOPES * sizeof(char*));
+    nameScopes.cap = INIT_NUM_SCOPES;
+    nameScopes.len = 0;
 }
 
 void lv_cmd_onShutdown() {
     
+    for(size_t i = 0; i < nameScopes.len; i++) {
+        lv_free(nameScopes.data[i]);
+    }
+    lv_free(nameScopes.data);
     tableClear(&importNames);
     tableClear(&usingNames);
     lv_free(importNames.table);
@@ -194,6 +209,26 @@ static bool import(Token* head) {
     return false;
 }
 
+char* lv_cmd_getQualNameFor(char* simpleName) {
+    
+    return tableGet(&usingNames, simpleName);
+}
+
+void addScope(char* sc) {
+    
+    if(nameScopes.len + 1 == nameScopes.cap) {
+        nameScopes.data = lv_realloc(nameScopes.data, nameScopes.cap * 2 * sizeof(char*));
+        nameScopes.cap *= 2;
+    }
+    nameScopes.data[nameScopes.len++] = sc;
+}
+
+void lv_cmd_getUsingScopes(char*** scopes, size_t* len) {
+    
+    *scopes = nameScopes.data;
+    *len = nameScopes.len;
+}
+
 static bool using(Token* head) {
     
     head = head->next;
@@ -202,10 +237,18 @@ static bool using(Token* head) {
         return false;
     }
     switch(head->type) {
-        case TTY_IDENT:
+        case TTY_IDENT: {
             //using namespace
-            
-            break;
+            char* scope;
+            {
+                size_t len = strlen(head->value) + 1;
+                scope = lv_alloc(len);
+                memcpy(scope, head->value, len);
+            }
+            addScope(scope);
+            lv_cmd_message = "Using successful";
+            return true;
+        }
         case TTY_QUAL_IDENT:
         case TTY_QUAL_SYMBOL: {
             //using specific
@@ -239,7 +282,7 @@ static bool using(Token* head) {
             return true;
         }
         default:
-            lv_cmd_message = "Error: not a name";
+            lv_cmd_message = "Error: not a valid name";
             return false;
     }
     lv_cmd_message = "Using not implemented";

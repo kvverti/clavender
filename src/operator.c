@@ -19,13 +19,39 @@ static Operator* anonFuncs;
 static void resizeTable(OpHashtable* table);
 static void freeOp(Operator* op);
 
-static size_t hash(char* str) {
+static size_t hashInit(size_t init, char* str) {
     //djb2 hash
-    size_t res = 5381;
+    size_t res = init;
     int c;
     while((c = *str++))
         res = ((res << 5) + res) + c;
     return res;
+}
+
+static size_t hash(char* str) {
+    
+    return hashInit(5381, str);
+}
+
+static size_t hashQual(char* scope, char* name) {
+    
+    static char* col = ":";
+    size_t res = hash(scope);
+    res = hashInit(res, col);
+    res = hashInit(res, name);
+    return res;
+}
+
+static bool qualNameEq(char* name1, char* scope, char* name2) {
+    
+    size_t len = strlen(scope);
+    if(strncmp(name1, scope, len) != 0)
+        return false;
+    if(name1[len] != ':')
+        return false;
+    if(strcmp(name1 + len + 1, name2) != 0)
+        return false;
+    return true;
 }
 
 Operator* lv_op_getOperator(char* name, FuncNamespace ns) {
@@ -36,6 +62,17 @@ Operator* lv_op_getOperator(char* name, FuncNamespace ns) {
     size_t idx = hash(name) & (table->cap - 1);
     Operator* head = table->table[idx];
     while(head && strcmp(name, head->name) != 0)
+        head = head->next;
+    return head;
+}
+
+Operator* lv_op_getScopedOperator(char* scope, char* name, FuncNamespace ns) {
+
+    assert(ns >= 0 && ns < FNS_COUNT);
+    OpHashtable* table = &funcNamespaces[ns];
+    size_t idx = hashQual(scope, name) & (table->cap - 1);
+    Operator* head = table->table[idx];
+    while(head && !qualNameEq(head->name, scope, name) != 0)
         head = head->next;
     return head;
 }

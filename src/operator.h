@@ -56,6 +56,12 @@ typedef struct Operator {
 Operator* lv_op_getOperator(char* name, FuncNamespace ns);
 
 /**
+ * Retrieves the operator with the given name
+ * in the given scope. Returns NULL if no such operator exists.
+ */
+Operator* lv_op_getScopedOperator(char* scope, char* name, FuncNamespace ns);
+
+/**
  * Adds the operator to the hashtable.
  * Returns whether the operator was successfully added.
  * If the operator has no name, it is not added to the
@@ -69,6 +75,10 @@ bool lv_op_addOperator(Operator* op, FuncNamespace ns);
  * the operator was present.
  */
 bool lv_op_removeOperator(char* name, FuncNamespace ns);
+
+/**
+ * Retrieves all operators in the specified scope.
+ */
 
 void lv_op_onStartup();
 //called on lv_shutdown
