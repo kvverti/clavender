@@ -28,6 +28,7 @@ typedef enum TokenError {
     TE_BAD_FUNC_VAL,    //bad function value
     TE_UNTERM_STR,      //unterminated string
     TE_BAD_STR_ESC,     //bad string escape sequence
+    TE_BAD_STR_CHR,     //bad string character
     TE_UNBAL_PAREN      //unbalanced parens
 } TokenError;
 

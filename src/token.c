@@ -16,7 +16,7 @@ static TokenType getLiteral();
 
 char* lv_tkn_getError(TokenError err) {
     
-    #define LEN 7
+    #define LEN 8
     static char* msg[LEN] = {
         "Namespace without name",
         "Number ends in '.'",
@@ -24,6 +24,7 @@ char* lv_tkn_getError(TokenError err) {
         "Missing function value",
         "Unterminated string",
         "Unknown string escape sequence",
+        "Invalid character in string",
         "Unbalanced parentheses"
     };
     assert(err > 0 && err <= LEN);
@@ -453,6 +454,11 @@ static TokenType getString() {
                     return -1;
             }
         } else {
+            if(buffer[idx] == '\n') {
+                //these characters not allowed in strings
+                LV_TKN_ERROR = TE_BAD_STR_CHR;
+                return -1;
+            }
             idx++;
             if(!buffer[idx] && !reallocBuffer()) {
                 //unterminated string

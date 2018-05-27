@@ -33,7 +33,7 @@ static void mkTypes() {
         types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
         types[i]->len = sizeof(n) - 1; \
         types[i]->refCount = 1; \
-        memcpy(types[i]->value, n, sizeof(n) - 1)
+        memcpy(types[i]->value, n, sizeof(n))
     INIT(0, "undefined");
     INIT(1, "number");
     INIT(2, "string");
