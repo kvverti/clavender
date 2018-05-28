@@ -287,46 +287,16 @@ static bool import(Token* head) {
         lv_cmd_message = "Usage: @import <file>";
         return false;
     }
-    if(head->type != TTY_STRING) {
+    if(head->type != TTY_IDENT) {
         lv_cmd_message = "Error: Invalid argument format";
         return false;
     }
-    char* value = head->value + 1;
-    {
-        //get the actual string value
-        char* dest = value;
-        char* peek = value;
-        while(*peek != '"') {
-            if(*peek == '\\') {
-                //escape sequences
-                switch(*++peek) {
-                    case 'n': *dest = '\n';
-                        break;
-                    case 't': *dest = '\t';
-                        break;
-                    case '"': *dest = '"';
-                        break;
-                    case '\'': *dest = '\'';
-                        break;
-                    case '\\': *dest = '\\';
-                        break;
-                    default:
-                        assert(false);
-                }
-            } else {
-                *dest = *peek;
-            }
-            dest++;
-            peek++;
-        }
-        *dest = '\0'; //NUL-terminate
-    }
-    // /* debug */ printf("STR: %s\n", value);
+    char* value = head->value;
     //TODO clean up a bit (i.e. less strlen)
     static char ext[] = ".lv";  //lv_filepath/value.lv
     char* file = lv_alloc(strlen(lv_filepath) + 1 + strlen(value) + sizeof(ext));
     strcpy(file, lv_filepath);
-    strcat(file, "/");
+    strcat(file, "/");  // '/' works on all major OS (Windows, Mac, Linux)
     strcat(file, value);
     strcat(file, ext);
     //try the current directory first, then the Lavender filepath
