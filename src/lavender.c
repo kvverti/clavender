@@ -12,7 +12,7 @@ char* lv_filepath = ".";
 char* lv_mainFile = NULL;
 
 static void readInput(FILE* in, bool repl);
-static void runCycle();
+static void runCycle(void);
 
 #define INIT_STACK_SIZE 16
 static struct DataStack {

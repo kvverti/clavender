@@ -4,7 +4,7 @@
 
 bool lv_blt_toBool(TextBufferObj* obj);
 
-void lv_blt_onStartup();
-void lv_blt_onShutdown();
+void lv_blt_onStartup(void);
+void lv_blt_onShutdown(void);
 
 #endif

@@ -78,9 +78,9 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
 /**
  * Clears the text buffer of any data associated with the previous parsed expression.
  */
-void lv_tb_clearExpr();
+void lv_tb_clearExpr(void);
 
-void lv_tb_onStartup();
-void lv_tb_onShutdown();
+void lv_tb_onStartup(void);
+void lv_tb_onShutdown(void);
 
 #endif

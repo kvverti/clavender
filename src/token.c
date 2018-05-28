@@ -6,13 +6,13 @@
 #include <ctype.h>
 #include <assert.h>
 
-static TokenType tryGetFuncSymb();
-static TokenType tryGetQualName();
-static TokenType getSymbol();
-static TokenType getString();
-static TokenType getFuncVal();
-static TokenType getNumber();
-static TokenType getLiteral();
+static TokenType tryGetFuncSymb(void);
+static TokenType tryGetQualName(void);
+static TokenType getSymbol(void);
+static TokenType getString(void);
+static TokenType getFuncVal(void);
+static TokenType getNumber(void);
+static TokenType getLiteral(void);
 
 char* lv_tkn_getError(TokenError err) {
     
@@ -50,7 +50,7 @@ static FILE* input;
 static int bracketNesting; //bracket nesting
 static int parenNesting; //paren nesting
 
-static bool reallocBuffer();
+static bool reallocBuffer(void);
 
 static void setInputEnd() {
     //set inputEnd for the global buffer

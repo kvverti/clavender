@@ -80,8 +80,8 @@ bool lv_op_removeOperator(char* name, FuncNamespace ns);
  * Retrieves all operators in the specified scope.
  */
 
-void lv_op_onStartup();
+void lv_op_onStartup(void);
 //called on lv_shutdown
-void lv_op_onShutdown();
+void lv_op_onShutdown(void);
 
 #endif
