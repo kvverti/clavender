@@ -134,6 +134,12 @@ void lv_repl() {
     readInput(stdin, true);
 }
 
+void lv_readFile(FILE* file) {
+    
+    while(!feof(file))
+        readInput(file, false);
+}
+
 static bool isFuncDef(Token* head) {
     
     //functions may have one level of parens

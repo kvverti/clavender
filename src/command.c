@@ -2,6 +2,8 @@
 #include "lavender.h"
 #include "operator.h"
 #include <string.h>
+#include <stdio.h>
+#include <assert.h>
 
 typedef struct CommandElement {
     char* name;
@@ -203,12 +205,6 @@ void lv_cmd_onShutdown() {
 
 //end hashtable impl
 
-static bool import(Token* head) {
-    
-    lv_cmd_message = "Import not implemented";
-    return false;
-}
-
 char* lv_cmd_getQualNameFor(char* simpleName) {
     
     return tableGet(&usingNames, simpleName);
@@ -281,6 +277,71 @@ static bool using(Token* head) {
             lv_cmd_message = "Error: not a valid name";
             return false;
     }
-    lv_cmd_message = "Using not implemented";
-    return false;
+    assert(false);
+}
+
+static bool import(Token* head) {
+    
+    head = head->next;
+    if(!head || head->next) {
+        lv_cmd_message = "Usage: @import <file>";
+        return false;
+    }
+    if(head->type != TTY_STRING) {
+        lv_cmd_message = "Error: Invalid argument format";
+        return false;
+    }
+    char* value = head->value + 1;
+    {
+        //get the actual string value
+        char* dest = value;
+        char* peek = value;
+        while(*peek != '"') {
+            if(*peek == '\\') {
+                //escape sequences
+                switch(*++peek) {
+                    case 'n': *dest = '\n';
+                        break;
+                    case 't': *dest = '\t';
+                        break;
+                    case '"': *dest = '"';
+                        break;
+                    case '\'': *dest = '\'';
+                        break;
+                    case '\\': *dest = '\\';
+                        break;
+                    default:
+                        assert(false);
+                }
+            } else {
+                *dest = *peek;
+            }
+            dest++;
+            peek++;
+        }
+        *dest = '\0'; //NUL-terminate
+    }
+    // /* debug */ printf("STR: %s\n", value);
+    //TODO clean up a bit (i.e. less strlen)
+    static char ext[] = ".lv";  //lv_filepath/value.lv
+    char* file = lv_alloc(strlen(lv_filepath) + 1 + strlen(value) + sizeof(ext));
+    strcpy(file, lv_filepath);
+    strcat(file, "/");
+    strcat(file, value);
+    strcat(file, ext);
+    //try the current directory first, then the Lavender filepath
+    FILE* importFile = fopen(file + strlen(lv_filepath) + 1, "r");
+    if(!importFile) {
+        importFile = fopen(file, "r");
+        if(!importFile) {
+            lv_free(file);
+            lv_cmd_message = "Error: unable to open file";
+            return false;
+        }
+    }
+    lv_readFile(importFile);
+    fclose(importFile);
+    lv_free(file);
+    lv_cmd_message = "Import successful";
+    return true;
 }
