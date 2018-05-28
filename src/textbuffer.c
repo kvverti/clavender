@@ -323,14 +323,14 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
     return ret;
 }
 
-void lv_tb_clearExpr() {
+void lv_tb_clearExpr(void) {
     
     lv_expr_cleanup(TEXT_BUFFER + startOfTmpExpr, textBufferTop - startOfTmpExpr);
     textBufferTop = startOfTmpExpr;
     startOfTmpExpr = textBufferTop;
 }
 
-void lv_tb_onStartup() {
+void lv_tb_onStartup(void) {
  
     TEXT_BUFFER = lv_alloc(INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
     memset(TEXT_BUFFER, 0, INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
@@ -339,7 +339,7 @@ void lv_tb_onStartup() {
     startOfTmpExpr = 0;
 }
 
-void lv_tb_onShutdown() {
+void lv_tb_onShutdown(void) {
     
     lv_expr_free(TEXT_BUFFER, textBufferTop);
 }

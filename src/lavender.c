@@ -41,7 +41,7 @@ static void popAll(size_t numToPop) {
     stack.len -= numToPop;
 }
 
-static TextBufferObj* removeTop() {
+static TextBufferObj* removeTop(void) {
     
     TextBufferObj* res = &stack.data[--stack.len];
     if(res->type == OPT_STRING)
@@ -49,7 +49,7 @@ static TextBufferObj* removeTop() {
     return res;
 }
 
-void lv_run() {
+void lv_run(void) {
     
     lv_startup();
     if(lv_mainFile) {
@@ -106,7 +106,7 @@ void lv_free(void* ptr) {
     free(ptr);
 }
 
-void lv_startup() {
+void lv_startup(void) {
     
     stack.data = lv_alloc(INIT_STACK_SIZE * sizeof(TextBufferObj));
     stack.cap = INIT_STACK_SIZE;
@@ -118,7 +118,7 @@ void lv_startup() {
     lv_cmd_onStartup();
 }
 
-void lv_shutdown() {
+void lv_shutdown(void) {
     
     lv_cmd_onShutdown();
     lv_blt_onShutdown();
@@ -129,7 +129,7 @@ void lv_shutdown() {
     exit(0);
 }
 
-void lv_repl() {
+void lv_repl(void) {
     
     readInput(stdin, true);
 }
@@ -218,7 +218,7 @@ static void readInput(FILE* in, bool repl) {
     lv_tkn_free(toks);
 }
 
-static void runCycle() {
+static void runCycle(void) {
     
     TextBufferObj* value = &TEXT_BUFFER[pc++];
     switch(value->type) {

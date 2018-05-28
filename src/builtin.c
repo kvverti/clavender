@@ -27,7 +27,7 @@ static TextBufferObj undefined(TextBufferObj* args) {
 #define NUM_TYPES 4
 static LvString* types[NUM_TYPES];
 
-static void mkTypes() {
+static void mkTypes(void) {
     
     #define INIT(i, n) \
         types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
@@ -296,7 +296,7 @@ static TextBufferObj div(TextBufferObj* args) {
     return res;
 }
 
-void lv_blt_onStartup() {
+void lv_blt_onStartup(void) {
     
     mkTypes();
     #define BUILTIN_NS "sys:"
@@ -335,7 +335,7 @@ void lv_blt_onStartup() {
     #undef BUILTIN_NS
 }
 
-void lv_blt_onShutdown() {
+void lv_blt_onShutdown(void) {
     
     for(int i = 0; i < NUM_TYPES; i++)
         lv_free(types[i]);

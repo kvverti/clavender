@@ -52,7 +52,7 @@ static int parenNesting; //paren nesting
 
 static bool reallocBuffer(void);
 
-static void setInputEnd() {
+static void setInputEnd(void) {
     //set inputEnd for the global buffer
     bool endOfLine = (parenNesting == 0
         && bracketNesting == 0
@@ -125,7 +125,7 @@ static void fgetsWrapper(char* buf, int n, FILE* stream) {
 //reallocates the buffer with the start of the buffer
 //at 'bgn'. If bgn == 0, also increases the buffer size.
 //returns whether the buffer was reallocated.
-static bool reallocBuffer() {
+static bool reallocBuffer(void) {
     
     assert(bgn >= 0 && bgn < BUFFER_LEN);
     if(inputEnd)
@@ -232,7 +232,7 @@ Token* lv_tkn_split(FILE* in) {
     return head;
 }
 
-static TokenType getLiteral() {
+static TokenType getLiteral(void) {
     
     switch(buffer[idx]) {
         case '(': parenNesting++;
@@ -254,7 +254,7 @@ static TokenType getLiteral() {
 }
 
 //returns the index of the next unprocessed char
-static TokenType tryGetFuncSymb() {
+static TokenType tryGetFuncSymb(void) {
     //  TTY_FUNC_SYMBOL
     //fallback to
     //  TTY_IDENT
@@ -289,7 +289,7 @@ static TokenType tryGetFuncSymb() {
     return tryGetQualName();
 }
 
-static TokenType tryGetQualName() {
+static TokenType tryGetQualName(void) {
     //  TTY_IDENT
     //fallback to
     //  TTY_QUAL_SYMBOL
@@ -326,14 +326,14 @@ static TokenType tryGetQualName() {
     return type;
 }
 
-static TokenType getSymbol() {
+static TokenType getSymbol(void) {
     
     assert(issymb(buffer[idx]));
     getInputWhile(issymb);
     return TTY_SYMBOL;
 }
 
-static TokenType getNumber() {
+static TokenType getNumber(void) {
     
     if(isdigit(buffer[idx])) {
         //start with whole number
@@ -390,7 +390,7 @@ static TokenType getNumber() {
     return TTY_NUMBER;
 }
 
-static TokenType getFuncVal() {
+static TokenType getFuncVal(void) {
     
     assert(buffer[idx] == '\\');
     idx++;
@@ -426,7 +426,7 @@ static TokenType getFuncVal() {
     return res;
 }
 
-static TokenType getString() {
+static TokenType getString(void) {
     
     //idx = bgn;
     assert(buffer[idx] == '"');

@@ -168,7 +168,7 @@ static void freeList(Operator* head) {
     }
 }
 
-void lv_op_onStartup() {
+void lv_op_onStartup(void) {
     
     for(int i = 0; i < FNS_COUNT; i++) {
         funcNamespaces[i].table = lv_alloc(INIT_TABLE_LEN * sizeof(Operator*));
@@ -178,7 +178,7 @@ void lv_op_onStartup() {
     }
 }
 
-void lv_op_onShutdown() {
+void lv_op_onShutdown(void) {
     
     freeList(anonFuncs);
     for(int i = 0; i < FNS_COUNT; i++) {

@@ -176,7 +176,7 @@ static struct Scopes {
     size_t len;
 } nameScopes;
 
-void lv_cmd_onStartup() {
+void lv_cmd_onStartup(void) {
     
     importNames.table = lv_alloc(INIT_TABLE_LEN * sizeof(StrHashNode*));
     memset(importNames.table, 0, INIT_TABLE_LEN * sizeof(StrHashNode*));
@@ -191,7 +191,7 @@ void lv_cmd_onStartup() {
     nameScopes.len = 0;
 }
 
-void lv_cmd_onShutdown() {
+void lv_cmd_onShutdown(void) {
     
     for(size_t i = 0; i < nameScopes.len; i++) {
         lv_free(nameScopes.data[i]);
