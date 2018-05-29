@@ -49,6 +49,32 @@ static TextBufferObj* removeTop(void) {
     return res;
 }
 
+//simple linear storage should be enough
+//for the relatively small number of namespaces
+#define INIT_IMPORTED_SIZE 16
+static struct ImportedFiles {
+    char** data;
+    size_t cap;
+    size_t len;
+} importedFiles;
+
+static bool addFile(char* file) {
+    
+    for(size_t i = 0; i < importedFiles.len; i++) {
+        if(strcmp(importedFiles.data[i], file) == 0)
+            return false; //already imported
+    }
+    if(importedFiles.len + 1 == importedFiles.cap) {
+        importedFiles.data = lv_realloc(importedFiles.data, 2 * importedFiles.cap * sizeof(char*));
+        importedFiles.cap *= 2;
+    }
+    size_t len = strlen(file) + 1;
+    char* tmp = lv_alloc(len);
+    memcpy(tmp, file, len);
+    importedFiles.data[importedFiles.len++] = tmp;
+    return true;
+}
+
 void lv_run(void) {
     
     lv_startup();
@@ -112,6 +138,9 @@ void lv_startup(void) {
     stack.cap = INIT_STACK_SIZE;
     stack.len = 0;
     pc = fp = 0;
+    importedFiles.data = lv_alloc(INIT_IMPORTED_SIZE * sizeof(char*));
+    importedFiles.cap = INIT_IMPORTED_SIZE;
+    importedFiles.len = 0;
     lv_op_onStartup();
     lv_tb_onStartup();
     lv_blt_onStartup();
@@ -125,6 +154,10 @@ void lv_shutdown(void) {
     lv_tb_onShutdown();
     lv_op_onShutdown();
     lv_expr_cleanup(stack.data, stack.len);
+    for(size_t i = 0; i < importedFiles.len; i++) {
+        lv_free(importedFiles.data[i]);
+    }
+    lv_free(importedFiles.data);
     lv_free(stack.data);
     exit(0);
 }
@@ -136,6 +169,8 @@ void lv_repl(void) {
 
 bool lv_readFile(char* name) {
     
+    if(!addFile(name))
+        return true; //nothing to do..
     //open file
     //TODO clean up a bit (i.e. less strlen)
     static char ext[] = ".lv";  //lv_filepath/name.lv
