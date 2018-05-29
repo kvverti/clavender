@@ -279,7 +279,8 @@ static void runCycle(void) {
         case OPT_FUNCTION: {
             switch(value->func->type) {
                 case FUN_FWD_DECL: {
-                    //handle error
+                    //this should never happen
+                    assert(false);
                     break;
                 }
                 case FUN_BUILTIN: {
@@ -314,14 +315,17 @@ static void runCycle(void) {
             break;
         }
         case OPT_RETURN: {
-            TextBufferObj* retVal = removeTop();
+            //bypass removeTop for the return value
+            //so we keep its string refCount intact
+            //this keeps popAll from freeing the return value
+            TextBufferObj* retVal = &stack.data[--stack.len];
             //reset pc and fp
             pc = removeTop()->addr;
             size_t tmpFp = removeTop()->addr;
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
-            push(retVal);
+            stack.data[stack.len++] = *retVal;
             break;
         }
         default:
