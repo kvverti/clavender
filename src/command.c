@@ -2,7 +2,6 @@
 #include "lavender.h"
 #include "operator.h"
 #include <string.h>
-#include <stdio.h>
 #include <assert.h>
 
 typedef struct CommandElement {
@@ -291,27 +290,11 @@ static bool import(Token* head) {
         lv_cmd_message = "Error: Invalid argument format";
         return false;
     }
-    char* value = head->value;
-    //TODO clean up a bit (i.e. less strlen)
-    static char ext[] = ".lv";  //lv_filepath/value.lv
-    char* file = lv_alloc(strlen(lv_filepath) + 1 + strlen(value) + sizeof(ext));
-    strcpy(file, lv_filepath);
-    strcat(file, "/");  // '/' works on all major OS (Windows, Mac, Linux)
-    strcat(file, value);
-    strcat(file, ext);
-    //try the current directory first, then the Lavender filepath
-    FILE* importFile = fopen(file + strlen(lv_filepath) + 1, "r");
-    if(!importFile) {
-        importFile = fopen(file, "r");
-        if(!importFile) {
-            lv_free(file);
-            lv_cmd_message = "Error: unable to open file";
-            return false;
-        }
+    if(lv_readFile(head->value)) {
+        lv_cmd_message = "Import successful";
+        return true;
+    } else {
+        lv_cmd_message = "Import failed";
+        return false;
     }
-    lv_readFile(importFile);
-    fclose(importFile);
-    lv_free(file);
-    lv_cmd_message = "Import successful";
-    return true;
 }

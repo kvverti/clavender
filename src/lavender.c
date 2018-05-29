@@ -134,10 +134,33 @@ void lv_repl(void) {
     readInput(stdin, true);
 }
 
-void lv_readFile(FILE* file) {
+bool lv_readFile(char* name) {
     
-    while(!feof(file))
-        readInput(file, false);
+    //open file
+    //TODO clean up a bit (i.e. less strlen)
+    static char ext[] = ".lv";  //lv_filepath/name.lv
+    char* file = lv_alloc(strlen(lv_filepath) + 1 + strlen(name) + sizeof(ext));
+    strcpy(file, lv_filepath);
+    strcat(file, "/");  // '/' works on all major OS (Windows, Mac, Linux)
+    strcat(file, name);
+    strcat(file, ext);
+    //try the current directory first, then the Lavender filepath
+    FILE* importFile = fopen(file + strlen(lv_filepath) + 1, "r");
+    if(!importFile) {
+        importFile = fopen(file, "r");
+        if(!importFile) {
+            lv_free(file);
+            return false;
+        }
+    }
+    //end open file
+    //parse file
+    while(!feof(importFile)) {
+        readInput(importFile, false);
+    }
+    fclose(importFile);
+    lv_free(file);
+    return true;
 }
 
 static bool isFuncDef(Token* head) {
