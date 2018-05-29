@@ -81,12 +81,6 @@ static int isident(int c) {
     return isidbgn(c) || isdigit(c);
 }
 
-//for line comments
-static int isnotnl(int c) {
-    
-    return c != '\n';
-}
-
 //loops over the input while the passed
 //predicate is satisfied and there is input.
 static void getInputWhile(int (*pred)(int)) {
@@ -98,6 +92,20 @@ static void getInputWhile(int (*pred)(int)) {
             break;
         }
     } while(pred(buffer[idx]));
+}
+
+//eats comment without saving the input
+//so we don't have to reallocate the buffer
+static void eatComment(void) {
+    
+    do {
+        bgn++;
+        idx++;
+        if(!buffer[idx] && !reallocBuffer()) {
+            //no more input
+            break;
+        }
+    } while(buffer[idx] != '\n');
 }
 
 static void fgetsWrapper(char* buf, int n, FILE* stream) {
@@ -162,7 +170,7 @@ Token* lv_tkn_split(FILE* in) {
     //reset static vars
     input = in;
     inputEnd = false;
-    BUFFER_LEN = 6;
+    BUFFER_LEN = 64;
     buffer = lv_alloc(BUFFER_LEN);
     memset(buffer, 0, BUFFER_LEN); //initialize buffer
     bgn = idx = parenNesting = bracketNesting = 0;
@@ -177,7 +185,7 @@ Token* lv_tkn_split(FILE* in) {
         //check for comment
         if(c == '\'') {
             //increment until next newline
-            getInputWhile(isnotnl);
+            eatComment();
         } else if(isspace(c)) {
             idx++; //eat spaces
         } else if(isidbgn(c)) {

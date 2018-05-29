@@ -6,7 +6,7 @@
 
 //redeclaration of the global text buffer
 TextBufferObj* TEXT_BUFFER;
-#define INIT_TEXT_BUFFER_LEN 8
+#define INIT_TEXT_BUFFER_LEN 1024
 static size_t textBufferLen;    //one past the end of the buffer
 static size_t textBufferTop;    //one past the top of the buffer
 
