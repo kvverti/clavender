@@ -2,6 +2,7 @@
 #include "expression.h"
 #include "builtin.h"
 #include "command.h"
+#include "dynbuffer.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,36 +15,27 @@ char* lv_mainFile = NULL;
 static void readInput(FILE* in, bool repl);
 static void runCycle(void);
 
-#define INIT_STACK_SIZE 16
-static struct DataStack {
-    TextBufferObj* data;
-    size_t cap;     //total capacity of stack
-    size_t len;     //size of stack
-} stack;
+static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
 
 static void push(TextBufferObj* obj) {
     
-    if(stack.len == stack.cap) {
-        stack.data = lv_realloc(stack.data, stack.cap * 2 * sizeof(TextBufferObj));
-        stack.cap *= 2;
-    }
     if(obj->type == OPT_STRING)
         obj->str->refCount++;
-    stack.data[stack.len++] = *obj;
+    lv_buf_push(&stack, obj);
 }
 
 static void popAll(size_t numToPop) {
     
-    TextBufferObj* start = stack.data + (stack.len - numToPop);
+    TextBufferObj* start = lv_buf_get(&stack, stack.len - numToPop);
     lv_expr_cleanup(start, numToPop);
     stack.len -= numToPop;
 }
 
 static TextBufferObj* removeTop(void) {
     
-    TextBufferObj* res = &stack.data[--stack.len];
+    TextBufferObj* res = lv_buf_pop(&stack);
     if(res->type == OPT_STRING)
         res->str->refCount--;
     return res;
@@ -51,27 +43,19 @@ static TextBufferObj* removeTop(void) {
 
 //simple linear storage should be enough
 //for the relatively small number of namespaces
-#define INIT_IMPORTED_SIZE 16
-static struct ImportedFiles {
-    char** data;
-    size_t cap;
-    size_t len;
-} importedFiles;
+static DynBuffer importedFiles; //of char*
 
 static bool addFile(char* file) {
     
     for(size_t i = 0; i < importedFiles.len; i++) {
-        if(strcmp(importedFiles.data[i], file) == 0)
+        char* str = *(char**)lv_buf_get(&importedFiles, i);
+        if(strcmp(str, file) == 0)
             return false; //already imported
-    }
-    if(importedFiles.len + 1 == importedFiles.cap) {
-        importedFiles.data = lv_realloc(importedFiles.data, 2 * importedFiles.cap * sizeof(char*));
-        importedFiles.cap *= 2;
     }
     size_t len = strlen(file) + 1;
     char* tmp = lv_alloc(len);
     memcpy(tmp, file, len);
-    importedFiles.data[importedFiles.len++] = tmp;
+    lv_buf_push(&importedFiles, &tmp);
     return true;
 }
 
@@ -134,13 +118,9 @@ void lv_free(void* ptr) {
 
 void lv_startup(void) {
     
-    stack.data = lv_alloc(INIT_STACK_SIZE * sizeof(TextBufferObj));
-    stack.cap = INIT_STACK_SIZE;
-    stack.len = 0;
     pc = fp = 0;
-    importedFiles.data = lv_alloc(INIT_IMPORTED_SIZE * sizeof(char*));
-    importedFiles.cap = INIT_IMPORTED_SIZE;
-    importedFiles.len = 0;
+    lv_buf_init(&stack, sizeof(TextBufferObj));
+    lv_buf_init(&importedFiles, sizeof(char*));
     lv_op_onStartup();
     lv_tb_onStartup();
     lv_blt_onStartup();
@@ -155,7 +135,7 @@ void lv_shutdown(void) {
     lv_op_onShutdown();
     lv_expr_cleanup(stack.data, stack.len);
     for(size_t i = 0; i < importedFiles.len; i++) {
-        lv_free(importedFiles.data[i]);
+        lv_free(*(char**)lv_buf_get(&importedFiles, i));
     }
     lv_free(importedFiles.data);
     lv_free(stack.data);
@@ -289,7 +269,7 @@ static void runCycle(void) {
             break;
         case OPT_PARAM:
             //push i'th param
-            push(&stack.data[fp + value->param]);
+            push(lv_buf_get(&stack, fp + value->param));
             break;
         case OPT_BEQZ: {
             TextBufferObj* obj = removeTop();
@@ -321,7 +301,7 @@ static void runCycle(void) {
                 case FUN_BUILTIN: {
                     //call built in function, then pop args and push result
                     size_t tmpFp = stack.len - value->func->arity;
-                    TextBufferObj res = value->func->builtin(stack.data + tmpFp);
+                    TextBufferObj res = value->func->builtin(lv_buf_get(&stack, tmpFp));
                     popAll(value->func->arity);
                     push(&res);
                     break;
@@ -353,14 +333,14 @@ static void runCycle(void) {
             //bypass removeTop for the return value
             //so we keep its string refCount intact
             //this keeps popAll from freeing the return value
-            TextBufferObj* retVal = &stack.data[--stack.len];
+            TextBufferObj* retVal = lv_buf_pop(&stack);
             //reset pc and fp
             pc = removeTop()->addr;
             size_t tmpFp = removeTop()->addr;
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
-            stack.data[stack.len++] = *retVal;
+            lv_buf_push(&stack, retVal);
             break;
         }
         default:
