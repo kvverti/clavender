@@ -195,15 +195,27 @@ bool lv_readFile(char* name) {
     memset(&scope, 0, sizeof(Operator));
     scope.name = name;
     scope.type = FUN_FWD_DECL;
-    while(!feof(importFile)) {
+    //parse all function declarations
+    while(!feof(importFile) && res) {
         res = getFuncSig(importFile, &scope, &decls);
-        if(!res)
-            break;
+    }
+    //successful parse of all declarations
+    if(res) {
+        //parse function definitions
+        for(size_t i = 0; i < decls.len; i++) {
+            HelperDeclObj* obj = lv_buf_get(&decls, i);
+            lv_tb_defineFunctionBody(obj->body, obj->func);
+            if(LV_EXPR_ERROR) {
+                res = false;
+                printf("Error parsing function body: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+                LV_EXPR_ERROR = 0;
+                break;
+            }
+        }
     }
     for(size_t i = 0; i < decls.len; i++) {
-        HelperDeclObj* o = lv_buf_get(&decls, i);
-        printf("%lu: name=%s, tok=%s\n", i, o->func->name, o->body->value);
-        lv_tkn_free(o->body);
+        HelperDeclObj* obj = lv_buf_get(&decls, i);
+        lv_tkn_free(obj->body);
     }
     lv_free(decls.data);
     fclose(importFile);

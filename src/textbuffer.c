@@ -158,6 +158,16 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     if(LV_EXPR_ERROR) {
         return NULL;
     }
+    head = lv_tb_defineFunctionBody(head, decl);
+    if(!head)
+        return NULL;
+    if(res)
+        *res = decl;
+    return head;
+}
+
+Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
+    
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
     //function begin, often the same as top, but
@@ -283,8 +293,6 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //set out param value
     decl->type = FUN_FUNCTION;
     decl->textOffset = fbgn;
-    if(res)
-        *res = decl;
     if(lv_debug) {
         //print function info
         printf("Function name=%s, arity=%d, fixing=%c, offset=%u\n",
@@ -309,17 +317,17 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
     lv_free(tmp);
     *start = startOfTmpExpr;
     *end = textBufferTop;
-    if(lv_debug) {
-        for(size_t i = 0; i < textBufferTop; i++) {
-            LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
-            printf("%lu: type=%d, value=%s\n",
-                i,
-                TEXT_BUFFER[i].type,
-                str->value);
-            if(str->refCount == 0)
-                lv_free(str);
-        }
-    }
+    // if(lv_debug) {
+        // for(size_t i = 0; i < textBufferTop; i++) {
+            // LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
+            // printf("%lu: type=%d, value=%s\n",
+                // i,
+                // TEXT_BUFFER[i].type,
+                // str->value);
+            // if(str->refCount == 0)
+                // lv_free(str);
+        // }
+    // }
     return ret;
 }
 

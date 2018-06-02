@@ -27,7 +27,7 @@ char* lv_expr_getError(ExprError error);
  * function definition. Sets bodyTok to point to the
  * first token in the body of the function and returns
  * the declaration object created.
- * If an error occurs, sets LV_OP_ERROR
+ * If an error occurs, sets LV_EXPR_ERROR
  * and returns NULL.
  */
 Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyTok);
@@ -38,7 +38,7 @@ Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyT
  * Stores a dynamically allocated list of components in
  * the parameter res and returns the first token after the
  * expression, or NULL if all tokens were consumed.
- * If an error occurs, sets LV_OP_ERROR and returns NULL.
+ * If an error occurs, sets LV_EXPR_ERROR and returns NULL.
  */
 Token* lv_expr_parseExpr(Token* tokens, Operator* decl, TextBufferObj** res, size_t* len);
 

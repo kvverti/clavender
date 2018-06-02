@@ -66,6 +66,8 @@ LvString* lv_tb_getString(TextBufferObj* obj);
  */
 Token* lv_tb_defineFunction(Token* tokens, Operator* scope, Operator** res);
 
+Token* lv_tb_defineFunctionBody(Token* tokens, Operator* decl);
+
 /**
  * Parses the given expression and adds it to the text buffer temporarily.
  * The start index of the expression is returned through out param startIdx.
