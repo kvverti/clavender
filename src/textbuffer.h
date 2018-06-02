@@ -66,6 +66,11 @@ LvString* lv_tb_getString(TextBufferObj* obj);
  */
 Token* lv_tb_defineFunction(Token* tokens, Operator* scope, Operator** res);
 
+/**
+ * Given an existing function declaration and a pointer to the body,
+ * define the function with the body. Returns a pointer to the first
+ * unprocessed token, or NULL if all tokens were processed.
+ */
 Token* lv_tb_defineFunctionBody(Token* tokens, Operator* decl);
 
 /**

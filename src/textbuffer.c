@@ -159,7 +159,7 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
         return NULL;
     }
     head = lv_tb_defineFunctionBody(head, decl);
-    if(!head)
+    if(LV_EXPR_ERROR)
         return NULL;
     if(res)
         *res = decl;
