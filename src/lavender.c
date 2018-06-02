@@ -147,6 +147,24 @@ void lv_repl(void) {
     readInput(stdin, true);
 }
 
+static bool isFuncDef(Token* head) {
+    
+    //functions may have one level of parens
+    assert(head);
+    if(head->value[0] == '(') {
+        head = head->next;
+    }
+    return head && strcmp(head->value, "def") == 0;
+}
+
+/** Helper struct to organize function declaration data. */
+typedef struct HelperDeclObj {
+    Operator* func;
+    Token* body;
+} HelperDeclObj;
+
+static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls);
+
 bool lv_readFile(char* name) {
     
     if(!addFile(name))
@@ -170,22 +188,68 @@ bool lv_readFile(char* name) {
     }
     //end open file
     //parse file
+    DynBuffer decls;    //of HelperDeclObj
+    lv_buf_init(&decls, sizeof(HelperDeclObj));
+    bool res = true;
+    Operator scope;
+    memset(&scope, 0, sizeof(Operator));
+    scope.name = name;
+    scope.type = FUN_FWD_DECL;
     while(!feof(importFile)) {
-        readInput(importFile, false);
+        res = getFuncSig(importFile, &scope, &decls);
+        if(!res)
+            break;
     }
+    for(size_t i = 0; i < decls.len; i++) {
+        HelperDeclObj* o = lv_buf_get(&decls, i);
+        printf("%lu: name=%s, tok=%s\n", i, o->func->name, o->body->value);
+        lv_tkn_free(o->body);
+    }
+    lv_free(decls.data);
     fclose(importFile);
     lv_free(file);
-    return true;
+    return res;
 }
 
-static bool isFuncDef(Token* head) {
+static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     
-    //functions may have one level of parens
-    assert(head);
-    if(head->value[0] == '(') {
-        head = head->next;
+    Token* head = lv_tkn_split(file);
+    if(LV_TKN_ERROR) {
+        printf("Error parsing input: %s\nHere: '%s'\n",
+            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
+        LV_TKN_ERROR = 0;
+        return false;
     }
-    return head && strcmp(head->value, "def") == 0;
+    if(!head) {
+        //empty line
+        return true;
+    }
+    if(!isFuncDef(head)) {
+        //must be function definitions
+        puts("Error parsing input: Not a function definition");
+        lv_tkn_free(head);
+        return false;
+    }
+    //declare function
+    Token* body;
+    Operator* op = lv_expr_declareFunction(head, scope, &body);
+    if(LV_EXPR_ERROR) {
+        printf("Error parsing function signatures: %s\n",
+            lv_expr_getError(LV_EXPR_ERROR));
+        LV_EXPR_ERROR = 0;
+        lv_tkn_free(head);
+        return false;
+    }
+    //push declaration and body pointer
+    HelperDeclObj toPush = { op, body };
+    lv_buf_push(decls, &toPush);
+    //free decl tokens only
+    Token* tmp = head;
+    while(tmp->next != body)
+        tmp = tmp->next;
+    tmp->next = NULL;
+    lv_tkn_free(head);
+    return true;
 }
 
 static void readInput(FILE* in, bool repl) {
