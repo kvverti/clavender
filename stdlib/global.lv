@@ -114,30 +114,27 @@ def i_>(a, b) => b < a
 def i_<=(a, b) => b >= a
 
 ' Converts argument to a string. Forwards if possible.
-(def str(a)
-    => sys:__str__(a) ; sys:__eq__(a, \str)
-    => [a](\str) else sys:__str__(a) ; 1
-)
+def str(a) => [a](\str) else sys:__str__(a)
 
 ' Converts argument to number. Forwards if possible.
-(def num(a)
-    => sys:__num__(a) ; sys:__eq__(a, \num)
-    => [a](\num) else sys:__num__(a) ; 1
-)
+def num(a) => [a](\num) else sys:__num__(a)
 
 ' Converts the argument to bool. Forwards if possible.
-(def bool(a)
-    => sys:__bool__(a) ; sys:__eq__(a, \bool)
-    => [a](\bool) else sys:__bool__(a) ; 1
-)
+def bool(a) => [a](\bool) else sys:__bool__(a)
 
 ' Returns the length of the argument. Forwards if possible.
 ' For strings, returns the length. For functions, returns the arity.
 ' For numbers, returns undefined.
-(def len(a)
-    => sys:__len__(a) ; sys:__eq__(a, \len)
-    => [a](\len) else sys:__len__(a) ; 1
-)
+def len(a) => [a](\len) else sys:__len__(a)
+
+' Unary + function. Forwards if defined for its argument.
+' This is a no-op for numbers, but returns undefined
+' if the argument is not a number.
+def +(a) => [a](\+) else sys:__pos__(a)
+
+' Negation function. Forwards if negation is defined for
+' its argument.
+def -(a) => [a](\-) else sys:__neg__(a)
 
 ' Addition function. Forwards if addition is defined for both
 ' arguments.
@@ -165,4 +162,11 @@ def i_<=(a, b) => b >= a
 (def i_/(a, b)
     => [[a](\/\)](b) ; sys:defined([a](\/\)) && sys:defined([b](\/\))
     => sys:__div__(a, b) ; 1
+)
+
+' Exponentiation function. Forwards if exponentiation is defined
+' for both arguments.
+(def r_**(a, b)
+    => [[a](\**\)](b) ; sys:defined([a](\**\)) && sys:defined([b](\**\))
+    => sys:__pow__(a, b) ; 1
 )

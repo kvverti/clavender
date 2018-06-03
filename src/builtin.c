@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 
 /**
  * Returns whether the argument is defined (i.e. not undefined).
@@ -309,6 +310,45 @@ static TextBufferObj div_(TextBufferObj* args) {
     return res;
 }
 
+/** Exponentiation */
+static TextBufferObj pow_(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = pow(args[0].number, args[1].number);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Unary + function */
+static TextBufferObj pos(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = +args[0].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Negation function */
+static TextBufferObj neg(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = -args[0].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 void lv_blt_onStartup(void) {
     
     mkTypes();
@@ -328,23 +368,29 @@ void lv_blt_onStartup(void) {
     #define MK_FUNC(fnc, ar) MK_FUNC_IMPL(fnc, ar, #fnc)
     //creates "internal" builtin function
     #define MK_FUNCN(fnc, ar) MK_FUNC_IMPL(fnc, ar, "__"#fnc"__")
+    //creates a function that happens to have a C reserved id as a name
+    #define MK_FUNCR(fnc, ar) MK_FUNC_IMPL(fnc##_, ar, "__"#fnc"__")
     Operator* op;
     MK_FUNC(defined, 1);
     MK_FUNC(undefined, 0);
     MK_FUNC_IMPL(typeof_, 1, "typeof");
     MK_FUNCN(str, 1);
     MK_FUNCN(num, 1);
-    MK_FUNC_IMPL(bool_, 1, "__bool__");
+    MK_FUNCR(bool, 1);
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
     MK_FUNCN(ge, 2);
     MK_FUNCN(add, 2);
     MK_FUNCN(sub, 2);
     MK_FUNCN(mul, 2);
-    MK_FUNC_IMPL(div_, 2, "__div__");
+    MK_FUNCR(div, 2);
+    MK_FUNCR(pow, 2);
+    MK_FUNCN(pos, 1);
+    MK_FUNCN(neg, 1);
     MK_FUNCN(len, 1);
     #undef MK_FUNC
     #undef MK_FUNCN
+    #undef MK_FUNCR
     #undef MK_FUNC_IMPL
     #undef BUILTIN_NS
 }
