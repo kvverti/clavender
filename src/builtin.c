@@ -2,6 +2,7 @@
 #include "lavender.h"
 #include <string.h>
 #include <assert.h>
+#include <stdlib.h>
 
 /**
  * Returns whether the argument is defined (i.e. not undefined).
@@ -102,11 +103,23 @@ static TextBufferObj str(TextBufferObj* args) {
 /** Converts object to number. */
 static TextBufferObj num(TextBufferObj* args) {
     
+    TextBufferObj res;
     if(args[0].type == OPT_NUMBER)
         return args[0];
-    //todo
-    TextBufferObj res;
-    res.type = OPT_UNDEFINED;
+    else if(args[0].type == OPT_STRING) {
+        char* rest;
+        LvString* str = args[0].str;
+        double d = strtod(str->value, &rest);
+        if(rest != str->value + str->len) {
+            //not all chars interpreted, error
+            res.type = OPT_UNDEFINED;
+        } else {
+            res.type = OPT_NUMBER;
+            res.number = d;
+        }
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
     return res;
 }
 
@@ -284,7 +297,7 @@ static TextBufferObj mul(TextBufferObj* args) {
 }
 
 /** Division */
-static TextBufferObj div(TextBufferObj* args) {
+static TextBufferObj div_(TextBufferObj* args) {
     
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
@@ -320,6 +333,7 @@ void lv_blt_onStartup(void) {
     MK_FUNC(undefined, 0);
     MK_FUNC_IMPL(typeof_, 1, "typeof");
     MK_FUNCN(str, 1);
+    MK_FUNCN(num, 1);
     MK_FUNC_IMPL(bool_, 1, "__bool__");
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
@@ -327,7 +341,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(add, 2);
     MK_FUNCN(sub, 2);
     MK_FUNCN(mul, 2);
-    MK_FUNCN(div, 2);
+    MK_FUNC_IMPL(div_, 2, "__div__");
     MK_FUNCN(len, 1);
     #undef MK_FUNC
     #undef MK_FUNCN
