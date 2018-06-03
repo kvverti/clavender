@@ -356,7 +356,7 @@ static void runCycle(void) {
         case OPT_FUNC_CALL: {
             TextBufferObj* func = removeTop();
             //todo: handle strings
-            if(value->type != OPT_FUNCTION_VAL || value->callArity != func->func->arity) {
+            if(func->type != OPT_FUNCTION_VAL || value->callArity != func->func->arity) {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
                 TextBufferObj nan;
