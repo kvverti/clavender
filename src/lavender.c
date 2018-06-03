@@ -33,11 +33,12 @@ static void popAll(size_t numToPop) {
     stack.len -= numToPop;
 }
 
-static TextBufferObj* removeTop(void) {
+static TextBufferObj removeTop(void) {
     
-    TextBufferObj* res = lv_buf_pop(&stack);
-    if(res->type == OPT_STRING)
-        res->str->refCount--;
+    TextBufferObj res;
+    lv_buf_pop(&stack, &res);
+    if(res.type == OPT_STRING)
+        res.str->refCount--;
     return res;
 }
 
@@ -317,7 +318,8 @@ static void readInput(FILE* in, bool repl) {
                     runCycle();
                 }
                 assert(stack.len == 1);
-                LvString* str = lv_tb_getString(removeTop());
+                TextBufferObj obj = removeTop();
+                LvString* str = lv_tb_getString(&obj);
                 puts(str->value);
                 if(str->refCount == 0)
                     lv_free(str);
@@ -335,6 +337,7 @@ static void readInput(FILE* in, bool repl) {
 static void runCycle(void) {
     
     TextBufferObj* value = &TEXT_BUFFER[pc++];
+    TextBufferObj func; //used in OPT_FUNC_CALL
     switch(value->type) {
         case OPT_UNDEFINED:
         case OPT_NUMBER:
@@ -348,15 +351,15 @@ static void runCycle(void) {
             push(lv_buf_get(&stack, fp + value->param));
             break;
         case OPT_BEQZ: {
-            TextBufferObj* obj = removeTop();
-            if(!lv_blt_toBool(obj))
+            TextBufferObj obj = removeTop();
+            if(!lv_blt_toBool(&obj))
                 pc += value->branchAddr - 1;
             break;
         }
         case OPT_FUNC_CALL: {
-            TextBufferObj* func = removeTop();
+            func = removeTop();
             //todo: handle strings
-            if(func->type != OPT_FUNCTION_VAL || value->callArity != func->func->arity) {
+            if(func.type != OPT_FUNCTION_VAL || value->callArity != func.func->arity) {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
                 TextBufferObj nan;
@@ -364,7 +367,8 @@ static void runCycle(void) {
                 push(&nan);
                 return;
             }
-            value = func;
+            value = &func;
+            assert(value->type == OPT_FUNCTION_VAL);
             //fallthrough
         }
         case OPT_FUNCTION: {
@@ -409,14 +413,15 @@ static void runCycle(void) {
             //bypass removeTop for the return value
             //so we keep its string refCount intact
             //this keeps popAll from freeing the return value
-            TextBufferObj* retVal = lv_buf_pop(&stack);
+            TextBufferObj retVal;
+            lv_buf_pop(&stack, &retVal);
             //reset pc and fp
-            pc = removeTop()->addr;
-            size_t tmpFp = removeTop()->addr;
+            pc = removeTop().addr;
+            size_t tmpFp = removeTop().addr;
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
-            lv_buf_push(&stack, retVal);
+            lv_buf_push(&stack, &retVal);
             break;
         }
         default:

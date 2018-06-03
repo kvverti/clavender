@@ -14,7 +14,7 @@ typedef struct DynBuffer {
 
 void lv_buf_init(DynBuffer* self, size_t dataSize);
 void lv_buf_push(DynBuffer* self, void* elem);
-void* lv_buf_pop(DynBuffer* self);
+void lv_buf_pop(DynBuffer* self, void* elem);
 void* lv_buf_get(DynBuffer* self, size_t idx);
 
 #endif

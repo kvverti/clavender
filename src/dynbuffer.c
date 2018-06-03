@@ -26,10 +26,11 @@ void lv_buf_push(DynBuffer* self, void* elem) {
     memcpy(off, tmp, self->dataSize);
 }
 
-void* lv_buf_pop(DynBuffer* self) {
+void lv_buf_pop(DynBuffer* self, void* elem) {
     
-    size_t off = --self->len * self->dataSize;
-    return ((unsigned char*)self->data) + off;
+    void* off = ((unsigned char*)self->data) + (--self->len * self->dataSize);
+    if(elem)
+        memcpy(elem, off, self->dataSize);
 }
 
 void* lv_buf_get(DynBuffer* self, size_t idx) {
