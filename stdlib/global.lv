@@ -1,0 +1,168 @@
+' The global namespace contains the basic essential functions of Lavender.
+' These include the bool values, logical operators, mathematical operators,
+' comparison operators, and conversion functions. Many of these functions
+' wrap and extend the intrinsic functions of the sys namespace, and should
+' be preferred to them.
+
+' The bool value 'true'.
+def true() => 1
+
+' The bool value 'false'.
+def false() => 0
+
+' Alternative spelling of 'true'.
+def rest() => 1
+
+' The floating point NaN value.
+def NaN() => sys:__num__("NaN")
+
+' The floating point Infinity value
+def Inf() => sys:__num__("Infinity")
+
+' Returns the logical NOT of the argument
+' after conversion to bool.
+(def !(a)
+    => 0 ; bool(a)
+    => 1 ; 1
+)
+
+' Returns the logical AND of the arguments
+' after converting both to bool. This function
+' short-circuits the result if possible.
+(def i_&&(a, => b)
+    => bool(b) ; bool(a)
+    => 0 ; 1
+)
+
+' Non-short-circuiting version of '&&'.
+def i_&(a, b) => a && b
+
+' Returns the logical OR of the arguments
+' after converting both to bool. This function
+' short-circuits the result if possible.
+(def i_||(a, => b)
+    => 1 ; bool(a)
+    => bool(b) ; 1
+)
+
+' Non-short-circuiting version of '||'.
+def i_|(a, b) => a || b
+
+' Returns the logical XOR of the arguments
+' after converting both to bool.
+def i_^(a, b) => !sys:__eq__(bool(a), bool(b))
+
+' Returns 'expr' if it is defined, 'fall' otherwise.
+(def i_else(expr, => fall)
+    => expr ; sys:defined(expr)
+    => fall ; 1
+)
+
+' Equality function. Forwards if equality is defined for both
+' arguments. Equality should be reflexive*, symmetric, and
+' transitive for all pairs of values (a, b). The default definition
+' returns true in the following conditions:
+'   - If one argument is undefined, returns whether the other is undefined.
+'   - If both arguments are numbers, returns whether they are the same.
+'   - If both arguments are strings, returns whether they are the same.
+'   - If both arguments are functions, returns whether they both have
+'     the same name and their captured values are equal, applying this
+'     definition recursively.
+'   - Else, returns false.
+'
+' Note that, unlike other languages, Lavender compares by value,
+' so overriding the default definition should be a rare occurrence.
+'
+' * The only value which breaks reflexivity is the floating point
+'   NaN value.
+(def i_=(a, b)
+    => [[a](\=\)](b) ; sys:defined([a](\=\)) && sys:defined([b](\=\))
+    => sys:__eq__(a, b) ; 1
+)
+
+' Returns !(a = b)
+def i_!=(a, b) => !(a = b)
+
+' Less than function. Forwards if less than is defined for both arguments.
+' The comparision functions impose a total ordering on all values in Lavender
+' as follows:
+'   - If both arguments are numbers, compares mathematically*.
+'   - If both arguments are strings, compares lexicographically.
+'   - If both arguments are functions, compares their names lexicographically.
+'     If their names are equal, they compare the same as their first differing
+'     capture value, applying this definition recursively.
+'   - Else applies an arbitrary ordering from least to greatest based on the
+'     objects' type.
+'
+' * NaN always compares false with anything, even itself.
+(def i_<(a, b)
+    => [[a](\<\)](b) ; sys:defined([a](\<\)) && sys:defined([b](\<\))
+    => sys:__lt__(a, b) ; 1
+)
+
+' Greater than or equal comparision function.
+(def i_>=(a, b)
+    ' We do this because NaN always compares false.
+    => ![[a](\<\)](b) ; sys:defined([a](\<\)) && sys:defined([b](\<\))
+    => sys:__ge__(a, b) ; 1
+)
+
+' Greater than comparision function.
+def i_>(a, b) => b < a
+
+' Less than or equal to comparison function.
+def i_<=(a, b) => b >= a
+
+' Converts argument to a string. Forwards if possible.
+(def str(a)
+    => sys:__str__(a) ; sys:__eq__(a, \str)
+    => [a](\str) else sys:__str__(a) ; 1
+)
+
+' Converts argument to number. Forwards if possible.
+(def num(a)
+    => sys:__num__(a) ; sys:__eq__(a, \num)
+    => [a](\num) else sys:__num__(a) ; 1
+)
+
+' Converts the argument to bool. Forwards if possible.
+(def bool(a)
+    => sys:__bool__(a) ; sys:__eq__(a, \bool)
+    => [a](\bool) else sys:__bool__(a) ; 1
+)
+
+' Returns the length of the argument. Forwards if possible.
+' For strings, returns the length. For functions, returns the arity.
+' For numbers, returns undefined.
+(def len(a)
+    => sys:__len__(a) ; sys:__eq__(a, \len)
+    => [a](\len) else sys:__len__(a) ; 1
+)
+
+' Addition function. Forwards if addition is defined for both
+' arguments.
+(def i_+(a, b)
+    => [[a](\+\)](b) ; sys:defined([a](\+\)) && sys:defined([b](\+\))
+    => sys:__add__(a, b) ; 1
+)
+
+' Subtraction function. Forwards if subtraction is defined for
+' both arguments.
+(def i_-(a, b)
+    => [[a](\-\)](b) ; sys:defined([a](\-\)) && sys:defined([b](\-\))
+    => sys:__sub__(a, b) ; 1
+)
+
+' Multiplication function. Forwards if subtraction is defined for
+' both arguments.
+(def i_*(a, b)
+    => [[a](\*\)](b) ; sys:defined([a](\*\)) && sys:defined([b](\*\))
+    => sys:__mul__(a, b) ; 1
+)
+
+' Division function. Forwards if subtraction is defined for
+' both arguments.
+(def i_/(a, b)
+    => [[a](\/\)](b) ; sys:defined([a](\/\)) && sys:defined([b](\/\))
+    => sys:__div__(a, b) ; 1
+)
