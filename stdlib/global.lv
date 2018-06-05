@@ -13,6 +13,20 @@ def false() => 0
 ' Alternative spelling of 'true'.
 def rest() => 1
 
+' The value passed by forwarding functions to determine if a function is
+' object-like. Object-like functions should return the value __yes__ when
+' passed this value.
+def __object__() => def value(a) => sys:undefined
+
+' The value forwarding functions test against to determine if a function is
+' object-like. Object-like functions should return this value when passed
+' the value __object__.
+def __yes__() => def value(a) => sys:undefined
+
+' Returns whether the argument is object-like. A function is object-like
+' if and only if the value __object__ maps to the value __yes__.
+def isObject(a) => sys:__eq__([a](__object__), __yes__)
+
 ' The floating point NaN value.
 def NaN() => sys:__num__("NaN")
 
@@ -52,11 +66,21 @@ def i_|(a, b) => a || b
 ' after converting both to bool.
 def i_^(a, b) => !sys:__eq__(bool(a), bool(b))
 
+' Returns the result of 'expr' if 'pred' is true, returns undefined otherwise.
+' If 'expr' is undefined then this function still returns undefined.
+def i_onlyIf(=> expr, pred) => expr ; pred
+
 ' Returns 'expr' if it is defined, 'fall' otherwise.
 (def i_else(expr, => fall)
     => expr ; sys:defined(expr)
     => fall ; 1
 )
+
+' Returns a function with the same range as 'func' on the domain where 'pred'
+' is true, and is undefined everywhere else. You can think of this as the
+' function version of 'onlyIf'.
+' Note: 'restrict' currently only works on arity-1 functions.
+def i_restrict(func, pred) => def impl(a) => [func](a) ; [pred](a)
 
 ' Equality function. Forwards if equality is defined for both
 ' arguments. Equality should be reflexive*, symmetric, and
@@ -76,7 +100,8 @@ def i_^(a, b) => !sys:__eq__(bool(a), bool(b))
 ' * The only value which breaks reflexivity is the floating point
 '   NaN value.
 (def i_=(a, b)
-    => [[a](\=\)](b) ; sys:defined([a](\=\)) && sys:defined([b](\=\))
+    => [[a](\=\)](b) ; sys:defined([a onlyIf isObject(a)](\=\))
+                    && sys:defined([b onlyIf isObject(b)](\=\))
     => sys:__eq__(a, b) ; 1
 )
 
@@ -96,14 +121,16 @@ def i_!=(a, b) => !(a = b)
 '
 ' * NaN always compares false with anything, even itself.
 (def i_<(a, b)
-    => [[a](\<\)](b) ; sys:defined([a](\<\)) && sys:defined([b](\<\))
+    => [[a](\<\)](b) ; sys:defined([a onlyIf isObject(a)](\<\))
+                    && sys:defined([b onlyIf isObject(b)](\<\))
     => sys:__lt__(a, b) ; 1
 )
 
 ' Greater than or equal comparision function.
 (def i_>=(a, b)
     ' We do this because NaN always compares false.
-    => ![[a](\<\)](b) ; sys:defined([a](\<\)) && sys:defined([b](\<\))
+    => ![[a](\<\)](b) ; sys:defined([a onlyIf isObject(a)](\<\))
+                     && sys:defined([b onlyIf isObject(b)](\<\))
     => sys:__ge__(a, b) ; 1
 )
 
@@ -114,59 +141,64 @@ def i_>(a, b) => b < a
 def i_<=(a, b) => b >= a
 
 ' Converts argument to a string. Forwards if possible.
-def str(a) => [a](\str) else sys:__str__(a)
+def str(a) => [a onlyIf isObject(a)](\str) else sys:__str__(a)
 
 ' Converts argument to number. Forwards if possible.
-def num(a) => [a](\num) else sys:__num__(a)
+def num(a) => [a onlyIf isObject(a)](\num) else sys:__num__(a)
 
 ' Converts the argument to bool. Forwards if possible.
-def bool(a) => [a](\bool) else sys:__bool__(a)
+def bool(a) => [a onlyIf isObject(a)](\bool) else sys:__bool__(a)
 
 ' Returns the length of the argument. Forwards if possible.
 ' For strings, returns the length. For functions, returns the arity.
 ' For numbers, returns undefined.
-def len(a) => [a](\len) else sys:__len__(a)
+def len(a) => [a onlyIf isObject(a)](\len) else sys:__len__(a)
 
 ' Unary + function. Forwards if defined for its argument.
 ' This is a no-op for numbers, but returns undefined
 ' if the argument is not a number.
-def +(a) => [a](\+) else sys:__pos__(a)
+def +(a) => [a onlyIf isObject(a)](\+) else sys:__pos__(a)
 
 ' Negation function. Forwards if negation is defined for
 ' its argument.
-def -(a) => [a](\-) else sys:__neg__(a)
+def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
 
 ' Addition function. Forwards if addition is defined for both
 ' arguments.
 (def i_+(a, b)
-    => [[a](\+\)](b) ; sys:defined([a](\+\)) && sys:defined([b](\+\))
+    => [[a](\+\)](b) ; sys:defined([a onlyIf isObject(a)](\+\))
+                    && sys:defined([b onlyIf isObject(b)](\+\))
     => sys:__add__(a, b) ; 1
 )
 
 ' Subtraction function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_-(a, b)
-    => [[a](\-\)](b) ; sys:defined([a](\-\)) && sys:defined([b](\-\))
+    => [[a](\-\)](b) ; sys:defined([a onlyIf isObject(a)](\-\))
+                    && sys:defined([b onlyIf isObject(b)](\-\))
     => sys:__sub__(a, b) ; 1
 )
 
 ' Multiplication function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_*(a, b)
-    => [[a](\*\)](b) ; sys:defined([a](\*\)) && sys:defined([b](\*\))
+    => [[a](\*\)](b) ; sys:defined([a onlyIf isObject(a)](\*\))
+                    && sys:defined([b onlyIf isObject(b)](\*\))
     => sys:__mul__(a, b) ; 1
 )
 
 ' Division function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_/(a, b)
-    => [[a](\/\)](b) ; sys:defined([a](\/\)) && sys:defined([b](\/\))
+    => [[a](\/\)](b) ; sys:defined([a onlyIf isObject(a)](\/\))
+                    && sys:defined([b onlyIf isObject(b)](\/\))
     => sys:__div__(a, b) ; 1
 )
 
 ' Exponentiation function. Forwards if exponentiation is defined
 ' for both arguments.
 (def r_**(a, b)
-    => [[a](\**\)](b) ; sys:defined([a](\**\)) && sys:defined([b](\**\))
+    => [[a](\**\)](b) ; sys:defined([a onlyIf isObject(a)](\**\))
+                     && sys:defined([b onlyIf isObject(b)](\**\))
     => sys:__pow__(a, b) ; 1
 )
