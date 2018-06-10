@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 /**
@@ -61,6 +62,7 @@ static TextBufferObj typeof_(TextBufferObj* args) {
         case OPT_STRING:
             res.str = types[2];
             break;
+        case OPT_CAPTURE:
         case OPT_FUNCTION_VAL:
             res.str = types[3];
             break;
@@ -141,11 +143,45 @@ static TextBufferObj len(TextBufferObj* args) {
             res.type = OPT_NUMBER;
             res.number = args[0].func->arity;
             break;
+        case OPT_CAPTURE:
+            res.type = OPT_NUMBER;
+            res.number = args[0].capfunc->arity - args[0].capfunc->captureCount;
+            break;
             //todo vectors
         default:
             res.type = OPT_UNDEFINED;
     }
     return res;
+}
+
+static bool equal(TextBufferObj* a, TextBufferObj* b) {
+    
+    if(a->type != b->type) {
+        //can't be equal if they have different types
+        return false;
+    }
+    switch(a->type) {
+        case OPT_UNDEFINED:
+            return true;
+        case OPT_NUMBER:
+            return a->number == b->number;
+        case OPT_STRING:
+            //strings use value equality
+            return (a->str->len == a->str->len)
+                && (strcmp(a->str->value, b->str->value) == 0);
+        case OPT_FUNCTION_VAL:
+            return a->func == b->func;
+        case OPT_CAPTURE:
+            if(a->capfunc != b->capfunc)
+                return false;
+            for(int i = 0; i < a->capfunc->captureCount; i++) {
+                if(!equal(&a->capture->value[i], &b->capture->value[i]))
+                    return false;
+            }
+            return true;
+        default:
+            assert(false);
+    }
 }
 
 /**
@@ -155,57 +191,42 @@ static TextBufferObj eq(TextBufferObj* args) {
     
     TextBufferObj res;
     res.type = OPT_NUMBER;
-    if(args[0].type != args[1].type) {
-        //can't be equal if they have different types
-        res.number = 0.0;
-        return res;
-    }
-    switch(args[0].type) {
-        case OPT_UNDEFINED:
-            res.number = 1.0;
-            break;
-        case OPT_NUMBER:
-            res.number = (args[0].number == args[1].number);
-            break;
-        case OPT_STRING:
-            //strings use value equality
-            res.number = (args[0].str->len == args[1].str->len)
-                && (strcmp(args[0].str->value, args[1].str->value) == 0);
-            break;
-        case OPT_FUNCTION_VAL:
-            //todo capture values
-            res.number = (args[0].func == args[1].func);
-            break;
-        default:
-            res.number = 0.0;
-    }
+    res.number = equal(&args[0], &args[1]);
     return res;
 }
 
 /**
  * Compares two objects for less than.
  */
-static bool ltImpl(TextBufferObj* args) {
+static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
     
-    if(args[0].type != args[1].type) {
-        return (args[0].type < args[1].type);
+    if(a->type != b->type) {
+        return (a->type < b->type);
     }
-    switch(args[0].type) {
+    switch(a->type) {
         case OPT_UNDEFINED:
             return false;
             break;
         case OPT_NUMBER:
-            return (args[0].number < args[1].number);
+            return (a->number < b->number);
             break;
         case OPT_STRING:
-            return (strcmp(args[0].str->value, args[1].str->value) < 0);
+            return (strcmp(a->str->value, b->str->value) < 0);
             break;
         case OPT_FUNCTION_VAL:
-            //todo capture values
-            return (strcmp(args[0].func->name, args[1].func->name) < 0);
+            return (uintptr_t)a->func < (uintptr_t)b->func;
             break;
+        case OPT_CAPTURE:
+            if(a->capfunc == b->capfunc) {
+                for(int i = 0; i < a->capfunc->captureCount; i++) {
+                    if(!ltImpl(&a->capture->value[i], &b->capture->value[i]))
+                        return false;
+                }
+                return true;
+            }
+            return (uintptr_t)a->capfunc < (uintptr_t)b->capfunc;
         default:
-            return false;
+            assert(false);
     }
 }
 
@@ -219,7 +240,7 @@ static TextBufferObj lt(TextBufferObj* args) {
         res.number = 0.0;
         return res;
     }
-    res.number = ltImpl(args);
+    res.number = ltImpl(&args[0], &args[1]);
     return res;
 }
 
@@ -236,7 +257,7 @@ static TextBufferObj ge(TextBufferObj* args) {
         res.number = 0.0;
         return res;
     }
-    res.number = !ltImpl(args);
+    res.number = !ltImpl(&args[0], &args[1]);
     return res;
 }
 

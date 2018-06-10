@@ -113,8 +113,9 @@ def i_!=(a, b) => !(a = b)
 ' as follows:
 '   - If both arguments are numbers, compares mathematically*.
 '   - If both arguments are strings, compares lexicographically.
-'   - If both arguments are functions, compares their names lexicographically.
-'     If their names are equal, they compare the same as their first differing
+'   - If both arguments are functions, compares the base functions
+'     using an arbitrary, but consistent ordering.
+'     If the base functions are equal, they compare the same as their first differing
 '     capture value, applying this definition recursively.
 '   - Else applies an arbitrary ordering from least to greatest based on the
 '     objects' type.
