@@ -6,7 +6,7 @@
 
 typedef enum FuncType {
     FUN_FUNCTION,   //function definition
-    FUN_BUILTIN,    //built in operator  
+    FUN_BUILTIN,    //built in operator
     FUN_FWD_DECL    //function declaration (not present in final code)
 } FuncType;
 

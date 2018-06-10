@@ -10,6 +10,10 @@ typedef enum OpType {
     OPT_PARAM,          //function parameter
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
+    //note: captures are a type of TextBufferObj rather than a type
+    //of Operator because Operators are dynamically allocated,
+    //while TextBufferObjs are automatically allocated.
+    OPT_CAPTURE,        //function value with captured params
     OPT_FUNC_CALL,      //call value as function
     OPT_RETURN,         //return from function
     OPT_BEQZ,           //relative branch if zero
@@ -26,6 +30,16 @@ typedef struct LvString {
     char value[];
 } LvString;
 
+struct TextBufferObj;
+
+/**
+ * Struct for functions with captured params.
+ */
+typedef struct Capture {
+    Operator* func;
+    struct TextBufferObj* captured;
+} Capture;
+
 /**
  * A struct that stores a Lavender value. This may
  * be a number, string, function, etc. These values
@@ -38,6 +52,7 @@ typedef struct TextBufferObj {
         LvString* str;
         int param;
         Operator* func;
+        Capture capture;
         int callArity;
         int branchAddr;
         size_t addr;

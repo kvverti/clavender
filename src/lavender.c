@@ -323,6 +323,8 @@ static void readInput(FILE* in, bool repl) {
                 puts(str->value);
                 if(str->refCount == 0)
                     lv_free(str);
+                if(obj.type == OPT_CAPTURE)
+                    lv_expr_free(obj.capture.captured, obj.capture.func->captureCount);
                 lv_tb_clearExpr();
                 if(end)
                     printf("First token past body: type=%d, value=%s\n",
@@ -339,10 +341,29 @@ static void runCycle(void) {
     TextBufferObj* value = &TEXT_BUFFER[pc++];
     TextBufferObj func; //used in OPT_FUNC_CALL
     switch(value->type) {
+        case OPT_FUNCTION_VAL: {
+            //capture outer arguments into function object
+            if(value->func->captureCount > 0) {
+                //fp points to first argument of the outer function
+                assert(value->func->type == FUN_FUNCTION);
+                TextBufferObj obj;
+                obj.type = OPT_CAPTURE;
+                obj.capture.func = value->func;
+                obj.capture.captured = lv_alloc(value->func->captureCount * sizeof(TextBufferObj));
+                for(int i = 0; i < value->func->captureCount; i++) {
+                    obj.capture.captured[i] = *(TextBufferObj*)lv_buf_get(&stack, fp + i);
+                    if(obj.capture.captured[i].type == OPT_STRING)
+                        obj.capture.captured[i].str->refCount++;
+                }
+                push(&obj);
+                break;
+            } else;
+            //fallthrough
+        }
         case OPT_UNDEFINED:
         case OPT_NUMBER:
         case OPT_STRING:
-        case OPT_FUNCTION_VAL:
+        case OPT_CAPTURE:
             //push it on the stack
             push(value);
             break;
@@ -359,16 +380,34 @@ static void runCycle(void) {
         case OPT_FUNC_CALL: {
             func = removeTop();
             //todo: handle strings
-            if(func.type != OPT_FUNCTION_VAL || value->callArity != func.func->arity) {
+            if(func.type == OPT_FUNCTION_VAL && value->callArity == func.func->arity) {
+                value = &func;
+                assert(value->type == OPT_FUNCTION_VAL);
+            } else if(func.type == OPT_CAPTURE
+                && value->callArity == (func.capture.func->arity - func.capture.func->captureCount)) {
+                //move captured params to stack
+                for(int i = 0; i < func.capture.func->captureCount; i++) {
+                    lv_buf_push(&stack, &func.capture.captured[i]);
+                }
+                //free memory for captured because we are destroying the capture obj
+                //we don't need to clean up individual elements because we transfered
+                //ownership to the stack
+                lv_free(func.capture.captured);
+                func.func = func.capture.func;
+                value = &func;
+            } else {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
                 TextBufferObj nan;
                 nan.type = OPT_UNDEFINED;
                 push(&nan);
+                //free capture memory / string memory
+                if(func.type == OPT_CAPTURE)
+                    lv_expr_free(func.capture.captured, func.capture.func->captureCount);
+                else if(func.type == OPT_STRING && func.str->refCount == 0)
+                    lv_free(func.str);
                 return;
             }
-            value = &func;
-            assert(value->type == OPT_FUNCTION_VAL);
             //fallthrough
         }
         case OPT_FUNCTION: {
