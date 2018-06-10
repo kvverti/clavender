@@ -84,14 +84,14 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         }
         case OPT_CAPTURE: {
             //func-name[cap1, cap2, ..., capn]
-            size_t len = strlen(obj->capture.func->name) + 1;
+            size_t len = strlen(obj->capfunc->name) + 1;
             res = lv_alloc(sizeof(LvString) + len + 1);
             res->refCount = 0;
-            strcpy(res->value, obj->capture.func->name);
+            strcpy(res->value, obj->capfunc->name);
             res->value[len - 1] = '[';
             res->value[len] = '\0';
-            for(int i = 0; i < obj->capture.func->captureCount; i++) {
-                LvString* tmp = lv_tb_getString(&obj->capture.captured[i]);
+            for(int i = 0; i < obj->capfunc->captureCount; i++) {
+                LvString* tmp = lv_tb_getString(&obj->capture->value[i]);
                 len += tmp->len + 1;
                 res = lv_realloc(res, sizeof(LvString) + len + 1);
                 strcat(res->value, tmp->value);

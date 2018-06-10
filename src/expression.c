@@ -362,7 +362,11 @@ void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
             if(--obj[i].str->refCount == 0)
                 lv_free(obj[i].str);
         } else if(obj[i].type == OPT_CAPTURE) {
-            lv_expr_free(obj[i].capture.captured, obj[i].capture.func->captureCount);
+            assert(obj[i].capture->refCount);
+            if(--obj[i].capture->refCount == 0) {
+                lv_expr_cleanup(obj[i].capture->value, obj[i].capfunc->captureCount);
+                lv_free(obj[i].capture);
+            }
         }
     }
 }

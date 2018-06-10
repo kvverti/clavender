@@ -23,6 +23,8 @@ static void push(TextBufferObj* obj) {
     
     if(obj->type == OPT_STRING)
         obj->str->refCount++;
+    else if(obj->type == OPT_CAPTURE)
+        obj->capture->refCount++;
     lv_buf_push(&stack, obj);
 }
 
@@ -39,6 +41,8 @@ static TextBufferObj removeTop(void) {
     lv_buf_pop(&stack, &res);
     if(res.type == OPT_STRING)
         res.str->refCount--;
+    else if(res.type == OPT_CAPTURE)
+        res.capture->refCount--;
     return res;
 }
 
@@ -321,10 +325,15 @@ static void readInput(FILE* in, bool repl) {
                 TextBufferObj obj = removeTop();
                 LvString* str = lv_tb_getString(&obj);
                 puts(str->value);
-                if(str->refCount == 0)
+                if(str->refCount == 0) {
                     lv_free(str);
-                if(obj.type == OPT_CAPTURE)
-                    lv_expr_free(obj.capture.captured, obj.capture.func->captureCount);
+                }
+                //case where obj.type == OPT_STRING
+                //is covered by above if clause
+                if(obj.type == OPT_CAPTURE && obj.capture->refCount == 0) {
+                    lv_expr_cleanup(obj.capture->value, obj.capfunc->captureCount);
+                    lv_free(obj.capture);
+                }
                 lv_tb_clearExpr();
                 if(end)
                     printf("First token past body: type=%d, value=%s\n",
@@ -348,12 +357,17 @@ static void runCycle(void) {
                 assert(value->func->type == FUN_FUNCTION);
                 TextBufferObj obj;
                 obj.type = OPT_CAPTURE;
-                obj.capture.func = value->func;
-                obj.capture.captured = lv_alloc(value->func->captureCount * sizeof(TextBufferObj));
+                obj.capfunc = value->func;
+                obj.capture = lv_alloc(sizeof(CaptureObj)
+                    + value->func->captureCount * sizeof(TextBufferObj));
+                obj.capture->refCount = 0;
                 for(int i = 0; i < value->func->captureCount; i++) {
-                    obj.capture.captured[i] = *(TextBufferObj*)lv_buf_get(&stack, fp + i);
-                    if(obj.capture.captured[i].type == OPT_STRING)
-                        obj.capture.captured[i].str->refCount++;
+                    obj.capture->value[i] =
+                        *(TextBufferObj*)lv_buf_get(&stack, fp + i);
+                    if(obj.capture->value[i].type == OPT_STRING)
+                        obj.capture->value[i].str->refCount++;
+                    else if(obj.capture->value[i].type == OPT_CAPTURE)
+                        obj.capture->value[i].capture->refCount++;
                 }
                 push(&obj);
                 break;
@@ -384,16 +398,17 @@ static void runCycle(void) {
                 value = &func;
                 assert(value->type == OPT_FUNCTION_VAL);
             } else if(func.type == OPT_CAPTURE
-                && value->callArity == (func.capture.func->arity - func.capture.func->captureCount)) {
-                //move captured params to stack
-                for(int i = 0; i < func.capture.func->captureCount; i++) {
-                    lv_buf_push(&stack, &func.capture.captured[i]);
+                && value->callArity == (func.capfunc->arity - func.capfunc->captureCount)) {
+                //push captured params onto stack
+                for(int i = 0; i < func.capfunc->captureCount; i++) {
+                    push(&func.capture->value[i]);
                 }
-                //free memory for captured because we are destroying the capture obj
-                //we don't need to clean up individual elements because we transfered
-                //ownership to the stack
-                lv_free(func.capture.captured);
-                func.func = func.capture.func;
+                //clean up capture memory if needed
+                if(func.capture->refCount == 0) {
+                    lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
+                    lv_free(func.capture);
+                }
+                func.func = func.capfunc;
                 value = &func;
             } else {
                 //can't call, pop args and push undefined
@@ -402,9 +417,10 @@ static void runCycle(void) {
                 nan.type = OPT_UNDEFINED;
                 push(&nan);
                 //free capture memory / string memory
-                if(func.type == OPT_CAPTURE)
-                    lv_expr_free(func.capture.captured, func.capture.func->captureCount);
-                else if(func.type == OPT_STRING && func.str->refCount == 0)
+                if(func.type == OPT_CAPTURE && func.capture->refCount == 0) {
+                    lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
+                    lv_free(func.capture);
+                } else if(func.type == OPT_STRING && func.str->refCount == 0)
                     lv_free(func.str);
                 return;
             }
