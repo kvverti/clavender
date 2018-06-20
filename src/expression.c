@@ -769,13 +769,24 @@ static bool shuntOps(ExprContext* cxt) {
         handleRightBracket(cxt);
     else {
         TextBufferObj* tmp = cxt->ops.top--;
-        pushStack(&cxt->out, tmp);
+        //if we need to push capture params onto the out stack,
+        //we do so now, because we don't know the enclosing
+        //function's arity at runtime.
         if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
+            for(int i = tmp->func->captureCount; i > 0; i--) {
+                TextBufferObj obj;
+                obj.type = OPT_PARAM;
+                obj.param = cxt->decl->arity - i;
+                pushStack(&cxt->out, &obj);
+            }
+            pushStack(&cxt->out, tmp);
             int ar = *cxt->params.top--;
-            if(tmp->func->arity != ar) {
+            if((tmp->func->arity - tmp->func->captureCount) != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;
             }
+        } else {
+            pushStack(&cxt->out, tmp);
         }
     }
     return LV_EXPR_ERROR == 0;
@@ -866,6 +877,19 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 ++*cxt->params.top;
                 break;
         }
+    } else if(obj->type == OPT_FUNCTION_VAL && obj->func->captureCount > 0) {
+        //push capture params onto stack, then push obj, then push CAP
+        //out: ... cap1 cap2 .. capn obj CAP ...
+        for(int i = obj->func->captureCount; i > 0; i--) {
+            TextBufferObj obj;
+            obj.type = OPT_PARAM;
+            obj.param = cxt->decl->arity - i;
+            pushStack(&cxt->out, &obj);
+        }
+        pushStack(&cxt->out, obj);
+        TextBufferObj cap;
+        cap.type = OPT_FUNC_CAP;
+        pushStack(&cxt->out, &cap);
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
         pushStack(&cxt->out, obj);

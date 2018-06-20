@@ -350,30 +350,29 @@ static void runCycle(void) {
     TextBufferObj* value = &TEXT_BUFFER[pc++];
     TextBufferObj func; //used in OPT_FUNC_CALL
     switch(value->type) {
-        case OPT_FUNCTION_VAL: {
+        case OPT_FUNC_CAP: {
             //capture outer arguments into function object
-            if(value->func->captureCount > 0) {
-                //fp points to first argument of the outer function
-                assert(value->func->type == FUN_FUNCTION);
-                TextBufferObj obj;
-                obj.type = OPT_CAPTURE;
-                obj.capfunc = value->func;
-                obj.capture = lv_alloc(sizeof(CaptureObj)
-                    + value->func->captureCount * sizeof(TextBufferObj));
-                obj.capture->refCount = 0;
-                for(int i = 0; i < value->func->captureCount; i++) {
-                    obj.capture->value[i] =
-                        *(TextBufferObj*)lv_buf_get(&stack, fp + i);
-                    if(obj.capture->value[i].type == OPT_STRING)
-                        obj.capture->value[i].str->refCount++;
-                    else if(obj.capture->value[i].type == OPT_CAPTURE)
-                        obj.capture->value[i].capture->refCount++;
-                }
-                push(&obj);
-                break;
-            } else;
-            //fallthrough
+            //see expression.c:shuntingYard for capture stack layout
+            func = removeTop();
+            assert(func.func->type == FUN_FUNCTION); //only Lv functions can capture
+            TextBufferObj obj;
+            obj.type = OPT_CAPTURE;
+            obj.capfunc = func.func;
+            obj.capture = lv_alloc(sizeof(CaptureObj)
+                + func.func->captureCount * sizeof(TextBufferObj));
+            obj.capture->refCount = 0;
+            for(int i = func.func->captureCount - 1; i >= 0; i--) {
+                obj.capture->value[i] = removeTop();
+                //    *(TextBufferObj*)lv_buf_get(&stack, fp + i);
+                if(obj.capture->value[i].type == OPT_STRING)
+                    obj.capture->value[i].str->refCount++;
+                else if(obj.capture->value[i].type == OPT_CAPTURE)
+                    obj.capture->value[i].capture->refCount++;
+            }
+            push(&obj);
+            break;
         }
+        case OPT_FUNCTION_VAL:
         case OPT_UNDEFINED:
         case OPT_NUMBER:
         case OPT_STRING:

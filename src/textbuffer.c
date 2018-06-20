@@ -127,6 +127,14 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             strcat(res->value, str);
             return res;
         }
+        case OPT_FUNC_CAP: {
+            static char str[] = "CAP";
+            res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
+            res->len = sizeof(str) - 1;
+            strcpy(res->value, str);
+            return res;
+        }
         case OPT_RETURN: {
             static char str[] = "return";
             res = lv_alloc(sizeof(LvString) + sizeof(str));
@@ -317,8 +325,17 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
     decl->textOffset = fbgn;
     if(lv_debug) {
         //print function info
-        printf("Function name=%s, arity=%d, fixing=%c, offset=%u\n",
-            decl->name, decl->arity, decl->fixing, decl->textOffset);
+        printf("Function name=%s, arity=%d, capture=%d, fixing=%c, offset=%u\n",
+            decl->name, decl->arity, decl->captureCount, decl->fixing, decl->textOffset);
+        for(size_t i = decl->textOffset; i < textBufferTop; i++) {
+            LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
+            printf("%lu: type=%d, value=%s\n",
+                i,
+                TEXT_BUFFER[i].type,
+                str->value);
+            if(str->refCount == 0)
+                lv_free(str);
+        }
     }
     return head;
 }
@@ -339,17 +356,6 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
     lv_free(tmp);
     *start = startOfTmpExpr;
     *end = textBufferTop;
-    // if(lv_debug) {
-        // for(size_t i = 0; i < textBufferTop; i++) {
-            // LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
-            // printf("%lu: type=%d, value=%s\n",
-                // i,
-                // TEXT_BUFFER[i].type,
-                // str->value);
-            // if(str->refCount == 0)
-                // lv_free(str);
-        // }
-    // }
     return ret;
 }
 

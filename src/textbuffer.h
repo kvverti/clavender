@@ -11,6 +11,7 @@ typedef enum OpType {
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
     OPT_CAPTURE,        //function value with captured params
+    OPT_FUNC_CAP,       //capture function with params
     OPT_FUNC_CALL,      //call value as function
     OPT_RETURN,         //return from function
     OPT_BEQZ,           //relative branch if zero
