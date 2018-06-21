@@ -175,6 +175,21 @@ static struct Scopes {
     size_t len;
 } nameScopes;
 
+static void initNameScopes(void) {
+    
+    nameScopes.data = lv_alloc(INIT_NUM_SCOPES * sizeof(char*));
+    nameScopes.cap = INIT_NUM_SCOPES;
+    nameScopes.len = 0;
+}
+
+static void freeNameScopes(void) {
+    
+    for(size_t i = 0; i < nameScopes.len; i++) {
+        lv_free(nameScopes.data[i]);
+    }
+    lv_free(nameScopes.data);
+}
+
 void lv_cmd_onStartup(void) {
     
     importNames.table = lv_alloc(INIT_TABLE_LEN * sizeof(StrHashNode*));
@@ -185,17 +200,12 @@ void lv_cmd_onStartup(void) {
     memset(usingNames.table, 0, INIT_TABLE_LEN * sizeof(StrHashNode*));
     usingNames.cap = INIT_TABLE_LEN;
     usingNames.size = 0;
-    nameScopes.data = lv_alloc(INIT_NUM_SCOPES * sizeof(char*));
-    nameScopes.cap = INIT_NUM_SCOPES;
-    nameScopes.len = 0;
+    initNameScopes();
 }
 
 void lv_cmd_onShutdown(void) {
     
-    for(size_t i = 0; i < nameScopes.len; i++) {
-        lv_free(nameScopes.data[i]);
-    }
-    lv_free(nameScopes.data);
+    freeNameScopes();
     tableClear(&importNames);
     tableClear(&usingNames);
     lv_free(importNames.table);
@@ -290,7 +300,15 @@ static bool import(Token* head) {
         lv_cmd_message = "Error: Invalid argument format";
         return false;
     }
-    if(lv_readFile(head->value)) {
+    //save using names
+    struct Scopes saveScopes = nameScopes;
+    initNameScopes();
+    //import the file
+    bool res = lv_readFile(head->value);
+    //restore using names
+    freeNameScopes();
+    nameScopes = saveScopes;
+    if(res) {
         lv_cmd_message = "Import successful";
         return true;
     } else {

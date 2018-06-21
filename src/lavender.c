@@ -200,7 +200,8 @@ bool lv_readFile(char* name) {
     memset(&scope, 0, sizeof(Operator));
     scope.name = name;
     scope.type = FUN_FWD_DECL;
-    //parse all function declarations
+    //parse all function declarations (not the bodies)
+    //and gather runtime commands
     while(!feof(importFile) && res) {
         res = getFuncSig(importFile, &scope, &decls);
     }
@@ -209,12 +210,24 @@ bool lv_readFile(char* name) {
         //parse function definitions
         for(size_t i = 0; i < decls.len; i++) {
             HelperDeclObj* obj = lv_buf_get(&decls, i);
-            lv_tb_defineFunctionBody(obj->body, obj->func);
-            if(LV_EXPR_ERROR) {
-                res = false;
-                printf("Error parsing function body: %s\n", lv_expr_getError(LV_EXPR_ERROR));
-                LV_EXPR_ERROR = 0;
-                break;
+            if(!obj->func) {
+                //runtime command
+                bool successful = lv_cmd_run(obj->body);
+                if(!successful || lv_debug)
+                    puts(lv_cmd_message);
+                if(!successful) {
+                    res = false;
+                    break; //stop execution because of command error
+                }
+            } else {
+                //function definition
+                lv_tb_defineFunctionBody(obj->body, obj->func);
+                if(LV_EXPR_ERROR) {
+                    res = false;
+                    printf("Error parsing function body: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+                    LV_EXPR_ERROR = 0;
+                    break;
+                }
             }
         }
     }
@@ -228,6 +241,7 @@ bool lv_readFile(char* name) {
     return res;
 }
 
+/** Parse a function definition OR a runtime command. */
 static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     
     Token* head = lv_tkn_split(file);
@@ -239,6 +253,15 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     }
     if(!head) {
         //empty line
+        return true;
+    }
+    if(head->value[0] == '@') {
+        //runtime command
+        //push next and free '@' token
+        HelperDeclObj toPush = { NULL, head->next };
+        lv_buf_push(decls, &toPush);
+        head->next = NULL;
+        lv_tkn_free(head);
         return true;
     }
     if(!isFuncDef(head)) {
