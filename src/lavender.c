@@ -11,6 +11,7 @@
 bool lv_debug = false;
 char* lv_filepath = ".";
 char* lv_mainFile = NULL;
+size_t lv_maxStackSize = 512 * 1024; //512KiB
 
 static void readInput(FILE* in, bool repl);
 static void runCycle(void);
@@ -25,6 +26,20 @@ static void push(TextBufferObj* obj) {
         obj->str->refCount++;
     else if(obj->type == OPT_CAPTURE)
         obj->capture->refCount++;
+    if(lv_maxStackSize
+        && (stack.len + 1) == stack.cap
+        && stack.len >= lv_maxStackSize) {
+        //we've exceeded the maximum stack size
+        LvString* inst = lv_tb_getString(&TEXT_BUFFER[pc]);
+        LvString* arg = lv_tb_getString(obj);
+        printf("Stack overflow: pc=%lu, inst=%s, toPush=%s\n",
+            pc, inst->value, arg->value);
+        if(inst->refCount == 0)
+            lv_free(inst);
+        if(arg->refCount == 0)
+            lv_free(arg);
+        lv_shutdown();
+    }
     lv_buf_push(&stack, obj);
 }
 

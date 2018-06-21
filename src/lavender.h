@@ -6,6 +6,7 @@
 bool lv_debug;
 char* lv_filepath;
 char* lv_mainFile;
+size_t lv_maxStackSize;
 
 void lv_run(void);
 void lv_repl(void);
