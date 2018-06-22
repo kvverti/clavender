@@ -27,7 +27,7 @@ def i_restrictLeft(func, pred) => func <| pred
 ' on the given predicate. Also known as the right restriction of 'func'
 ' onto the range. The function returns the result of 'func' if and
 ' only if the predicate returns true, else the function returns undefined.
-def i_|>(func, pred) => def impl(a) => (Identity <| pred) o func
+def i_|>(func, pred) => (Identity <| pred) o func
 
 ' Alternative spelling of '|>'.
 def i_restrictRight(func, pred) => func |> pred
