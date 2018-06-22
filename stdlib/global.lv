@@ -76,12 +76,6 @@ def i_onlyIf(=> expr, pred) => expr ; pred
     => fall ; 1
 )
 
-' Returns a function with the same range as 'func' on the domain where 'pred'
-' is true, and is undefined everywhere else. You can think of this as the
-' function version of 'onlyIf'.
-' Note: 'restrict' currently only works on arity-1 functions.
-def i_restrict(func, pred) => def impl(a) => [func](a) ; [pred](a)
-
 ' Equality function. Forwards if equality is defined for both
 ' arguments. Equality should be reflexive*, symmetric, and
 ' transitive for all pairs of values (a, b). The default definition

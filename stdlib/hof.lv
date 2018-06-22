@@ -1,0 +1,51 @@
+' The hof namespace contains Higher Order Functions and operations
+' useful for them. Some of the functions defined here are
+' the functional analogue of the value-based functions in the global
+' namespace (for example, '<|' and 'onlyIf').
+
+' The identity function. For all inputs 'a', '[Identity](a) = a'
+def Identity() => def value(a) => a
+
+' Returns the composition of 'f' and 'g'. The returned function
+' is equivalent to 'f(g(a))' for all inputs 'a'.
+def i_o(f, g) => def impl(a) => [f]([g](a))
+
+' Returns a function equivalent to applying the function
+' 'f' and then 'g' on inputs. This is equivalent to the composition of 'g'
+' and 'f'.
+def i_andThen(f, g) => def impl(a) => [g]([f](a))
+
+' Returns the restriction of 'func' to the domain defined by 'pred'.
+' Also known as the left restriction of func to the domain.
+' You can think of this as the function version of 'onlyIf'.
+def i_<|(func, pred) => def impl(a) => [func](a) ; [pred](a)
+
+' Alternative spelling of '<|'.
+def i_restrictLeft(func, pred) => func <| pred
+
+' Returns a function which restricts the output of the given function based
+' on the given predicate. Also known as the right restriction of 'func'
+' onto the range. The function returns the result of 'func' if and
+' only if the predicate returns true, else the function returns undefined.
+def i_|>(func, pred) => def impl(a) => (Identity <| pred) o func
+
+' Alternative spelling of '|>'.
+def i_restrictRight(func, pred) => func |> pred
+
+' Returns the logical negation of the given function. The returned function
+' returns 'true' where the given function returns a falsy value, and similarly
+' for 'false' and truthy values.
+def not(func) => (def impl(a)
+    => 0; [func](a)
+    => 1 ; 1
+)
+
+' Returns the curried form of the given binary function.
+def curry(binaryop) => def left(a) => def right(b) => [binaryop](a, b)
+
+' Returns the uncurried form of the given curried binary function.
+def uncurry(curried) => def impl(a, b) => [[curried](a)](b)
+
+' Returns a function that reverses the arguments to 'binaryop', passing
+' the first as the second and the second as the first.
+def flip(binaryop) => def impl(a, b) => [binaryop](b, a)
