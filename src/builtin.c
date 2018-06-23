@@ -72,6 +72,22 @@ static TextBufferObj typeof_(TextBufferObj* args) {
     return res;
 }
 
+/**
+ * Gets the n'th capture value from the given function.
+ */
+static TextBufferObj cval(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if((args[0].type == OPT_CAPTURE)
+    && (args[1].type == OPT_NUMBER)
+    && (args[1].number >= 0 && args[1].number < args[0].capfunc->captureCount)) {
+        res = args[0].capture->value[(size_t)args[1].number];
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 bool lv_blt_toBool(TextBufferObj* obj) {
     
     return (obj->type != OPT_UNDEFINED)
@@ -397,6 +413,7 @@ void lv_blt_onStartup(void) {
     MK_FUNC_IMPL(typeof_, 1, "typeof");
     MK_FUNCN(str, 1);
     MK_FUNCN(num, 1);
+    MK_FUNCN(cval, 2);
     MK_FUNCR(bool, 1);
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
