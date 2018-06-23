@@ -7,6 +7,7 @@ typedef enum OpType {
     OPT_UNDEFINED,      //undefined value
     OPT_NUMBER,         //Lavender number
     OPT_STRING,         //Lavender string
+    OPT_VECT,           //Lavender vector
     OPT_PARAM,          //function parameter
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
@@ -41,6 +42,10 @@ typedef struct TextBufferObj {
     union {
         double number;
         LvString* str;
+        struct {
+            struct TextBufferObj* vecdata;
+            size_t veclen;
+        };
         int param;
         Operator* func;
         struct {

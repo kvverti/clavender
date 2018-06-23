@@ -27,7 +27,7 @@ static TextBufferObj undefined(TextBufferObj* args) {
     return res;
 }
 
-#define NUM_TYPES 4
+#define NUM_TYPES 5
 static LvString* types[NUM_TYPES];
 
 static void mkTypes(void) {
@@ -40,13 +40,14 @@ static void mkTypes(void) {
     INIT(0, "undefined");
     INIT(1, "number");
     INIT(2, "string");
-    INIT(3, "function");
+    INIT(3, "vect");
+    INIT(4, "function");
     #undef INIT
 }
 
 /**
  * Returns the type of this object, as a string.
- * Possible types are: "undefined", "number", "string", "function"
+ * Possible types are: "undefined", "number", "string", "vect", "function"
  */
 static TextBufferObj typeof_(TextBufferObj* args) {
     
@@ -62,9 +63,11 @@ static TextBufferObj typeof_(TextBufferObj* args) {
         case OPT_STRING:
             res.str = types[2];
             break;
+        case OPT_VECT:
+            res.str = types[3];
         case OPT_CAPTURE:
         case OPT_FUNCTION_VAL:
-            res.str = types[3];
+            res.str = types[4];
             break;
         default:
             assert(false);
@@ -92,7 +95,8 @@ bool lv_blt_toBool(TextBufferObj* obj) {
     
     return (obj->type != OPT_UNDEFINED)
         && (obj->type != OPT_NUMBER || obj->number != 0.0)
-        && (obj->type != OPT_STRING || obj->str->len != 0);
+        && (obj->type != OPT_STRING || obj->str->len != 0)
+        && (obj->type != OPT_VECT || obj->veclen != 0);
 }
 
 /**
@@ -163,7 +167,10 @@ static TextBufferObj len(TextBufferObj* args) {
             res.type = OPT_NUMBER;
             res.number = args[0].capfunc->arity - args[0].capfunc->captureCount;
             break;
-            //todo vectors
+        case OPT_VECT:
+            res.type = OPT_NUMBER;
+            res.number = args[0].veclen;
+            break;
         default:
             res.type = OPT_UNDEFINED;
     }
@@ -192,6 +199,14 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
                 return false;
             for(int i = 0; i < a->capfunc->captureCount; i++) {
                 if(!equal(&a->capture->value[i], &b->capture->value[i]))
+                    return false;
+            }
+            return true;
+        case OPT_VECT:
+            if(a->veclen != b->veclen)
+                return false;
+            for(size_t i = 0; i < a->veclen; i++) {
+                if(!equal(&a->vecdata[i], &b->vecdata[i]))
                     return false;
             }
             return true;
@@ -232,15 +247,25 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_FUNCTION_VAL:
             return (uintptr_t)a->func < (uintptr_t)b->func;
             break;
+        //captures and vects compare the first nonequal values
         case OPT_CAPTURE:
             if(a->capfunc == b->capfunc) {
                 for(int i = 0; i < a->capfunc->captureCount; i++) {
-                    if(!ltImpl(&a->capture->value[i], &b->capture->value[i]))
-                        return false;
+                    if(!equal(&a->capture->value[i], &b->capture->value[i]))
+                        return ltImpl(&a->capture->value[i], &b->capture->value[i]);
                 }
-                return true;
+                return false;
             }
             return (uintptr_t)a->capfunc < (uintptr_t)b->capfunc;
+        case OPT_VECT:
+            if(a->veclen == b->veclen) {
+                for(size_t i = 0; i < a->veclen; i++) {
+                    if(!equal(&a->vecdata[i], &b->vecdata[i]))
+                        return ltImpl(&a->vecdata[i], &b->vecdata[i]);
+                }
+                return false;
+            }
+            return a->veclen < b->veclen;
         default:
             assert(false);
     }

@@ -104,6 +104,31 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             res->len = len;
             return res;
         }
+        case OPT_VECT: {
+            //[ val1, val2, ..., valn ]
+            size_t len = 2;
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
+            res->value[0] = '[';
+            res->value[1] = ' ';
+            res->value[2] = '\0';
+            //concatenate values
+            for(size_t i = 0; i < obj->veclen; i++) {
+                LvString* tmp = lv_tb_getString(&obj->vecdata[i]);
+                len += tmp->len + 2;
+                res = lv_realloc(res, sizeof(LvString) + len + 1);
+                strcat(res->value, tmp->value);
+                res->value[len - 2] = ',';
+                res->value[len - 1] = ' ';
+                res->value[len] = '\0';
+                if(tmp->refCount == 0)
+                    lv_free(tmp);
+            }
+            res->value[len - 2] = ' ';
+            res->value[len - 1] = ']';
+            res->len = len;
+            return res;
+        }
         //not called outside of debug mode
         case OPT_PARAM: {
             static char str[] = "param ";
