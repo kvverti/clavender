@@ -868,9 +868,6 @@ static bool shuntOps(ExprContext* cxt) {
             }
             fixArityFirstArg(cxt);
             pushStack(&cxt->out, tmp);
-            //check the actual runtime number of args against declared arity
-            printf("Source arity:   %d\n"
-                   "Expected arity: %d\n", ar, tmp->func->arity - tmp->func->captureCount);
             if((tmp->func->arity - tmp->func->captureCount) != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;

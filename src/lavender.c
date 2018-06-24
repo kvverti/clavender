@@ -390,6 +390,20 @@ static void readInput(FILE* in, bool repl) {
     lv_tkn_free(toks);
 }
 
+static void makeVect(int length) {
+    
+    TextBufferObj vect;
+    vect.type = OPT_VECT;
+    vect.vect = lv_alloc(sizeof(LvVect) + length * sizeof(TextBufferObj));
+    vect.vect->refCount = 0;
+    vect.vect->len = length;
+    for(size_t i = vect.vect->len; i > 0; i--) {
+        //preserve refCounts because we are transferring to vect
+        lv_buf_pop(&stack, &vect.vect->data[i - 1]);
+    }
+    push(&vect);
+}
+
 static void runCycle(void) {
     
     TextBufferObj* value = &TEXT_BUFFER[pc++];
@@ -414,16 +428,7 @@ static void runCycle(void) {
             break;
         }
         case OPT_MAKE_VECT: {
-            TextBufferObj vect;
-            vect.type = OPT_VECT;
-            vect.vect = lv_alloc(sizeof(LvVect) + value->callArity * sizeof(TextBufferObj));
-            vect.vect->refCount = 0;
-            vect.vect->len = value->callArity;
-            for(size_t i = vect.vect->len; i > 0; i--) {
-                //preserve refCounts because we are transferring to vect
-                lv_buf_pop(&stack, &vect.vect->data[i - 1]);
-            }
-            push(&vect);
+            makeVect(value->callArity);
             break;
         }
         case OPT_FUNCTION_VAL:
@@ -444,27 +449,46 @@ static void runCycle(void) {
                 pc += value->branchAddr - 1;
             break;
         }
-        //todo: make vector for vararg functions
         case OPT_FUNC_CALL: {
             func = removeTop();
             //todo: handle strings
-            if(func.type == OPT_FUNCTION_VAL && value->callArity == func.func->arity) {
-                value = &func;
-                assert(value->type == OPT_FUNCTION_VAL);
-            } else if(func.type == OPT_CAPTURE
-                && value->callArity == (func.capfunc->arity - func.capfunc->captureCount)) {
-                //push captured params onto stack
-                for(int i = 0; i < func.capfunc->captureCount; i++) {
-                    push(&func.capture->value[i]);
+            bool success = false;
+            if(func.type == OPT_FUNCTION_VAL) {
+                //collect varargs into vect
+                if(func.func->varargs) {
+                    int vectLen = value->callArity - (func.func->arity - 1);
+                    if(vectLen >= 0) {
+                        makeVect(vectLen);
+                        success = true;
+                    }
+                } else if(value->callArity == func.func->arity) {
+                    success = true;
                 }
-                //clean up capture memory if needed
-                if(func.capture->refCount == 0) {
-                    lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
-                    lv_free(func.capture);
+            } else if(func.type == OPT_CAPTURE) {
+                int nonCapArity = func.capfunc->arity - func.capfunc->captureCount;
+                //collect varargs into vect
+                if(func.capfunc->varargs) {
+                    int vectLen = value->callArity - (nonCapArity - 1);
+                    if(vectLen >= 0) {
+                        makeVect(vectLen);
+                        nonCapArity = value->callArity; //force execution
+                    }
                 }
-                func.func = func.capfunc;
-                value = &func;
-            } else {
+                if(value->callArity == nonCapArity) {
+                    //push captured params onto stack
+                    for(int i = 0; i < func.capfunc->captureCount; i++) {
+                        push(&func.capture->value[i]);
+                    }
+                    //clean up capture memory if needed
+                    if(func.capture->refCount == 0) {
+                        lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
+                        lv_free(func.capture);
+                    }
+                    func.func = func.capfunc;
+                    success = true;
+                }
+            } 
+            if(!success) {
                 //can't call, pop args and push undefined
                 popAll(value->callArity);
                 TextBufferObj nan;
@@ -482,6 +506,7 @@ static void runCycle(void) {
                 }
                 return;
             }
+            value = &func;
             //fallthrough
         }
         case OPT_FUNCTION: {
