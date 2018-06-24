@@ -827,6 +827,8 @@ static bool shuntOps(ExprContext* cxt) {
             }
             pushStack(&cxt->out, tmp);
             //check the actual runtime number of args against declared arity
+            printf("Source arity:   %d\n"
+                   "Expected arity: %d\n", ar, tmp->func->arity - tmp->func->captureCount);
             if((tmp->func->arity - tmp->func->captureCount) != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;
@@ -938,6 +940,10 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         pushStack(&cxt->out, &cap);
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
+        //check for first param to function and fix arity
+        if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
+            *cxt->params.top = -*cxt->params.top;
+        }
         pushStack(&cxt->out, obj);
     } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
@@ -949,10 +955,13 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         }
         //push the actual operator on ops
         pushStack(&cxt->ops, obj);
-        if(obj->func->fixing == FIX_PRE || obj->func->arity == 1)
+        //negative numbers are fix for when the first params aren't there
+        if(obj->func->fixing == FIX_PRE)
+            pushParam(&cxt->params, -1);
+        else if(obj->func->arity == 1)
             pushParam(&cxt->params, 1);
         else
-            pushParam(&cxt->params, 2);
+            pushParam(&cxt->params, -2);
     } else {
         assert(false);
     }
