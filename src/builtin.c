@@ -424,6 +424,7 @@ void lv_blt_onStartup(void) {
         op->arity = ar; \
         op->fixing = FIX_PRE; \
         op->captureCount = 0; \
+        op->varargs = false; \
         op->builtin = fnc; \
         lv_op_addOperator(op, FNS_PREFIX)
     //creates "external" builtin function
