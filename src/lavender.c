@@ -26,6 +26,8 @@ static void push(TextBufferObj* obj) {
         obj->str->refCount++;
     else if(obj->type == OPT_CAPTURE)
         obj->capture->refCount++;
+    else if(obj->type == OPT_VECT)
+        obj->vect->refCount++;
     if(lv_maxStackSize
         && (stack.len + 1) == stack.cap
         && stack.len >= lv_maxStackSize) {
@@ -58,6 +60,8 @@ static TextBufferObj removeTop(void) {
         res.str->refCount--;
     else if(res.type == OPT_CAPTURE)
         res.capture->refCount--;
+    else if(res.type == OPT_VECT)
+        res.vect->refCount--;
     return res;
 }
 
@@ -371,6 +375,9 @@ static void readInput(FILE* in, bool repl) {
                 if(obj.type == OPT_CAPTURE && obj.capture->refCount == 0) {
                     lv_expr_cleanup(obj.capture->value, obj.capfunc->captureCount);
                     lv_free(obj.capture);
+                } else if(obj.type == OPT_VECT && obj.vect->refCount == 0) {
+                    lv_expr_cleanup(obj.vect->data, obj.vect->len);
+                    lv_free(obj.vect);
                 }
                 lv_tb_clearExpr();
                 if(end)
@@ -400,14 +407,23 @@ static void runCycle(void) {
                 + func.func->captureCount * sizeof(TextBufferObj));
             obj.capture->refCount = 0;
             for(int i = func.func->captureCount - 1; i >= 0; i--) {
-                obj.capture->value[i] = removeTop();
-                //    *(TextBufferObj*)lv_buf_get(&stack, fp + i);
-                if(obj.capture->value[i].type == OPT_STRING)
-                    obj.capture->value[i].str->refCount++;
-                else if(obj.capture->value[i].type == OPT_CAPTURE)
-                    obj.capture->value[i].capture->refCount++;
+                //preserve refCounts because we are transferring to capture
+                lv_buf_pop(&stack, &obj.capture->value[i]);
             }
             push(&obj);
+            break;
+        }
+        case OPT_MAKE_VECT: {
+            TextBufferObj vect;
+            vect.type = OPT_VECT;
+            vect.vect = lv_alloc(sizeof(LvVect) + value->callArity * sizeof(TextBufferObj));
+            vect.vect->refCount = 0;
+            vect.vect->len = value->callArity;
+            for(size_t i = vect.vect->len; i > 0; i--) {
+                //preserve refCounts because we are transferring to vect
+                lv_buf_pop(&stack, &vect.vect->data[i - 1]);
+            }
+            push(&vect);
             break;
         }
         case OPT_FUNCTION_VAL:
@@ -453,12 +469,16 @@ static void runCycle(void) {
                 TextBufferObj nan;
                 nan.type = OPT_UNDEFINED;
                 push(&nan);
-                //free capture memory / string memory
+                //free capture / string / vect memory
                 if(func.type == OPT_CAPTURE && func.capture->refCount == 0) {
                     lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
                     lv_free(func.capture);
-                } else if(func.type == OPT_STRING && func.str->refCount == 0)
+                } else if(func.type == OPT_STRING && func.str->refCount == 0) {
                     lv_free(func.str);
+                } else if(func.type == OPT_VECT && func.vect->refCount == 0) {
+                    lv_expr_cleanup(func.vect->data, func.vect->len);
+                    lv_free(func.vect);
+                }
                 return;
             }
             //fallthrough

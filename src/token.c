@@ -8,6 +8,7 @@
 
 static TokenType tryGetFuncSymb(void);
 static TokenType tryGetQualName(void);
+static TokenType tryGetEllipsis(void);
 static TokenType getSymbol(void);
 static TokenType getString(void);
 static TokenType getFuncVal(void);
@@ -79,6 +80,11 @@ static int isidbgn(int c) {
 static int isident(int c) {
     
     return isidbgn(c) || isdigit(c);
+}
+
+static int isdot(int c) {
+    
+    return c == '.';
 }
 
 //loops over the input while the passed
@@ -192,8 +198,10 @@ Token* lv_tkn_split(FILE* in) {
             type = tryGetFuncSymb();
         } else if(issymb(c)) {
             type = getSymbol();
-        } else if(isdigit(c) || c == '.') {
+        } else if(isdigit(c)) {
             type = getNumber();
+        } else if(c == '.') {
+            type = tryGetEllipsis();
         } else if(c == '\\') {
             type = getFuncVal();
         } else if(c == '"') {
@@ -332,6 +340,17 @@ static TokenType tryGetQualName(void) {
         }
     }
     return type;
+}
+
+static TokenType tryGetEllipsis(void) {
+    
+    assert(buffer[idx] == '.');
+    getInputWhile(isdot);
+    if((idx - bgn) == 3)
+        return TTY_ELLIPSIS;
+    //isn't ellipsis, must be number
+    idx = bgn;
+    return getNumber();
 }
 
 static TokenType getSymbol(void) {

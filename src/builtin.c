@@ -96,7 +96,7 @@ bool lv_blt_toBool(TextBufferObj* obj) {
     return (obj->type != OPT_UNDEFINED)
         && (obj->type != OPT_NUMBER || obj->number != 0.0)
         && (obj->type != OPT_STRING || obj->str->len != 0)
-        && (obj->type != OPT_VECT || obj->veclen != 0);
+        && (obj->type != OPT_VECT || obj->vect->len != 0);
 }
 
 /**
@@ -169,7 +169,7 @@ static TextBufferObj len(TextBufferObj* args) {
             break;
         case OPT_VECT:
             res.type = OPT_NUMBER;
-            res.number = args[0].veclen;
+            res.number = args[0].vect->len;
             break;
         default:
             res.type = OPT_UNDEFINED;
@@ -203,10 +203,10 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             }
             return true;
         case OPT_VECT:
-            if(a->veclen != b->veclen)
+            if(a->vect->len != b->vect->len)
                 return false;
-            for(size_t i = 0; i < a->veclen; i++) {
-                if(!equal(&a->vecdata[i], &b->vecdata[i]))
+            for(size_t i = 0; i < a->vect->len; i++) {
+                if(!equal(&a->vect->data[i], &b->vect->data[i]))
                     return false;
             }
             return true;
@@ -258,14 +258,14 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
             }
             return (uintptr_t)a->capfunc < (uintptr_t)b->capfunc;
         case OPT_VECT:
-            if(a->veclen == b->veclen) {
-                for(size_t i = 0; i < a->veclen; i++) {
-                    if(!equal(&a->vecdata[i], &b->vecdata[i]))
-                        return ltImpl(&a->vecdata[i], &b->vecdata[i]);
+            if(a->vect->len == b->vect->len) {
+                for(size_t i = 0; i < a->vect->len; i++) {
+                    if(!equal(&a->vect->data[i], &b->vect->data[i]))
+                        return ltImpl(&a->vect->data[i], &b->vect->data[i]);
                 }
                 return false;
             }
-            return a->veclen < b->veclen;
+            return a->vect->len < b->vect->len;
         default:
             assert(false);
     }

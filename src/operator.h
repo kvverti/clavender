@@ -47,6 +47,7 @@ typedef struct Operator {
         Builtin builtin;
     };
     struct Operator* next;
+    bool varargs;
 } Operator;
 
 /**

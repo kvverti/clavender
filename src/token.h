@@ -12,6 +12,7 @@ typedef enum TokenType {
     TTY_FUNC_VAL,       //function value
     TTY_QUAL_FUNC_VAL,  //qualified function value
     TTY_STRING,         //string
+    TTY_ELLIPSIS,       //vararg (vect capture) modifier
     TTY_LITERAL         //literal character
 } TokenType;
 

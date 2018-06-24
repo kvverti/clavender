@@ -105,6 +105,15 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             return res;
         }
         case OPT_VECT: {
+            //handle Nil vect separately
+            if(obj->vect->len == 0) {
+                static char str[] = "[ ]";
+                res = lv_alloc(sizeof(LvString) + sizeof(str));
+                res->refCount = 0;
+                res->len = sizeof(str) - 1;
+                memcpy(res->value, str, sizeof(str));
+                return res;
+            }
             //[ val1, val2, ..., valn ]
             size_t len = 2;
             res = lv_alloc(sizeof(LvString) + len + 1);
@@ -113,8 +122,8 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             res->value[1] = ' ';
             res->value[2] = '\0';
             //concatenate values
-            for(size_t i = 0; i < obj->veclen; i++) {
-                LvString* tmp = lv_tb_getString(&obj->vecdata[i]);
+            for(size_t i = 0; i < obj->vect->len; i++) {
+                LvString* tmp = lv_tb_getString(&obj->vect->data[i]);
                 len += tmp->len + 2;
                 res = lv_realloc(res, sizeof(LvString) + len + 1);
                 strcat(res->value, tmp->value);
@@ -141,6 +150,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
             return res;
         }
+        case OPT_MAKE_VECT:
         case OPT_FUNC_CALL: {
             static char str[] = " CALL";
             size_t len = length(obj->callArity);
@@ -149,7 +159,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             res->refCount = 0;
             res->len = len;
             sprintf(res->value, "%d", obj->callArity);
-            strcat(res->value, str);
+            strcat(res->value, obj->type == OPT_MAKE_VECT ? " VECT" : " CALL");
             return res;
         }
         case OPT_FUNC_CAP: {
@@ -350,8 +360,13 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
     decl->textOffset = fbgn;
     if(lv_debug) {
         //print function info
-        printf("Function name=%s, arity=%d, capture=%d, fixing=%c, offset=%u\n",
-            decl->name, decl->arity, decl->captureCount, decl->fixing, decl->textOffset);
+        printf("Function name=%s, arity=%d, capture=%d, fixing=%c, varargs=%s, offset=%u\n",
+            decl->name,
+            decl->arity,
+            decl->captureCount,
+            decl->fixing,
+            decl->varargs ? "true" : "false", 
+            decl->textOffset);
         for(size_t i = decl->textOffset; i < textBufferTop; i++) {
             LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
             printf("%lu: type=%d, value=%s\n",

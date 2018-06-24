@@ -14,6 +14,7 @@ typedef enum OpType {
     OPT_CAPTURE,        //function value with captured params
     OPT_FUNC_CAP,       //capture function with params
     OPT_FUNC_CALL,      //call value as function
+    OPT_MAKE_VECT,      //make vector from args
     OPT_RETURN,         //return from function
     OPT_BEQZ,           //relative branch if zero
     OPT_ADDR,           //internal address (not present in text buffer)
@@ -31,6 +32,8 @@ typedef struct LvString {
 
 //forward declare for TextBufferObj
 typedef struct CaptureObj CaptureObj;
+//forward declare for LvVect
+typedef struct LvVect LvVect;
 
 /**
  * A struct that stores a Lavender value. This may
@@ -42,10 +45,7 @@ typedef struct TextBufferObj {
     union {
         double number;
         LvString* str;
-        struct {
-            struct TextBufferObj* vecdata;
-            size_t veclen;
-        };
+        LvVect* vect;
         int param;
         Operator* func;
         struct {
@@ -67,8 +67,17 @@ typedef struct TextBufferObj {
  */
 typedef struct CaptureObj {
     size_t refCount;
-    struct TextBufferObj value[];
+    TextBufferObj value[];
 } CaptureObj;
+
+/**
+ * Vector object.
+ */
+typedef struct LvVect {
+    size_t refCount;
+    size_t len;
+    TextBufferObj data[];
+} LvVect;
 
 /**
  * The global buffer where all Lavender function

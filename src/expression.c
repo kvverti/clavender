@@ -93,6 +93,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
         return NULL;
     //holds the arguments and their names
     Param args[arity + nspace->arity];
+    bool varargs = false; //whether this is a varargs function
     if(arity == 0) {
         //incr past close paren
         head = head->next;
@@ -102,6 +103,10 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
             args[i].byName = (head->type == TTY_SYMBOL);
             if(args[i].byName) //incr past by name symbol
                 head = head->next;
+            if(head->type == TTY_ELLIPSIS) { //incr past varargs
+                varargs = true;
+                head = head->next;
+            }
             assert(head->type == TTY_IDENT);
             args[i].name = head->value;
             assert(head->next->type == TTY_LITERAL);
@@ -150,6 +155,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
         funcObj->fixing = fixing;
         funcObj->captureCount = nspace->arity;
         funcObj->params = lv_alloc((arity + nspace->arity) * sizeof(Param));
+        funcObj->varargs = varargs;
         memcpy(funcObj->params, args, (arity + nspace->arity) * sizeof(Param));
         //copy param names
         for(int i = 0; i < (arity + nspace->arity); i++) {
@@ -189,12 +195,24 @@ static int getArity(Token* head) {
     #define RETVAL 0
     assert(head);
     int res = 0;
+    bool varargs = false;
     if(head->value[0] == ')')
         return res;
     while(true) {
+        if(varargs) {
+            //varargs only allowed at the end
+            LV_EXPR_ERROR = XPE_BAD_ARGS;
+            return 0;
+        }
         //by name symbol?
         if(strcmp(head->value, "=>") == 0) {
             //by name symbol
+            head = head->next;
+            REQUIRE_MORE_TOKENS(head);
+        }
+        if(head->type == TTY_ELLIPSIS) {
+            //varargs modifier
+            varargs = true;
             head = head->next;
             REQUIRE_MORE_TOKENS(head);
         }
@@ -366,6 +384,12 @@ void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
             if(--obj[i].capture->refCount == 0) {
                 lv_expr_cleanup(obj[i].capture->value, obj[i].capfunc->captureCount);
                 lv_free(obj[i].capture);
+            }
+        } else if(obj[i].type == OPT_VECT) {
+            assert(obj[i].vect->refCount);
+            if(--obj[i].vect->refCount == 0) {
+                lv_expr_cleanup(obj[i].vect->data, obj[i].vect->len);
+                lv_free(obj[i].vect);
             }
         }
     }
@@ -729,6 +753,8 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
         case TTY_FUNC_SYMBOL:
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
             break;
+        default:
+            assert(false);
     }
 }
 
@@ -773,6 +799,26 @@ static bool shuntOps(ExprContext* cxt) {
         //we do so now, because we don't know the enclosing
         //function's arity at runtime.
         if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
+            //ar holds the number of args passed in Lavender source
+            int ar = *cxt->params.top--;
+            //handle varargs
+            if(tmp->func->varargs) {
+                //make last arg + extra args on the end into a vector
+                //zero vector args is allowed
+                TextBufferObj obj;
+                obj.type = OPT_MAKE_VECT;
+                obj.callArity = ar - (tmp->func->arity - 1);
+                if(obj.callArity < 0) {
+                    LV_EXPR_ERROR = XPE_BAD_ARITY;
+                    //repush tmp so it gets cleaned up
+                    pushStack(&cxt->ops, tmp);
+                    return false;
+                }
+                //adjust arity to match fixed function arity
+                ar = tmp->func->arity;
+                pushStack(&cxt->out, &obj);
+            }
+            //push any extra implicit capture args
             for(int i = tmp->func->captureCount; i > 0; i--) {
                 TextBufferObj obj;
                 obj.type = OPT_PARAM;
@@ -780,7 +826,7 @@ static bool shuntOps(ExprContext* cxt) {
                 pushStack(&cxt->out, &obj);
             }
             pushStack(&cxt->out, tmp);
-            int ar = *cxt->params.top--;
+            //check the actual runtime number of args against declared arity
             if((tmp->func->arity - tmp->func->captureCount) != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;
