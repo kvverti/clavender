@@ -85,12 +85,16 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
         LV_EXPR_ERROR = XPE_EXPT_ARGS;
         return NULL;
     }
-    head = head->next;
-    REQUIRE_MORE_TOKENS(head);
-    //collect args
-    arity = getArity(head);
-    if(LV_EXPR_ERROR)
-        return NULL;
+    if(head->type == TTY_EMPTY_ARGS) {
+        arity = 0;
+    } else {
+        head = head->next;
+        REQUIRE_MORE_TOKENS(head);
+        //collect args
+        arity = getArity(head);
+        if(LV_EXPR_ERROR)
+            return NULL;
+    }
     //holds the arguments and their names
     Param args[arity + nspace->arity];
     bool varargs = false; //whether this is a varargs function
@@ -274,6 +278,7 @@ typedef struct ExprContext {
     TextStack ops;          //the temporary operator stack
     TextStack out;          //the output stack
     IntStack params;        //the parameter stack
+    bool commaAllowed;      //commas are not allowed after ()
 } ExprContext;
 
 static int compare(TextBufferObj* a, TextBufferObj* b);
@@ -284,6 +289,7 @@ static void parseQualName(TextBufferObj* obj, ExprContext* cxt);
 static void parseNumber(TextBufferObj* obj, ExprContext* cxt);
 static void parseString(TextBufferObj* obj, ExprContext* cxt);
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt);
+static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt);
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above functions
 //runs one cycle of shunting yard
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
@@ -314,6 +320,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.startOfName = strrchr(decl->name, ':') + 1;
     cxt.expectOperand = true;
     cxt.nesting = 0;
+    cxt.commaAllowed = true;
     //initialize stacks. Set the zeroth element to a sentinel value.
     cxt.out.len = INIT_STACK_LEN;
     cxt.out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
@@ -509,13 +516,16 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
                 LV_EXPR_ERROR = XPE_EXPECT_PRE;
             }
             break;
-        case ')':
         case ']':
+        case ')':
             cxt->nesting--;
-            //fallthrough
+            if(cxt->expectOperand) {
+                LV_EXPR_ERROR = XPE_EXPECT_INF;
+            }
+            break;
         case ',':
             //close groupings are "operators"
-            if(cxt->expectOperand) {
+            if(!cxt->commaAllowed || cxt->expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_INF;
             }
             break;
@@ -724,11 +734,26 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     cxt->expectOperand = false;
 }
 
+static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
+    //we should be expecting an operand, then we change to
+    //expecting an operator
+    if(!cxt->expectOperand) {
+        LV_EXPR_ERROR = XPE_EXPECT_PRE;
+    } else {
+        obj->type = OPT_EMPTY_ARGS;
+        cxt->expectOperand = false;
+        cxt->commaAllowed = false;
+    }
+}
+
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
     
+    bool commaWasDisallowed = !cxt->commaAllowed;
+    bool doneClosing = true;
     switch(cxt->head->type) {
         case TTY_LITERAL:
             parseLiteral(obj, cxt);
+            doneClosing = false;
             break;
         case TTY_IDENT:
             parseIdent(obj, cxt);
@@ -750,12 +775,17 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
         case TTY_QUAL_FUNC_VAL:
             parseFuncValue(obj, cxt);
             break;
+        case TTY_EMPTY_ARGS:
+            parseEmptyArgs(obj, cxt);
+            break;
         case TTY_FUNC_SYMBOL:
+        case TTY_ELLIPSIS:
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
             break;
-        default:
-            assert(false);
     }
+    //reallow commas after the next operator
+    if(commaWasDisallowed && doneClosing)
+        cxt->commaAllowed = true;
 }
 
 static void pushStack(TextStack* stack, TextBufferObj* obj) {
@@ -784,6 +814,17 @@ static void pushParam(IntStack* stack, int num) {
 
 #define REQUIRE_NONEMPTY(s) \
     if(s.top == s.stack) { LV_EXPR_ERROR = XPE_UNBAL_GROUP; return; } else (void)0
+    
+/**
+ * Sets the negative placeholder arity to positive on
+ * the first (prefix) or second (infix) function argument.
+ */
+static void fixArityFirstArg(ExprContext* cxt) {
+    //check for first param to function and fix arity
+    if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
+        *cxt->params.top = -*cxt->params.top;
+    }
+}
 
 //shunts over one op (or handles right bracket)
 //optionally removing the top operator
@@ -825,6 +866,7 @@ static bool shuntOps(ExprContext* cxt) {
                 obj.param = cxt->decl->arity - i;
                 pushStack(&cxt->out, &obj);
             }
+            fixArityFirstArg(cxt);
             pushStack(&cxt->out, tmp);
             //check the actual runtime number of args against declared arity
             printf("Source arity:   %d\n"
@@ -850,21 +892,26 @@ static void handleRightBracket(ExprContext* cxt) {
     assert(isLiteral(cxt->ops.top, ']'));
     assert(cxt->params.top != cxt->params.stack);
     int arity = *cxt->params.top--;
+    if(arity < 0) {
+        LV_EXPR_ERROR = XPE_BAD_ARITY;
+        return;
+    }
     cxt->ops.top--; //pop ']'
     REQUIRE_NONEMPTY(cxt->ops);
     //shunt over operators
     do {
-        //no need to check arity, since it was already checked
         if(isLiteral(cxt->ops.top, ']'))
             handleRightBracket(cxt);
         else {
-            pushStack(&cxt->out, cxt->ops.top--);
+            if(!shuntOps(cxt))
+                return;
             REQUIRE_NONEMPTY(cxt->ops);
         }
     } while(!isLiteral(cxt->ops.top, '['));
     TextBufferObj call;
     call.type = OPT_FUNC_CALL;
     call.callArity = arity;
+    fixArityFirstArg(cxt);
     pushStack(&cxt->out, &call);
     cxt->ops.top--; //pop '['
 }
@@ -880,7 +927,16 @@ static void handleRightBracket(ExprContext* cxt) {
  */
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
     
-    if(obj->type == OPT_LITERAL) {
+    if(obj->type == OPT_EMPTY_ARGS) {
+        //set source args explicitly to 0 (or 1 for infix)
+        if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
+            *cxt->params.top = -*cxt->params.top - 1;
+        } else {
+            //we aren't directly after a suitable function
+            LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+            return;
+        }
+    } else if(obj->type == OPT_LITERAL) {
         switch(obj->literal) {
             case '(':
                 //push left paren and push new param count
@@ -900,7 +956,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 }
                 REQUIRE_NONEMPTY(cxt->out);
                 cxt->out.top--;
-                pushParam(&cxt->params, 1);
+                //see below for why this is set to -1
+                pushParam(&cxt->params, -1);
                 pushStack(&cxt->ops, obj);
                 break;
             case ')':
@@ -937,13 +994,11 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         pushStack(&cxt->out, obj);
         TextBufferObj cap;
         cap.type = OPT_FUNC_CAP;
+        fixArityFirstArg(cxt);
         pushStack(&cxt->out, &cap);
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
-        //check for first param to function and fix arity
-        if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
-            *cxt->params.top = -*cxt->params.top;
-        }
+        fixArityFirstArg(cxt);
         pushStack(&cxt->out, obj);
     } else if(obj->type == OPT_FUNCTION) {
         //shunt over the ops of greater precedence if right assoc.
@@ -955,7 +1010,11 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         }
         //push the actual operator on ops
         pushStack(&cxt->ops, obj);
-        //negative numbers are fix for when the first params aren't there
+        //negative numbers are fix for when the first params aren't there.
+        //We cannot detect the initial params with commas, so we must rely
+        //on the params themselves to detect this negative value and set
+        //it to positive when they are push onto the output stack.
+        //In this way we can detect the error when there is no initial param.
         if(obj->func->fixing == FIX_PRE)
             pushParam(&cxt->params, -1);
         else if(obj->func->arity == 1)

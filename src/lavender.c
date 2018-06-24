@@ -444,6 +444,7 @@ static void runCycle(void) {
                 pc += value->branchAddr - 1;
             break;
         }
+        //todo: make vector for vararg functions
         case OPT_FUNC_CALL: {
             func = removeTop();
             //todo: handle strings

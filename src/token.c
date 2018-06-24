@@ -9,6 +9,7 @@
 static TokenType tryGetFuncSymb(void);
 static TokenType tryGetQualName(void);
 static TokenType tryGetEllipsis(void);
+static TokenType tryGetEmptyArgs(void);
 static TokenType getSymbol(void);
 static TokenType getString(void);
 static TokenType getFuncVal(void);
@@ -206,6 +207,8 @@ Token* lv_tkn_split(FILE* in) {
             type = getFuncVal();
         } else if(c == '"') {
             type = getString();
+        } else if(c == '(') {
+            type = tryGetEmptyArgs();
         } else {
             //literal token
             type = getLiteral();
@@ -351,6 +354,19 @@ static TokenType tryGetEllipsis(void) {
     //isn't ellipsis, must be number
     idx = bgn;
     return getNumber();
+}
+
+static TokenType tryGetEmptyArgs(void) {
+    
+    assert(buffer[idx] == '(');
+    idx++;
+    if((buffer[idx] || reallocBuffer()) && buffer[idx] == ')') {
+        idx++;
+        return TTY_EMPTY_ARGS;
+    } else {
+        idx = bgn;
+        return getLiteral();
+    }
 }
 
 static TokenType getSymbol(void) {
