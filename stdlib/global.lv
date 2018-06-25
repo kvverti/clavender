@@ -13,6 +13,10 @@ def false() => 0
 ' Alternative spelling of 'true'.
 def rest() => 1
 
+' Returns a vect containing the passed arguments.
+' This is a variable-arity function.
+def Vect(...a) => a
+
 ' The value passed by forwarding functions to determine if a function is
 ' object-like. Object-like functions should return the value __yes__ when
 ' passed this value.

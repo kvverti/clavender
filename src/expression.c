@@ -278,7 +278,6 @@ typedef struct ExprContext {
     TextStack ops;          //the temporary operator stack
     TextStack out;          //the output stack
     IntStack params;        //the parameter stack
-    bool commaAllowed;      //commas are not allowed after ()
 } ExprContext;
 
 static int compare(TextBufferObj* a, TextBufferObj* b);
@@ -320,7 +319,6 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.startOfName = strrchr(decl->name, ':') + 1;
     cxt.expectOperand = true;
     cxt.nesting = 0;
-    cxt.commaAllowed = true;
     //initialize stacks. Set the zeroth element to a sentinel value.
     cxt.out.len = INIT_STACK_LEN;
     cxt.out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
@@ -519,13 +517,10 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
         case ']':
         case ')':
             cxt->nesting--;
-            if(cxt->expectOperand) {
-                LV_EXPR_ERROR = XPE_EXPECT_INF;
-            }
-            break;
+            //fallthrough
         case ',':
             //close groupings are "operators"
-            if(!cxt->commaAllowed || cxt->expectOperand) {
+            if(cxt->expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_INF;
             }
             break;
@@ -742,18 +737,14 @@ static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
     } else {
         obj->type = OPT_EMPTY_ARGS;
         cxt->expectOperand = false;
-        cxt->commaAllowed = false;
     }
 }
 
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
     
-    bool commaWasDisallowed = !cxt->commaAllowed;
-    bool doneClosing = true;
     switch(cxt->head->type) {
         case TTY_LITERAL:
             parseLiteral(obj, cxt);
-            doneClosing = false;
             break;
         case TTY_IDENT:
             parseIdent(obj, cxt);
@@ -783,13 +774,17 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
             break;
     }
-    //reallow commas after the next operator
-    if(commaWasDisallowed && doneClosing)
-        cxt->commaAllowed = true;
 }
 
 static void pushStack(TextStack* stack, TextBufferObj* obj) {
-    
+    //overwrite empty args because it's just a signal.
+    //an abuse of the stack, but oh well
+    //note that empty args will NEVER appear in the final text.
+    if(stack->top->type == OPT_EMPTY_ARGS) {
+        assert(stack->top != stack->stack);
+        *stack->top = *obj;
+        return;
+    }
     if(stack->top + 1 == stack->stack + stack->len) {
         stack->len *= 2;
         size_t sz = stack->top - stack->stack;
@@ -928,6 +923,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         //set source args explicitly to 0 (or 1 for infix)
         if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
             *cxt->params.top = -*cxt->params.top - 1;
+            //to signal that a comma should NOT appear after
+            pushStack(&cxt->out, obj);
         } else {
             //we aren't directly after a suitable function
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
@@ -974,6 +971,12 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                     REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
+                }
+                //there cannot be more args after () in the current function
+                //(this is why we shunt ops over first!)
+                if(cxt->out.top->type == OPT_EMPTY_ARGS) {
+                    LV_EXPR_ERROR = XPE_EXPECT_INF;
+                    return;
                 }
                 REQUIRE_NONEMPTY(cxt->params);
                 ++*cxt->params.top;
