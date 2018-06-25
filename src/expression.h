@@ -14,7 +14,8 @@ typedef enum ExprError {
     XPE_EXPECT_PRE,     //operand expected
     XPE_UNEXPECT_TOKEN, //unexpected token
     XPE_UNBAL_GROUP,    //unbalanced parens or brackets
-    XPE_BAD_ARITY       //wrong number of params to function
+    XPE_BAD_ARITY,      //wrong number of params to function
+    XPE_BAD_FIXING,     //arity and fixing not compatible
 } ExprError;
 
 ExprError LV_EXPR_ERROR;

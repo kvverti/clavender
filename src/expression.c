@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 char* lv_expr_getError(ExprError error) {
-    #define LEN 12
+    #define LEN 13
     static char* msg[LEN] = {
         "Expr does not define a function",
         "Reached end of input while parsing",
@@ -19,7 +19,8 @@ char* lv_expr_getError(ExprError error) {
         "Expected operand",
         "Encountered unexpected token",
         "Unbalanced parens or brackets",
-        "Wrong number of parameters to function"
+        "Wrong number of parameters to function",
+        "Function arity incompatible with fixing"
     };
     assert(error > 0 && error <= LEN);
     return msg[error - 1];
@@ -94,6 +95,13 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
         arity = getArity(head);
         if(LV_EXPR_ERROR)
             return NULL;
+    }
+    //only prefix functions may have arity 0
+    //and right infix functions may not have arity 1
+    if((arity == 0 && fixing != FIX_PRE)
+    || (arity == 1 && fixing == FIX_RIGHT_IN)) {
+        LV_EXPR_ERROR = XPE_BAD_FIXING;
+        return NULL;
     }
     //holds the arguments and their names
     Param args[arity + nspace->arity];
