@@ -175,7 +175,7 @@ static bool isFuncDef(Token* head) {
     
     //functions may have one level of parens
     assert(head);
-    if(head->value[0] == '(') {
+    if(head->type == TTY_LITERAL && head->value[0] == '(') {
         head = head->next;
     }
     return head && strcmp(head->value, "def") == 0;

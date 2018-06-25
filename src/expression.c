@@ -48,7 +48,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
     //we stop parsing when this becomes less than zero
     int nesting = 0;
     //skip opening paren if one is present
-    if(head->value[0] == '(') {
+    if(head->type == TTY_LITERAL && head->value[0] == '(') {
         nesting++;
         head = head->next;
     }
@@ -80,7 +80,7 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
             fixing = FIX_PRE;
             fnameAlias = "";
     }
-    if(head->value[0] != '(') {
+    if(head->type == TTY_LITERAL && head->value[0] != '(') {
         //we require a left paren before the arguments
         LV_EXPR_ERROR = XPE_EXPT_ARGS;
         return NULL;
@@ -338,6 +338,11 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
         //is this a def?
         TextBufferObj obj;
         if(strcmp(cxt.head->value, "def") == 0) {
+            //must be expecting an operand
+            if(!cxt.expectOperand) {
+                LV_EXPR_ERROR = XPE_EXPECT_INF;
+                IF_ERROR_CLEANUP;
+            }
             //recursive call to lv_tb_defineFunction
             Operator* op;
             cxt.head = lv_tb_defineFunction(cxt.head, cxt.decl, &op);
