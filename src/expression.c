@@ -108,6 +108,11 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
             if(args[i].byName) //incr past by name symbol
                 head = head->next;
             if(head->type == TTY_ELLIPSIS) { //incr past varargs
+                if(fixing != FIX_PRE && arity == 1) {
+                    //cannot have a postfix varargs
+                    LV_EXPR_ERROR = XPE_BAD_ARGS;
+                    return NULL;
+                }
                 varargs = true;
                 head = head->next;
             }
