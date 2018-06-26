@@ -471,6 +471,8 @@ DECL_MATH_FUNC(floor);
 DECL_MATH_FUNC(fabs);
 DECL_MATH_FUNC(round);
 
+#undef DECL_MATH_FUNC
+
 static TextBufferObj atan2_(TextBufferObj* args) {
     
     TextBufferObj res;
@@ -495,8 +497,6 @@ static TextBufferObj sgn(TextBufferObj* args) {
     }
     return res;
 }
-
-#undef MATH_FUNC
 
 void lv_blt_onStartup(void) {
     
