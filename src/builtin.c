@@ -365,7 +365,36 @@ static TextBufferObj div_(TextBufferObj* args) {
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
-        res.number = args[0].number / args[1].number;
+        if(args[1].number == 0.0) {
+            double sign = copysign(1.0, args[1].number)
+                * copysign(1.0, args[0].number);
+            double ans = args[0].number == 0.0 ? NAN : INFINITY;
+            ans = copysign(ans, sign);
+            res.number = ans;
+        } else {
+            res.number = args[0].number / args[1].number;
+        }
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Remainder */
+static TextBufferObj rem(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        if(args[1].number == 0.0) {
+            double sign = copysign(1.0, args[1].number)
+                * copysign(1.0, args[0].number);
+            double ans = args[0].number == 0.0 ? NAN : INFINITY;
+            ans = copysign(ans, sign);
+            res.number = ans;
+        } else {
+            res.number = fmod(args[0].number, args[1].number);
+        }
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -411,6 +440,64 @@ static TextBufferObj neg(TextBufferObj* args) {
     return res;
 }
 
+#define DECL_MATH_FUNC(fnc) \
+static TextBufferObj fnc##_(TextBufferObj* args) { \
+    TextBufferObj res; \
+    if(args[0].type == OPT_NUMBER) { \
+        res.type = OPT_NUMBER; \
+        res.number = fnc(args[0].number); \
+    } else { \
+        res.type = OPT_UNDEFINED; \
+    } \
+    return res; \
+}
+
+/* Math functions */
+DECL_MATH_FUNC(sin);
+DECL_MATH_FUNC(cos);
+DECL_MATH_FUNC(tan);
+DECL_MATH_FUNC(asin);
+DECL_MATH_FUNC(acos);
+DECL_MATH_FUNC(atan);
+DECL_MATH_FUNC(sinh);
+DECL_MATH_FUNC(cosh);
+DECL_MATH_FUNC(tanh);
+DECL_MATH_FUNC(exp);
+DECL_MATH_FUNC(log);
+DECL_MATH_FUNC(log10);
+DECL_MATH_FUNC(sqrt);
+DECL_MATH_FUNC(ceil);
+DECL_MATH_FUNC(floor);
+DECL_MATH_FUNC(fabs);
+DECL_MATH_FUNC(round);
+
+static TextBufferObj atan2_(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = atan2(args[0].number, args[1].number);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Sign function. Returns +1 for +0 and -1 for -0. */
+static TextBufferObj sgn(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER) {
+        res.type = OPT_NUMBER;
+        res.number = copysign(1.0, args[0].number);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+#undef MATH_FUNC
+
 void lv_blt_onStartup(void) {
     
     mkTypes();
@@ -448,10 +535,30 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(sub, 2);
     MK_FUNCN(mul, 2);
     MK_FUNCR(div, 2);
+    MK_FUNCN(rem, 2);
     MK_FUNCR(pow, 2);
     MK_FUNCN(pos, 1);
     MK_FUNCN(neg, 1);
     MK_FUNCN(len, 1);
+    MK_FUNCR(sin, 1);
+    MK_FUNCR(cos, 1);
+    MK_FUNCR(tan, 1);
+    MK_FUNCR(asin, 1);
+    MK_FUNCR(acos, 1);
+    MK_FUNCR(atan, 1);
+    MK_FUNCR(atan2, 2);
+    MK_FUNCR(sinh, 1);
+    MK_FUNCR(cosh, 1);
+    MK_FUNCR(tanh, 1);
+    MK_FUNCR(exp, 1);
+    MK_FUNCR(log, 1);
+    MK_FUNCR(log10, 1);
+    MK_FUNCR(sqrt, 1);
+    MK_FUNCR(ceil, 1);
+    MK_FUNCR(floor, 1);
+    MK_FUNC_IMPL(fabs_, 1, "__abs__");
+    MK_FUNCR(round, 1);
+    MK_FUNCN(sgn, 1);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNCR

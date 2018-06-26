@@ -31,12 +31,6 @@ def __yes__() => def value(a) => sys:undefined
 ' if and only if the value __object__ maps to the value __yes__.
 def isObject(a) => sys:__eq__([a](__object__), __yes__)
 
-' The floating point NaN value.
-def NaN() => sys:__num__("NaN")
-
-' The floating point Infinity value
-def Inf() => sys:__num__("Infinity")
-
 ' Returns the logical NOT of the argument
 ' after conversion to bool.
 (def !(a)
@@ -139,6 +133,18 @@ def i_>(a, b) => b < a
 ' Less than or equal to comparison function.
 def i_<=(a, b) => b >= a
 
+' Returns the minimum of a and b, according to '<'.
+(def min(a, b)
+    => a ; a < b
+    => b ; 1
+)
+
+' Returns the maximum of a and b, according to '<'.
+(def max(a, b)
+    => b ; a < b
+    => a ; 1
+)
+
 ' Converts argument to a string. Forwards if possible.
 def str(a) => [a onlyIf isObject(a)](\str) else sys:__str__(a)
 
@@ -192,6 +198,14 @@ def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
     => [[a](\/\)](b) ; sys:defined([a onlyIf isObject(a)](\/\))
                     && sys:defined([b onlyIf isObject(b)](\/\))
     => sys:__div__(a, b) ; 1
+)
+
+' Remainder function. Forwards if remainder is defined for
+' both arguments.
+(def i_%(a, b)
+    => [[a](\%\)](b) ; sys:defined([a onlyIf isObject(a)](\%\))
+                    && sys:defined([b onlyIf isObject(b)](\%\))
+    => sys:__rem__(a, b) ; 1
 )
 
 ' Exponentiation function. Forwards if exponentiation is defined

@@ -1,0 +1,72 @@
+' The math namespace contains mathematical
+' functions which operate on numeric values.
+
+' The floating point NaN value.
+def NaN() => sys:__num__("NaN")
+
+' The floating point Infinity value.
+def Inf() => sys:__num__("Infinity")
+
+' Pi, the ratio of a circle's circumference to its diameter.
+def pi() => 3.141592653589793
+
+' E, the base of the natural logarithm.
+def e() => 2.718281828459045
+
+' The sin function.
+def sin(a) => sys:__sin__(a)
+
+' The cosine function.
+def cos(a) => sys:__cos__(a)
+
+' The tangent function.
+def tan(a) => sys:__tan__(a)
+
+' The inverse sine function.
+def asin(a) => sys:__asin__(a)
+
+' The inverse cosine function.
+def acos(a) => sys:__acos__(a)
+
+' The inverse tangent function.
+def atan(a) => sys:__atan__(a)
+
+' The angle between the +x axis and the point (x, y)
+def atan2(y, x) => sys:__atan2__(y, x)
+
+' The hyperbolic sine function.
+def sinh(a) => sys:__sinh__(a)
+
+' The hyperbolic cosine function.
+def cosh(a) => sys:__cosh__(a)
+
+' The hyperbolic tangent function.
+def tanh(a) => sys:__tanh__(a)
+
+' Returns e ** a. Note that this should in general be faster than 'e ** a'.
+def exp(a) => sys:__exp__(a)
+
+' Returns the natural log of a.
+def log(a) => sys:__log__(a)
+
+' Returns the common log of a.
+def log10(a) => sys:__log10__(a)
+
+' Returns the square root of a. Note that this should in general be faster
+' than 'a ** 0.5'.
+def sqrt(a) => sys:__sqrt__(a)
+
+' Returns the nearest integer greater than a.
+def ceil(a) => sys:__ceil__(a)
+
+' Returns the nearest integer smaller than a.
+def floor(a) => sys:__floor__(a)
+
+' Returns the nearest integer to a, ties round toward infinity.
+def round(a) => sys:__round__(a)
+
+' Returns the absolute value of a.
+def abs(a) => sys:__abs__(a)
+
+' Returns the sign of a. Note that 0 returns +1, and -0 returns -1.
+def sgn(a) => sys:__sgn__(a)
