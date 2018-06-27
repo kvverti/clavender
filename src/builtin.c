@@ -498,6 +498,49 @@ static TextBufferObj sgn(TextBufferObj* args) {
     return res;
 }
 
+//functional functions
+
+static void incRefCount(TextBufferObj* obj) {
+    
+    switch(obj->type) {
+        case OPT_STRING:
+            obj->str->refCount++;
+            break;
+        case OPT_CAPTURE:
+            obj->capture->refCount++;
+            break;
+        case OPT_VECT:
+            obj->vect->refCount++;
+            break;
+        default:
+            break;
+    }
+}
+
+/** Functional map */
+static TextBufferObj map(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    TextBufferObj func = args[1]; //in case the stack is reallocated
+    if(args[0].type == OPT_VECT) {
+        TextBufferObj* oldData = args[0].vect->data;
+        size_t len = args[0].vect->len;
+        LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
+        vect->refCount = 0;
+        vect->len = len;
+        for(size_t i = 0; i < len; i++) {
+            TextBufferObj obj = lv_callFunction(&func, 1, &oldData[i]);
+            incRefCount(&obj);
+            vect->data[i] = obj;
+        }
+        res.type = OPT_VECT;
+        res.vect = vect;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 void lv_blt_onStartup(void) {
     
     mkTypes();
@@ -559,6 +602,7 @@ void lv_blt_onStartup(void) {
     MK_FUNC_IMPL(fabs_, 1, "__abs__");
     MK_FUNCR(round, 1);
     MK_FUNCN(sgn, 1);
+    MK_FUNCN(map, 2);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNCR
