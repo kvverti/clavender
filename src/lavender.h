@@ -1,5 +1,6 @@
 #ifndef LAVENDER_H
 #define LAVENDER_H
+#include "textbuffer.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -11,6 +12,7 @@ size_t lv_maxStackSize;
 void lv_run(void);
 void lv_repl(void);
 bool lv_readFile(char* name);
+TextBufferObj lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args);
 void lv_startup(void);
 void lv_shutdown(void);
 void* lv_alloc(size_t size);

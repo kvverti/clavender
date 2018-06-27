@@ -404,6 +404,105 @@ static void makeVect(int length) {
     push(&vect);
 }
 
+/**
+ * Prepares the stack for calling the given function with the
+ * given number of arguments. Returns whether the setup is successful
+ * and sets op to the underlying operator.
+ */
+static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underlying) {
+
+    //todo: handle strings
+    assert(func);
+    assert(underlying);
+    bool success = false;
+    Operator* op = NULL;
+    if(func->type == OPT_FUNCTION_VAL) {
+        op = func->func;
+        //collect varargs into vect
+        if(op->varargs) {
+            int vectLen = numArgs - (op->arity - 1);
+            if(vectLen >= 0) {
+                makeVect(vectLen);
+                success = true;
+            }
+        } else if(numArgs == op->arity) {
+            success = true;
+        }
+    } else if(func->type == OPT_CAPTURE) {
+        op = func->capfunc;
+        int nonCapArity = op->arity - op->captureCount;
+        //collect varargs into vect
+        if(op->varargs) {
+            int vectLen = numArgs - (nonCapArity - 1);
+            if(vectLen >= 0) {
+                makeVect(vectLen);
+                nonCapArity = numArgs; //force execution
+            }
+        }
+        if(numArgs == nonCapArity) {
+            //push captured params onto stack
+            for(int i = 0; i < op->captureCount; i++) {
+                push(&func->capture->value[i]);
+            }
+            success = true;
+        }
+    } 
+    //can't call, pop args and return false
+    if(!success)
+        popAll(numArgs);
+    *underlying = op;
+    return success;
+}
+
+/**
+ * Calls the given function by saving the current stack frame
+ * and jumping to the first instruction of the given function.
+ * Returns the value of the current (old) frame.
+ */
+static size_t jumpAndLink(Operator* func) {
+    
+    assert(func);
+    size_t frame = fp;
+    switch(func->type) {
+        case FUN_FWD_DECL: {
+            //this should never happen
+            assert(false);
+            break;
+        }
+        case FUN_BUILTIN: {
+            //call built in function, then pop args and push result
+            //we never actually pushed a new frame, so return the old
+            //(current) value.
+            size_t tmpFp = stack.len - func->arity;
+            TextBufferObj res = func->builtin(lv_buf_get(&stack, tmpFp));
+            popAll(func->arity);
+            push(&res);
+            break;
+        }
+        case FUN_FUNCTION: {
+            //calling convention
+            //  1. push fp
+            //  2. set fp = stack.len - func.arity - 1 (first argument)
+            //  3. push pc (return value)
+            //  4. set pc = first inst of function
+            //The stack looks like this:
+            //  ... arg0 arg1 .. argN-1 fp pc ...
+            //       ^^
+            //       fp
+            TextBufferObj obj;
+            obj.type = OPT_ADDR;
+            obj.addr = fp;
+            push(&obj);
+            fp = stack.len - func->arity - 1;
+            obj.addr = pc;
+            push(&obj);
+            pc = func->textOffset;
+            break;
+        }
+    }
+    return frame;
+}
+
 static void runCycle(void) {
     
     TextBufferObj* value = &TEXT_BUFFER[pc++];
@@ -450,101 +549,30 @@ static void runCycle(void) {
             break;
         }
         case OPT_FUNC_CALL: {
+            Operator* op;
             func = removeTop();
-            //todo: handle strings
-            bool success = false;
-            if(func.type == OPT_FUNCTION_VAL) {
-                //collect varargs into vect
-                if(func.func->varargs) {
-                    int vectLen = value->callArity - (func.func->arity - 1);
-                    if(vectLen >= 0) {
-                        makeVect(vectLen);
-                        success = true;
-                    }
-                } else if(value->callArity == func.func->arity) {
-                    success = true;
-                }
-            } else if(func.type == OPT_CAPTURE) {
-                int nonCapArity = func.capfunc->arity - func.capfunc->captureCount;
-                //collect varargs into vect
-                if(func.capfunc->varargs) {
-                    int vectLen = value->callArity - (nonCapArity - 1);
-                    if(vectLen >= 0) {
-                        makeVect(vectLen);
-                        nonCapArity = value->callArity; //force execution
-                    }
-                }
-                if(value->callArity == nonCapArity) {
-                    //push captured params onto stack
-                    for(int i = 0; i < func.capfunc->captureCount; i++) {
-                        push(&func.capture->value[i]);
-                    }
-                    //clean up capture memory if needed
-                    if(func.capture->refCount == 0) {
-                        lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
-                        lv_free(func.capture);
-                    }
-                    func.func = func.capfunc;
-                    success = true;
-                }
-            } 
-            if(!success) {
-                //can't call, pop args and push undefined
-                popAll(value->callArity);
+            bool setup = setUpFuncCall(&func, value->callArity, &op);
+            //cleanup memory
+            if(func.type == OPT_CAPTURE && func.capture->refCount == 0) {
+                lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
+                lv_free(func.capture);
+            } else if(func.type == OPT_STRING && func.str->refCount == 0) {
+                lv_free(func.str);
+            } else if(func.type == OPT_VECT && func.vect->refCount == 0) {
+                lv_expr_cleanup(func.vect->data, func.vect->len);
+                lv_free(func.vect);
+            }
+            if(!setup) {
                 TextBufferObj nan;
                 nan.type = OPT_UNDEFINED;
                 push(&nan);
-                //free capture / string / vect memory
-                if(func.type == OPT_CAPTURE && func.capture->refCount == 0) {
-                    lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
-                    lv_free(func.capture);
-                } else if(func.type == OPT_STRING && func.str->refCount == 0) {
-                    lv_free(func.str);
-                } else if(func.type == OPT_VECT && func.vect->refCount == 0) {
-                    lv_expr_cleanup(func.vect->data, func.vect->len);
-                    lv_free(func.vect);
-                }
-                return;
+            } else {
+                jumpAndLink(op);
             }
-            value = &func;
-            //fallthrough
+            break;
         }
         case OPT_FUNCTION: {
-            switch(value->func->type) {
-                case FUN_FWD_DECL: {
-                    //this should never happen
-                    assert(false);
-                    break;
-                }
-                case FUN_BUILTIN: {
-                    //call built in function, then pop args and push result
-                    size_t tmpFp = stack.len - value->func->arity;
-                    TextBufferObj res = value->func->builtin(lv_buf_get(&stack, tmpFp));
-                    popAll(value->func->arity);
-                    push(&res);
-                    break;
-                }
-                case FUN_FUNCTION: {
-                    //calling convention
-                    //  1. push fp
-                    //  2. set fp = stack.len - func.arity - 1 (first argument)
-                    //  3. push pc (return value)
-                    //  4. set pc = first inst of function
-                    //The stack looks like this:
-                    //  ... arg0 arg1 .. argN-1 fp pc ...
-                    //       ^^
-                    //       fp
-                    TextBufferObj obj;
-                    obj.type = OPT_ADDR;
-                    obj.addr = fp;
-                    push(&obj);
-                    fp = stack.len - value->func->arity - 1;
-                    obj.addr = pc;
-                    push(&obj);
-                    pc = value->func->textOffset;
-                    break;
-                }
-            }
+            jumpAndLink(value->func);
             break;
         }
         case OPT_RETURN: {
@@ -565,5 +593,31 @@ static void runCycle(void) {
         default:
             //set error
             return;
+    }
+}
+
+/**
+ * Calls the function given with the parameters given and returns
+ * the result. This function handles captures, vects, strings, and functions.
+ */
+TextBufferObj lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args) {
+    
+    //push args onto stack
+    Operator* op;
+    for(size_t i = 0; i < numArgs; i++) {
+        push(&args[i]);
+    }
+    if(!setUpFuncCall(func, numArgs, &op)) {
+        TextBufferObj nan;
+        nan.type = OPT_UNDEFINED;
+        return nan;
+    } else {
+        size_t frame = jumpAndLink(op);
+        //we stop executing when the frame pushed by
+        //jumpAndLink is popped.
+        while(fp != frame) {
+            runCycle();
+        }
+        return removeTop();
     }
 }
