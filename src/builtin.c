@@ -75,6 +75,23 @@ static TextBufferObj typeof_(TextBufferObj* args) {
     return res;
 }
 
+static void incRefCount(TextBufferObj* obj) {
+    
+    switch(obj->type) {
+        case OPT_STRING:
+            obj->str->refCount++;
+            break;
+        case OPT_CAPTURE:
+            obj->capture->refCount++;
+            break;
+        case OPT_VECT:
+            obj->vect->refCount++;
+            break;
+        default:
+            break;
+    }
+}
+
 /**
  * Gets the n'th capture value from the given function.
  */
@@ -87,6 +104,56 @@ static TextBufferObj cval(TextBufferObj* args) {
         res = args[0].capture->value[(size_t)args[1].number];
     } else {
         res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/**
+ * Flattens the given vectors and elements into a single
+ * vector of elements.
+ */
+static TextBufferObj cat(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    res.type = OPT_VECT;
+    assert(args[0].type == OPT_VECT);
+    size_t len = 0;
+    for(size_t i = 0; i < args[0].vect->len; i++) {
+        TextBufferObj* obj = &args[0].vect->data[i];
+        len += obj->type == OPT_VECT ? obj->vect->len : 1;
+    }
+    res.vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
+    res.vect->refCount = 0;
+    res.vect->len = len;
+    size_t idx = 0;
+    for(size_t i = 0; i < args[0].vect->len; i++) {
+        TextBufferObj* obj = &args[0].vect->data[i];
+        if(obj->type == OPT_VECT) {
+            for(int j = 0; j < obj->vect->len; j++) {
+                incRefCount(&obj->vect->data[j]);
+                res.vect->data[idx++] = obj->vect->data[j];
+            }
+        } else {
+            incRefCount(obj);
+            res.vect->data[idx++] = *obj;
+        }
+    }
+    assert(idx == len);
+    return res;
+}
+
+/**
+ * Calls the given function with the given vector of
+ * arguments. Varargs functions have extra parameters
+ * packed into the varargs vector.
+ */
+static TextBufferObj call(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[1].type != OPT_VECT) {
+        res.type = OPT_UNDEFINED;
+    } else {
+        res = lv_callFunction(&args[0], args[1].vect->len, args[1].vect->data);
     }
     return res;
 }
@@ -500,23 +567,6 @@ static TextBufferObj sgn(TextBufferObj* args) {
 
 //functional functions
 
-static void incRefCount(TextBufferObj* obj) {
-    
-    switch(obj->type) {
-        case OPT_STRING:
-            obj->str->refCount++;
-            break;
-        case OPT_CAPTURE:
-            obj->capture->refCount++;
-            break;
-        case OPT_VECT:
-            obj->vect->refCount++;
-            break;
-        default:
-            break;
-    }
-}
-
 /** Functional map */
 static TextBufferObj map(TextBufferObj* args) {
     
@@ -570,6 +620,8 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(str, 1);
     MK_FUNCN(num, 1);
     MK_FUNCN(cval, 2);
+    MK_FUNC(cat, 1); op->varargs = true;
+    MK_FUNC(call, 2);
     MK_FUNCR(bool, 1);
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
