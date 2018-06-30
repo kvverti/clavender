@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "lavender.h"
+#include "expression.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -150,10 +151,11 @@ static TextBufferObj cat(TextBufferObj* args) {
 static TextBufferObj call(TextBufferObj* args) {
     
     TextBufferObj res;
+    TextBufferObj func = args[0];
     if(args[1].type != OPT_VECT) {
         res.type = OPT_UNDEFINED;
     } else {
-        res = lv_callFunction(&args[0], args[1].vect->len, args[1].vect->data);
+        res = lv_callFunction(&func, args[1].vect->len, args[1].vect->data);
     }
     return res;
 }
@@ -598,8 +600,8 @@ static TextBufferObj sgn(TextBufferObj* args) {
 static TextBufferObj map(TextBufferObj* args) {
     
     TextBufferObj res;
-    TextBufferObj func = args[1]; //in case the stack is reallocated
     if(args[0].type == OPT_VECT) {
+        TextBufferObj func = args[1]; //in case the stack is reallocated
         TextBufferObj* oldData = args[0].vect->data;
         size_t len = args[0].vect->len;
         LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
@@ -612,6 +614,57 @@ static TextBufferObj map(TextBufferObj* args) {
         }
         res.type = OPT_VECT;
         res.vect = vect;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Functional filter */
+static TextBufferObj filter(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_VECT) {
+        TextBufferObj func = args[1];
+        TextBufferObj* oldData = args[0].vect->data;
+        size_t len = args[0].vect->len;
+        LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
+        vect->refCount = 0;
+        size_t newLen = 0;
+        for(size_t i = 0; i < len; i++) {
+            TextBufferObj passed = lv_callFunction(&func, 1, &oldData[i]);
+            incRefCount(&passed); //so lv_expr_cleanup doesn't blow up
+            if(lv_blt_toBool(&passed)) {
+                incRefCount(&oldData[i]);
+                vect->data[newLen] = oldData[i];
+                newLen++;
+            }
+            lv_expr_cleanup(&passed, 1);
+        }
+        vect->len = newLen;
+        vect = lv_realloc(vect, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
+        res.type = OPT_VECT;
+        res.vect = vect;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Functional fold */
+static TextBufferObj fold(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_VECT) {
+        size_t len = args[0].vect->len;
+        TextBufferObj* oldData = args[0].vect->data;
+        TextBufferObj accum[2] = { args[1] };
+        TextBufferObj func = args[2];
+        for(size_t i = 0; i < len; i++) {
+            accum[1] = oldData[i];
+            accum[0] = lv_callFunction(&func, 2, accum);
+        }
+        res = accum[0];
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -683,6 +736,8 @@ void lv_blt_onStartup(void) {
     MK_FUNCR(round, 1);
     MK_FUNCN(sgn, 1);
     MK_FUNCN(map, 2);
+    MK_FUNCN(filter, 2);
+    MK_FUNCN(fold, 3);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNCR
