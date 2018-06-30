@@ -19,6 +19,7 @@ static void runCycle(void);
 static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
+static Operator* atFunc; //built in sys:__at__
 
 static void push(TextBufferObj* obj) {
     
@@ -149,6 +150,7 @@ void lv_startup(void) {
     lv_tb_onStartup();
     lv_blt_onStartup();
     lv_cmd_onStartup();
+    atFunc = lv_op_getOperator("sys:__at__", FNS_PREFIX);
 }
 
 void lv_shutdown(void) {
@@ -407,46 +409,62 @@ static void makeVect(int length) {
 /**
  * Prepares the stack for calling the given function with the
  * given number of arguments. Returns whether the setup is successful
- * and sets op to the underlying operator.
+ * and sets op to the underlying operator. If the function is a string
+ * or a vector, and one argument is passed, the underlying operator is
+ * set to the built in __at__ function.
  */
 static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underlying) {
 
-    //todo: handle strings
     assert(func);
     assert(underlying);
     bool success = false;
     Operator* op = NULL;
-    if(func->type == OPT_FUNCTION_VAL) {
-        op = func->func;
-        //collect varargs into vect
-        if(op->varargs) {
-            int vectLen = numArgs - (op->arity - 1);
-            if(vectLen >= 0) {
-                makeVect(vectLen);
+    switch(func->type) {
+        case OPT_FUNCTION_VAL: {
+            op = func->func;
+            //collect varargs into vect
+            if(op->varargs) {
+                int vectLen = numArgs - (op->arity - 1);
+                if(vectLen >= 0) {
+                    makeVect(vectLen);
+                    success = true;
+                }
+            } else if(numArgs == op->arity) {
                 success = true;
             }
-        } else if(numArgs == op->arity) {
-            success = true;
+            break;
         }
-    } else if(func->type == OPT_CAPTURE) {
-        op = func->capfunc;
-        int nonCapArity = op->arity - op->captureCount;
-        //collect varargs into vect
-        if(op->varargs) {
-            int vectLen = numArgs - (nonCapArity - 1);
-            if(vectLen >= 0) {
-                makeVect(vectLen);
-                nonCapArity = numArgs; //force execution
+        case OPT_CAPTURE: {
+            op = func->capfunc;
+            int nonCapArity = op->arity - op->captureCount;
+            //collect varargs into vect
+            if(op->varargs) {
+                int vectLen = numArgs - (nonCapArity - 1);
+                if(vectLen >= 0) {
+                    makeVect(vectLen);
+                    nonCapArity = numArgs; //force execution
+                }
             }
-        }
-        if(numArgs == nonCapArity) {
-            //push captured params onto stack
-            for(int i = 0; i < op->captureCount; i++) {
-                push(&func->capture->value[i]);
+            if(numArgs == nonCapArity) {
+                //push captured params onto stack
+                for(int i = 0; i < op->captureCount; i++) {
+                    push(&func->capture->value[i]);
+                }
+                success = true;
             }
-            success = true;
+            break;
         }
-    } 
+        case OPT_STRING:
+        case OPT_VECT:
+            if(numArgs == 1) {
+                op = atFunc;
+                push(func);
+                success = true;
+            }
+            break;
+        default:
+            break;
+    }
     //can't call, pop args and return false
     if(!success)
         popAll(numArgs);

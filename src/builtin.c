@@ -158,6 +158,33 @@ static TextBufferObj call(TextBufferObj* args) {
     return res;
 }
 
+/**
+ * Returns the i'th element of the given string or vect.
+ */
+static TextBufferObj at(TextBufferObj* args) {
+    
+    TextBufferObj res;
+    if(args[0].type == OPT_NUMBER) {
+        if(args[1].type == OPT_STRING
+        && args[0].number >= 0 && args[0].number < args[1].str->len) {
+            res.type = OPT_STRING;
+            res.str = lv_alloc(sizeof(LvString) + 2);
+            res.str->refCount = 0;
+            res.str->len = 1;
+            res.str->value[0] = args[1].str->value[(size_t)args[0].number];
+            res.str->value[1] = '\0';
+        } else if(args[1].type == OPT_VECT
+            && args[0].number >= 0 && args[0].number < args[1].vect->len) {
+            res = args[1].vect->data[(size_t)args[0].number];
+        } else {
+            res.type = OPT_UNDEFINED;
+        }
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 bool lv_blt_toBool(TextBufferObj* obj) {
     
     return (obj->type != OPT_UNDEFINED)
@@ -619,9 +646,10 @@ void lv_blt_onStartup(void) {
     MK_FUNC_IMPL(typeof_, 1, "typeof");
     MK_FUNCN(str, 1);
     MK_FUNCN(num, 1);
-    MK_FUNCN(cval, 2);
+    MK_FUNC(cval, 2);
     MK_FUNC(cat, 1); op->varargs = true;
     MK_FUNC(call, 2);
+    MK_FUNCN(at, 2);
     MK_FUNCR(bool, 1);
     MK_FUNCN(eq, 2);
     MK_FUNCN(lt, 2);
