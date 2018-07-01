@@ -54,8 +54,8 @@ typedef struct TextBufferObj {
         int param;
         Operator* func;
         struct {
-            Operator* capfunc;
             CaptureObj* capture;
+            Operator* capfunc;
         };
         int callArity;
         int branchAddr;
