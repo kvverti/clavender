@@ -66,6 +66,7 @@ static TextBufferObj typeof_(TextBufferObj* args) {
             break;
         case OPT_VECT:
             res.str = types[3];
+            break;
         case OPT_CAPTURE:
         case OPT_FUNCTION_VAL:
             res.str = types[4];
@@ -78,19 +79,8 @@ static TextBufferObj typeof_(TextBufferObj* args) {
 
 static void incRefCount(TextBufferObj* obj) {
     
-    switch(obj->type) {
-        case OPT_STRING:
-            obj->str->refCount++;
-            break;
-        case OPT_CAPTURE:
-            obj->capture->refCount++;
-            break;
-        case OPT_VECT:
-            obj->vect->refCount++;
-            break;
-        default:
-            break;
-    }
+    if(obj->type & LV_DYNAMIC)
+        ++*obj->refCount;
 }
 
 /**

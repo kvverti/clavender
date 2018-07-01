@@ -23,12 +23,8 @@ static Operator* atFunc; //built in sys:__at__
 
 static void push(TextBufferObj* obj) {
     
-    if(obj->type == OPT_STRING)
-        obj->str->refCount++;
-    else if(obj->type == OPT_CAPTURE)
-        obj->capture->refCount++;
-    else if(obj->type == OPT_VECT)
-        obj->vect->refCount++;
+    if(obj->type & LV_DYNAMIC)
+        ++*obj->refCount;
     if(lv_maxStackSize
         && (stack.len + 1) == stack.cap
         && stack.len >= lv_maxStackSize) {
@@ -57,12 +53,8 @@ static TextBufferObj removeTop(void) {
     
     TextBufferObj res;
     lv_buf_pop(&stack, &res);
-    if(res.type == OPT_STRING)
-        res.str->refCount--;
-    else if(res.type == OPT_CAPTURE)
-        res.capture->refCount--;
-    else if(res.type == OPT_VECT)
-        res.vect->refCount--;
+    if(res.type & LV_DYNAMIC)
+        --*res.refCount;
     return res;
 }
 
@@ -366,21 +358,14 @@ static void readInput(FILE* in, bool repl) {
                     runCycle();
                 }
                 assert(stack.len == 1);
-                TextBufferObj obj = removeTop();
+                TextBufferObj obj;
+                lv_buf_pop(&stack, &obj);
                 LvString* str = lv_tb_getString(&obj);
                 puts(str->value);
                 if(str->refCount == 0) {
                     lv_free(str);
                 }
-                //case where obj.type == OPT_STRING
-                //is covered by above if clause
-                if(obj.type == OPT_CAPTURE && obj.capture->refCount == 0) {
-                    lv_expr_cleanup(obj.capture->value, obj.capfunc->captureCount);
-                    lv_free(obj.capture);
-                } else if(obj.type == OPT_VECT && obj.vect->refCount == 0) {
-                    lv_expr_cleanup(obj.vect->data, obj.vect->len);
-                    lv_free(obj.vect);
-                }
+                lv_expr_cleanup(&obj, 1);
                 lv_tb_clearExpr();
                 if(end)
                     printf("First token past body: type=%d, value=%s\n",
@@ -568,18 +553,10 @@ static void runCycle(void) {
         }
         case OPT_FUNC_CALL: {
             Operator* op;
-            func = removeTop();
+            lv_buf_pop(&stack, &func);
             bool setup = setUpFuncCall(&func, value->callArity, &op);
             //cleanup memory
-            if(func.type == OPT_CAPTURE && func.capture->refCount == 0) {
-                lv_expr_cleanup(func.capture->value, func.capfunc->captureCount);
-                lv_free(func.capture);
-            } else if(func.type == OPT_STRING && func.str->refCount == 0) {
-                lv_free(func.str);
-            } else if(func.type == OPT_VECT && func.vect->refCount == 0) {
-                lv_expr_cleanup(func.vect->data, func.vect->len);
-                lv_free(func.vect);
-            }
+            lv_expr_cleanup(&func, 1);
             if(!setup) {
                 TextBufferObj nan;
                 nan.type = OPT_UNDEFINED;
