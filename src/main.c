@@ -10,7 +10,9 @@ int main(int argc, char* argv[]) {
     //parse command line arguments
     for(int i = 1; i < argc; i++) {
         if(usingMain) {
-            //arguments NYI
+            lv_mainArgs.args = &argv[i];
+            lv_mainArgs.count = argc - i;
+            break;
         } else if(strcmp(argv[i], "-fp") == 0) {
             //-fp takes one argument
             if(i == (argc - 1)) {

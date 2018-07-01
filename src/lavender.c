@@ -12,8 +12,10 @@ bool lv_debug = false;
 char* lv_filepath = ".";
 char* lv_mainFile = NULL;
 size_t lv_maxStackSize = 512 * 1024; //512KiB
+struct LvMainArgs lv_mainArgs = { NULL, 0 };
 
 static void readInput(FILE* in, bool repl);
+static size_t jumpAndLink(Operator* func);
 static void runCycle(void);
 
 static DynBuffer stack; //of TextBufferObj
@@ -80,20 +82,56 @@ void lv_run(void) {
     
     lv_startup();
     if(lv_mainFile) {
-        char ext[] = ".lv";
-        char* filename = lv_alloc(strlen(lv_mainFile) + sizeof(ext));
-        filename[0] = '\0';
-        strcat(filename, lv_mainFile);
-        strcat(filename, ext);
-        FILE* file = fopen(filename, "r");
-        if(!file) {
-            printf("Cannot read main file %s\n", filename);
+        bool read = lv_readFile(lv_mainFile);
+        if(!read) {
+            puts("Error reading main file");
         } else {
-            while(!feof(file))
-                readInput(file, false);
-            fclose(file);
+            //get the main function
+            char mainName[] = ":main";
+            char entryPointName[strlen(lv_mainFile) + sizeof(mainName)];
+            strcpy(entryPointName, lv_mainFile);
+            strcat(entryPointName, mainName);
+            Operator* entryPoint = lv_op_getOperator(entryPointName, FNS_PREFIX);
+            if(entryPoint && entryPoint->arity == 1) {
+                //box params
+                TextBufferObj args;
+                args.type = OPT_VECT;
+                args.vect = lv_alloc(sizeof(LvVect) + lv_mainArgs.count * sizeof(TextBufferObj));
+                args.vect->refCount = 0;
+                args.vect->len = lv_mainArgs.count;
+                for(size_t i = 0; i < args.vect->len; i++) {
+                    size_t argLen = strlen(lv_mainArgs.args[i]);
+                    LvString* str =
+                        lv_alloc(sizeof(LvString) + argLen + 1);
+                    str->refCount = 1;
+                    str->len = argLen;
+                    strcpy(str->value, lv_mainArgs.args[i]);
+                    args.vect->data[i].type = OPT_STRING;
+                    args.vect->data[i].str = str;
+                }
+                //call main function
+                push(&args);
+                //there's no stack frame to keep track of
+                //and there's no expression in the text buffer
+                //so we have to go by stack size.
+                jumpAndLink(entryPoint);
+                do {
+                    runCycle();
+                } while(stack.len != 1);
+                //print result
+                TextBufferObj obj;
+                lv_buf_pop(&stack, &obj);
+                LvString* str = lv_tb_getString(&obj);
+                puts(str->value);
+                if(str->refCount == 0) {
+                    lv_free(str);
+                }
+                lv_expr_cleanup(&obj, 1);
+            } else {
+                //cannot call function
+                puts("Main function missing or incompatible");
+            }
         }
-        lv_free(filename);
     } else {
         if(lv_debug)
             puts("Running in debug mode");
