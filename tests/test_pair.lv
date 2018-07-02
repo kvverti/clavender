@@ -1,0 +1,20 @@
+@import global
+@import assert
+@import util
+@using global
+@using assert
+@using util:Pair
+
+def t() => Pair("hello", "world")
+
+def main(args) => Vect(
+    assert(isObject(t), "isObject"),
+    assert(str(t) = "hello -> world", "str"),
+    assert(len(t) = 2, "len"),
+    assert([t](0) = "hello", "First elem"),
+    assert([t](1) = "world", "Second elem"),
+    assert(!sys:defined([t](2)), "Out of range"),
+    assert((t map \len) = Pair(5, 5), "map"),
+    assert((t fold ("", \+\)) = "helloworld", "fold"),
+    assert(t toVect = Vect("hello", "world"), "toVect")
+) filter \len map (def(a) => "    " + a) fold ("Failed tests:", def(a, b) => a + "\n" + b)

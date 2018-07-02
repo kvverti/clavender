@@ -133,18 +133,6 @@ def i_>(a, b) => b < a
 ' Less than or equal to comparison function.
 def i_<=(a, b) => b >= a
 
-' Returns the minimum of a and b, according to '<'.
-(def min(a, b)
-    => a ; a < b
-    => b ; 1
-)
-
-' Returns the maximum of a and b, according to '<'.
-(def max(a, b)
-    => b ; a < b
-    => a ; 1
-)
-
 ' Converts argument to a string. Forwards if possible.
 def str(a) => [a onlyIf isObject(a)](\str) else sys:__str__(a)
 
@@ -214,4 +202,40 @@ def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
     => [[a](\**\)](b) ; sys:defined([a onlyIf isObject(a)](\**\))
                      && sys:defined([b onlyIf isObject(b)](\**\))
     => sys:__pow__(a, b) ; 1
+)
+
+' Maps each element of the given object using the given mapping
+' function.
+(def i_map(obj, func) =>
+    [[obj onlyIf isObject(obj)](\map\)](func) else sys:__map__(obj, func)
+)
+
+' Maps each element of the given object to zero or more new values
+' using the given mapping function.
+(def i_flatmap(obj, func)
+    => sys:call(\sys:cat, sys:__map__(obj, func)) ; sys:__eq__(sys:typeof(obj), "vect")
+    => [[obj onlyIf isObject(obj)](\flatmap\)](func) ; 1
+)
+
+' Filters the elements of the given object according to the given
+' predicate.
+(def i_filter(obj, func) =>
+    [[obj onlyIf isObject(obj)](\filter\)](func) else sys:__filter__(obj, func)
+)
+
+' Combines the elements of the given object according to the
+' given fold function with the given initial value.
+(def i_fold(obj, id, func) =>
+    [[obj onlyIf isObject(obj)](\fold\)](id, func) else sys:__fold__(obj, id, func)
+)
+
+' Concatenates the elements of the two objects.
+(def i_++(obj1, obj2) =>
+    [[obj1 onlyIf isObject(obj1)](\++\)](obj2) else sys:cat(obj1, obj2)
+)
+
+' Converts the given object to a vect.
+(def i_toVect(obj)
+    => obj ; sys:__eq__(sys:typeof(obj), "vect")
+    => [obj onlyIf isObject(obj)](\toVect\) ; 1
 )

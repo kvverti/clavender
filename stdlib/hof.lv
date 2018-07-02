@@ -3,8 +3,14 @@
 ' the functional analogue of the value-based functions in the global
 ' namespace (for example, '<|' and 'onlyIf').
 
+@import global
+@using global
+
 ' The identity function. For all inputs 'a', '[Identity](a) = a'
 def Identity() => def value(a) => a
+
+' Returns a constant function of the given value.
+def Constant(value) => def impl(a) => value
 
 ' Returns the composition of 'f' and 'g'. The returned function
 ' is equivalent to 'f(g(a))' for all inputs 'a'.
@@ -14,6 +20,11 @@ def i_o(f, g) => def impl(a) => [f]([g](a))
 ' 'f' and then 'g' on inputs. This is equivalent to the composition of 'g'
 ' and 'f'.
 def i_andThen(f, g) => def impl(a) => [g]([f](a))
+
+' Returns a function equivalent to applying the function
+' 'g' where 'f' is undefined, and 'f' otherwise. This is equivalent
+' to the expression 'f(a) else g(a)' for all a.
+def i_orElse(f, g) => def impl(a) => [f](a) else [g](a)
 
 ' Returns the restriction of 'func' to the domain defined by 'pred'.
 ' Also known as the left restriction of func to the domain.
@@ -32,20 +43,31 @@ def i_|>(func, pred) => (Identity <| pred) o func
 ' Alternative spelling of '|>'.
 def i_restrictRight(func, pred) => func |> pred
 
+' The constant function of true.
+def True() => Constant(1)
+
+' The constant function of false.
+def False() => Constant(0)
+
+' Returns a predicate from the given function. A predicate
+' returns true if the result is truthy, and false if the
+' result is falsy.
+def pred(func) => def impl(a) => bool([func](a))
+
 ' Returns the logical negation of the given function. The returned function
 ' returns 'true' where the given function returns a falsy value, and similarly
 ' for 'false' and truthy values.
-def not(func) => (def impl(a)
-    => 0; [func](a)
-    => 1 ; 1
-)
+def not(func) => def impl(a) => ![func](a)
 
-' Returns the curried form of the given binary function.
-def curry(binaryop) => def left(a) => def right(b) => [binaryop](a, b)
+' Returns the intersection of the given functions. The returned function
+' returns true if and only if both input functions return true.
+def i_and(f, g) => def impl(a) => [f](a) && [g](a)
 
-' Returns the uncurried form of the given curried binary function.
-def uncurry(curried) => def impl(a, b) => [[curried](a)](b)
+' Returns the union of the given functions. The returned function
+' returns true if and only if at least one of the input functions return true.
+def i_or(f, g) => def impl(a) => [f](a) || [g](a)
 
-' Returns a function that reverses the arguments to 'binaryop', passing
-' the first as the second and the second as the first.
-def flip(binaryop) => def impl(a, b) => [binaryop](b, a)
+' Returns the symmetric difference of the given functions. The returned
+' function returns true if and only if exactly one of the input functions
+' returns true.
+def i_xor(f, g) => def impl(a) => [f](a) ^ [g](a)

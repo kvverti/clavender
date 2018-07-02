@@ -1,0 +1,9 @@
+' The assert namespace contains a single function, assert, whose purpose is to
+' aid in testing. While this function will not terminate on failure, it will
+' signal textually in the output.
+
+' Returns the message if expr is falsey, else the empty string.
+(def assert(expr, message)
+    => "" ; expr
+    => message ; 1
+)
