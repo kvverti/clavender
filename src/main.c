@@ -48,9 +48,6 @@ int main(int argc, char* argv[]) {
                 case 'G':
                     multiplier = 1024 * 1024 * 1024;
                     break;
-                case '\0': //no unit specified, default to byte
-                    multiplier = 1;
-                    break;
                 default:
                     //the whole string was not converted
                     printf("Argument %s must be a nonnegative integer with suffix K, M, or G\n",
