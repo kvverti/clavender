@@ -1,0 +1,46 @@
+' The option namespace contains the Option monad which represents
+' the possible absence of a value.
+
+@import global
+@using global
+
+' Returns Some(value) if value is defined, None otherwise
+(def Option(value)
+    => Some(value) ; sys:defined(value)
+    => None ; 1
+)
+
+' Object representing the presence of a value.
+(def Some(a) =>
+    (def obj(b)
+        => __yes__ ; b = __object__
+        => 1 ; b = \len
+        => "Some(" + str(a) + ")" ; b = \str
+        => (def(=> default) => a) ; b = \valueElse\
+        => (def(f) => Option([f](a))) ; b = \map\
+        => (def(f) => [f](a)) ; b = \flatmap\
+        => (def(f)
+            => \obj ; [f](a)
+            => None ; 1) ; b = \filter\
+        => (def(id, f) => [f](id, a)) ; b = \fold\
+    )
+)
+
+' Object representing the absence of a value.
+(def None() =>
+    (def value(a)
+        => __yes__ ; a = __object__
+        => 0 ; a = \len
+        => "None" ; a = \str
+        => (def(default) => default) ; a = \valueElse\
+        => (def(f) => \value) ; a = \map\
+        => (def(f) => \value) ; a = \flatmap\
+        => (def(f) => \value) ; a = \filter\
+        => (def(id, f) => id) ; a = \fold\
+    )
+)
+
+' Get the value if defined, else the default value.
+(def i_valueElse(self, => default) =>
+    [[self](\valueElse\)](default) ; isObject(self)
+)
