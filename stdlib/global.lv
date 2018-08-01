@@ -74,6 +74,12 @@ def i_onlyIf(=> expr, pred) => expr ; pred
     => fall ; 1
 )
 
+' Returns 'a' if 'cond' is true, else returns 'b'.
+(def i_?:(cond, => a, => b)
+    => a ; cond
+    => b ; 1
+)
+
 ' Equality function. Forwards if equality is defined for both
 ' arguments. Equality should be reflexive*, symmetric, and
 ' transitive for all pairs of values (a, b). The default definition

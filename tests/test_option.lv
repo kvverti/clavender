@@ -1,6 +1,7 @@
 @import option
 @import assert
 @import hof
+@import test
 @using global
 @using assert
 @using option
@@ -12,7 +13,7 @@ def NoneVal() => Option(sys:undefined)
 
 def flatmapFunc(a) => Option(a + "2")
 
-def main(args) => Vect(
+def main(args) => test:format(
     assert(SomeVal = Some("test"), "Some"),
     assert(isObject(SomeVal), "Some isObject"),
     assert(len(SomeVal) = 1, "Some len"),
@@ -33,4 +34,4 @@ def main(args) => Vect(
     assert((NoneVal flatmap \flatmapFunc) = None, "None flatmap"),
     assert((NoneVal filter \len) = None, "None filter some"),
     assert((NoneVal fold ("pre", \+\)) = "pre", "None fold")
-) filter \len map (def(a) => "    " + a) fold ("Failed tests:", def(a, b) => a + "\n" + b)
+)

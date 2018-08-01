@@ -1,13 +1,14 @@
 @import global
 @import assert
 @import util
+@import test
 @using global
 @using assert
 @using util:Pair
 
 def t() => Pair("hello", "world")
 
-def main(args) => Vect(
+def main(args) => test:format(
     assert(isObject(t), "isObject"),
     assert(str(t) = "hello -> world", "str"),
     assert(len(t) = 2, "len"),
@@ -17,4 +18,4 @@ def main(args) => Vect(
     assert((t map \len) = Pair(5, 5), "map"),
     assert((t fold ("", \+\)) = "helloworld", "fold"),
     assert(t toVect = Vect("hello", "world"), "toVect")
-) filter \len map (def(a) => "    " + a) fold ("Failed tests:", def(a, b) => a + "\n" + b)
+)
