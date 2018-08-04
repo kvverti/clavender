@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 char* lv_expr_getError(ExprError error) {
-    #define LEN 13
+    #define LEN 14
     static char* msg[LEN] = {
         "Expr does not define a function",
         "Reached end of input while parsing",
@@ -20,7 +20,8 @@ char* lv_expr_getError(ExprError error) {
         "Encountered unexpected token",
         "Unbalanced parens or brackets",
         "Wrong number of parameters to function",
-        "Function arity incompatible with fixing"
+        "Function arity incompatible with fixing",
+        "Malformed function local list"
     };
     assert(error > 0 && error <= LEN);
     return msg[error - 1];
@@ -31,157 +32,131 @@ char* lv_expr_getError(ExprError error) {
 
 #define REQUIRE_MORE_TOKENS(x) \
     if(!(x)) { LV_EXPR_ERROR = XPE_UNTERM_EXPR; return RETVAL; } else (void)0
-    
+
+/**
+ * Context for the declaration helper functions.
+ * Not all fields may be initialized in helper functions.
+ */
+typedef struct DeclContext {
+    Token* head;          //current token
+    Operator* nspace;     //pointer to enclosing function
+    char* name;           //function name alias (not separately allocated!)
+    Param* params;        //function parameter data
+    int arity;            //function arity
+    Fixing fixing;        //function fixing
+    bool varargs;
+} DeclContext;
+
 static bool specifiesFixing(Token* head);
 static int getArity(Token* head);
+static void getNameAndFixing(DeclContext* cxt);
+static void setupArgsArray(DeclContext* cxt);
+static void processLocals(DeclContext* cxt);
+static FuncNamespace buildFuncName(DeclContext* cxt);
 
-Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok) {
-    
+Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok) {
+
     #define RETVAL NULL
     if(LV_EXPR_ERROR)
         return NULL;
-    assert(head);
+    assert(tok);
     assert(nspace->type == FUN_FWD_DECL);
-    char* fnameAlias;       //function name alias (not separately allocated!)
-    int arity;              //function arity
-    Fixing fixing;          //function fixing
-    //how many levels of parens nested we are
-    //we stop parsing when this becomes less than zero
-    int nesting = 0;
+    DeclContext cxt;
+    cxt.head = tok;
+    cxt.nspace = nspace;
     //skip opening paren if one is present
-    if(head->type == TTY_LITERAL && head->value[0] == '(') {
-        nesting++;
-        head = head->next;
+    if(cxt.head->type == TTY_LITERAL && cxt.head->value[0] == '(') {
+        cxt.head = cxt.head->next;
     }
-    if(!head || strcmp(head->value, "def") != 0) {
+    if(!cxt.head || strcmp(cxt.head->value, "def") != 0) {
         //this is not a function!
         LV_EXPR_ERROR = XPE_NOT_FUNCT;
         return NULL;
     }
-    head = head->next;
-    REQUIRE_MORE_TOKENS(head);
+    cxt.head = cxt.head->next;
+    REQUIRE_MORE_TOKENS(cxt.head);
     //is this a named function? If so, get fixing as well
-    switch(head->type) {
-        case TTY_IDENT:
-        case TTY_FUNC_SYMBOL:
-        case TTY_SYMBOL:
-            //save the name
-            //check fixing
-            if(specifiesFixing(head)) {
-                fixing = head->value[0];
-                fnameAlias = head->value + 2;
-            } else {
-                fixing = FIX_PRE;
-                fnameAlias = head->value;
-            }
-            head = head->next;
-            REQUIRE_MORE_TOKENS(head);
-            break;
-        default:
-            fixing = FIX_PRE;
-            fnameAlias = "";
-    }
-    if(head->type == TTY_LITERAL && head->value[0] != '(') {
+    getNameAndFixing(&cxt);
+    if(LV_EXPR_ERROR)
+        return NULL;
+    if(cxt.head->type == TTY_LITERAL && cxt.head->value[0] != '(') {
         //we require a left paren before the arguments
         LV_EXPR_ERROR = XPE_EXPT_ARGS;
         return NULL;
     }
-    if(head->type == TTY_EMPTY_ARGS) {
-        arity = 0;
+    if(cxt.head->type == TTY_EMPTY_ARGS) {
+        cxt.arity = 0;
     } else {
-        head = head->next;
-        REQUIRE_MORE_TOKENS(head);
+        cxt.head = cxt.head->next;
+        REQUIRE_MORE_TOKENS(cxt.head);
         //collect args
-        arity = getArity(head);
+        cxt.arity = getArity(cxt.head);
         if(LV_EXPR_ERROR)
             return NULL;
     }
     //only prefix functions may have arity 0
     //and right infix functions may not have arity 1
-    if((arity == 0 && fixing != FIX_PRE)
-    || (arity == 1 && fixing == FIX_RIGHT_IN)) {
+    if((cxt.arity == 0 && cxt.fixing != FIX_PRE)
+    || (cxt.arity == 1 && cxt.fixing == FIX_RIGHT_IN)) {
         LV_EXPR_ERROR = XPE_BAD_FIXING;
         return NULL;
     }
     //holds the arguments and their names
-    Param args[arity + nspace->arity];
-    bool varargs = false; //whether this is a varargs function
-    if(arity == 0) {
+    Param args[cxt.arity + nspace->arity];
+    cxt.params = args;
+    if(cxt.arity == 0) {
         //incr past close paren
-        head = head->next;
+        cxt.head = cxt.head->next;
+        cxt.varargs = false;
     } else {
         //set up the args array
-        for(int i = 0; i < arity; i++) {
-            args[i].byName = (head->type == TTY_SYMBOL);
-            if(args[i].byName) //incr past by name symbol
-                head = head->next;
-            if(head->type == TTY_ELLIPSIS) { //incr past varargs
-                if(fixing != FIX_PRE && arity == 1) {
-                    //cannot have a postfix varargs
-                    LV_EXPR_ERROR = XPE_BAD_ARGS;
-                    return NULL;
-                }
-                varargs = true;
-                head = head->next;
-            }
-            assert(head->type == TTY_IDENT);
-            args[i].name = head->value;
-            assert(head->next->type == TTY_LITERAL);
-            head = head->next->next; //skip comma or close paren
-        }
-        //copy over captured params (if any)
-        memcpy(args + arity, nspace->params, nspace->arity * sizeof(Param));
+        setupArgsArray(&cxt);
+        if(LV_EXPR_ERROR)
+            return NULL;
     }
-    REQUIRE_MORE_TOKENS(head);
-    if(strcmp(head->value, "=>") != 0) {
+    REQUIRE_MORE_TOKENS(cxt.head);
+    processLocals(&cxt);
+    if(LV_EXPR_ERROR)
+        return NULL;
+    if(strcmp(cxt.head->value, "=>") != 0) {
         //sorry, a function body is required
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         return NULL;
     }
+    //the head is now at the arrow token
     //the body starts with the token after the =>
     //it must exist, sorry
-    head = head->next;
-    REQUIRE_MORE_TOKENS(head);
+    cxt.head = cxt.head->next;
+    REQUIRE_MORE_TOKENS(cxt.head);
     //build the function name
-    FuncNamespace ns = fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
-    int nsOffset = strlen(nspace->name) + 1;
-    char* fqn = lv_alloc(strlen(nspace->name) + strlen(fnameAlias) + 2);
-    strcpy(fqn + nsOffset, fnameAlias);
-    //change ':' in symbolic name to '#'
-    //because namespaces use ':' as a separator
-    char* colon = fqn + nsOffset;
-    while((colon = strchr(colon, ':')))
-        *colon = '#';
-    //add namespace
-    strcpy(fqn, nspace->name);
-    fqn[nsOffset - 1] = ':';
+    FuncNamespace ns = buildFuncName(&cxt);
     //check to see if this function was defined twice
-    Operator* funcObj = lv_op_getOperator(fqn, ns);
+    Operator* funcObj = lv_op_getOperator(cxt.name, ns);
     if(funcObj) {
         //let's disallow entirely
         LV_EXPR_ERROR = XPE_DUP_DECL;
-        lv_free(fqn);
+        lv_free(cxt.name);
         return NULL;
     } else {
         //add a new one
         funcObj = lv_alloc(sizeof(Operator));
-        funcObj->name = fqn;
+        funcObj->name = cxt.name;
         funcObj->next = NULL;
         funcObj->type = FUN_FWD_DECL;
-        funcObj->arity = arity + nspace->arity;
-        funcObj->fixing = fixing;
+        funcObj->arity = cxt.arity + nspace->arity;
+        funcObj->fixing = cxt.fixing;
         funcObj->captureCount = nspace->arity;
-        funcObj->params = lv_alloc((arity + nspace->arity) * sizeof(Param));
-        funcObj->varargs = varargs;
-        memcpy(funcObj->params, args, (arity + nspace->arity) * sizeof(Param));
+        funcObj->params = lv_alloc((cxt.arity + nspace->arity) * sizeof(Param));
+        funcObj->varargs = cxt.varargs;
+        memcpy(funcObj->params, cxt.params, (cxt.arity + nspace->arity) * sizeof(Param));
         //copy param names
-        for(int i = 0; i < (arity + nspace->arity); i++) {
-            char* name = lv_alloc(strlen(args[i].name) + 1);
-            strcpy(name, args[i].name);
+        for(int i = 0; i < (cxt.arity + nspace->arity); i++) {
+            char* name = lv_alloc(strlen(cxt.params[i].name) + 1);
+            strcpy(name, cxt.params[i].name);
             funcObj->params[i].name = name;
         }
         lv_op_addOperator(funcObj, ns);
-        *bodyTok = head;
+        *bodyTok = cxt.head;
         return funcObj;
     }
     #undef RETVAL
@@ -189,8 +164,60 @@ Operator* lv_expr_declareFunction(Token* head, Operator* nspace, Token** bodyTok
 
 //helpers for lv_expr_declareFunction
 
+static void getNameAndFixing(DeclContext* cxt) {
+
+    #define RETVAL
+    switch(cxt->head->type) {
+        case TTY_IDENT:
+        case TTY_FUNC_SYMBOL:
+        case TTY_SYMBOL:
+            //save the name
+            //check fixing
+            if(specifiesFixing(cxt->head)) {
+                cxt->fixing = cxt->head->value[0];
+                cxt->name = cxt->head->value + 2;
+            } else {
+                cxt->fixing = FIX_PRE;
+                cxt->name = cxt->head->value;
+            }
+            cxt->head = cxt->head->next;
+            REQUIRE_MORE_TOKENS(cxt->head);
+            break;
+        default:
+            cxt->fixing = FIX_PRE;
+            cxt->name = "";
+    }
+    #undef RETVAL
+}
+
+static void setupArgsArray(DeclContext* cxt) {
+
+    int arity = cxt->arity;
+    cxt->varargs = false;
+    for(int i = 0; i < arity; i++) {
+        cxt->params[i].byName = (cxt->head->type == TTY_SYMBOL);
+        if(cxt->params[i].byName) //incr past by name symbol
+            cxt->head = cxt->head->next;
+        if(cxt->head->type == TTY_ELLIPSIS) { //incr past varargs
+            if(cxt->fixing != FIX_PRE && arity == 1) {
+                //cannot have a postfix varargs
+                LV_EXPR_ERROR = XPE_BAD_ARGS;
+                return;
+            }
+            cxt->varargs = true;
+            cxt->head = cxt->head->next;
+        }
+        assert(cxt->head->type == TTY_IDENT);
+        cxt->params[i].name = cxt->head->value;
+        assert(cxt->head->next->type == TTY_LITERAL);
+        cxt->head = cxt->head->next->next; //skip comma or close paren
+    }
+    //copy over captured params (if any)
+    memcpy(cxt->params + arity, cxt->nspace->params, cxt->nspace->arity * sizeof(Param));
+}
+
 static bool specifiesFixing(Token* head) {
-    
+
     switch(head->type) {
         case TTY_FUNC_SYMBOL:
             return true;
@@ -204,11 +231,11 @@ static bool specifiesFixing(Token* head) {
             return false;
     }
 }
-    
+
 //gets the arity of the function
 //also validates the argument list
 static int getArity(Token* head) {
-    
+
     #define RETVAL 0
     assert(head);
     int res = 0;
@@ -258,6 +285,65 @@ static int getArity(Token* head) {
     }
     return res;
     #undef RETVAL
+}
+
+static void processLocals(DeclContext* cxt) {
+
+    #define RETVAL
+    if(strcmp(cxt->head->value, "let") == 0) {
+        //this function has defines function locals
+        //the locals are of the form <id>(<expr>) , ...
+        //and end when we reach the arrow token
+        do {
+            cxt->head = cxt->head->next;
+            REQUIRE_MORE_TOKENS(cxt->head);
+            //check that this is a name
+            if(cxt->head->type != TTY_IDENT) {
+                LV_EXPR_ERROR = XPE_BAD_LOCALS;
+                return;
+            }
+            //TODO: save the local names as fake params
+            cxt->head = cxt->head->next;
+            REQUIRE_MORE_TOKENS(cxt->head);
+            //check for the opening paren
+            if(cxt->head->value[0] != '(') {
+                LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                return;
+            }
+            cxt->head = cxt->head->next;
+            REQUIRE_MORE_TOKENS(cxt->head);
+            //we must remember the number of parens inside the expression
+            int numParens = 0;
+            do {
+                switch(cxt->head->value[0]) {
+                    case '(': numParens++; break;
+                    case ')': numParens--; break;
+                }
+                cxt->head = cxt->head->next;
+                REQUIRE_MORE_TOKENS(cxt->head);
+            } while(numParens >= 0);
+            //head should point at a comma or arrow
+        } while(cxt->head->value[0] == ',');
+    }
+    #undef RETVAL
+}
+
+static FuncNamespace buildFuncName(DeclContext* cxt) {
+
+    FuncNamespace ns = cxt->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
+    int nsOffset = strlen(cxt->nspace->name) + 1;
+    char* fqn = lv_alloc(strlen(cxt->nspace->name) + strlen(cxt->name) + 2);
+    strcpy(fqn + nsOffset, cxt->name);
+    //change ':' in symbolic name to '#'
+    //because namespaces use ':' as a separator
+    char* colon = fqn + nsOffset;
+    while((colon = strchr(colon, ':')))
+        *colon = '#';
+    //add namespace
+    strcpy(fqn, cxt->nspace->name);
+    fqn[nsOffset - 1] = ':';
+    cxt->name = fqn;
+    return ns;
 }
 
 #undef REQUIRE_MORE_TOKENS
@@ -320,7 +406,7 @@ static bool shuntOps(ExprContext* cxts);
     } else (void)0
 
 Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* len) {
-    
+
     if(LV_EXPR_ERROR)
         return head;
     //set up required environment
@@ -396,7 +482,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
 #undef IF_ERROR_CLEANUP
 
 void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
-    
+
     for(size_t i = 0; i < len; i++) {
         if(obj[i].type == OPT_STRING) {
             assert(obj[i].str->refCount);
@@ -419,15 +505,15 @@ void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
 }
 
 void lv_expr_free(TextBufferObj* obj, size_t len) {
-    
+
     lv_expr_cleanup(obj, len);
     lv_free(obj);
 }
 
 //static helpers for lv_expr_parseExpr
-    
+
 static int getLexicographicPrecedence(char c) {
-    
+
     switch(c) {
         case '|': return 1;
         case '^': return 2;
@@ -450,13 +536,13 @@ static int getLexicographicPrecedence(char c) {
 
 /** Whether this object represents the literal character c. */
 static bool isLiteral(TextBufferObj* obj, char c) {
-    
+
     return obj->type == OPT_LITERAL && obj->literal == c;
 }
 
 /** Compares a and b by precedence. */
 static int compare(TextBufferObj* a, TextBufferObj* b) {
-    
+
     //values have highest precedence
     {
         int ar = (a->type != OPT_LITERAL &&
@@ -511,7 +597,7 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
 
 /** Returns a new string with concatenation of a and b */
 static char* concat(char* a, int alen, char* b, int blen) {
-    
+
     char* res = lv_alloc(alen + blen + 1);
     memcpy(res, a, alen);
     memcpy(res + alen, b, blen);
@@ -520,7 +606,7 @@ static char* concat(char* a, int alen, char* b, int blen) {
 }
 
 static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     obj->type = OPT_LITERAL;
     obj->literal = cxt->head->value[0];
     switch(obj->literal) {
@@ -558,7 +644,7 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
 }
 
 static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
-    
+
     //we find the function with the simple name
     //in the innermost scope possible by going
     //through outer scopes until we can't find
@@ -615,13 +701,13 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
 }
 
 static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
     parseSymbolImpl(obj, ns, cxt->head->value, cxt);
 }
 
 static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
-    
+
     //change ':' to '#' in names, but only after the namespace separator
     {
         char* c = strchr(name, ':') + 1;
@@ -644,13 +730,13 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, 
 }
 
 static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
     parseQualNameImpl(obj, ns, cxt->head->value, cxt);
 }
 
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     if(!cxt->expectOperand) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
@@ -678,7 +764,7 @@ static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
 }
 
 static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     if(cxt->expectOperand) {
         //try parameter names first
         for(int i = 0; i < cxt->decl->arity; i++) {
@@ -696,7 +782,7 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
 }
 
 static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     if(!cxt->expectOperand) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
@@ -708,7 +794,7 @@ static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
 }
 
 static void parseString(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     if(!cxt->expectOperand) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
@@ -759,7 +845,7 @@ static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
 }
 
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     switch(cxt->head->type) {
         case TTY_LITERAL:
             parseLiteral(obj, cxt);
@@ -814,7 +900,7 @@ static void pushStack(TextStack* stack, TextBufferObj* obj) {
 }
 
 static void pushParam(IntStack* stack, int num) {
-    
+
     if(stack->top + 1 == stack->stack + stack->len) {
         stack->len *= 2;
         size_t sz = stack->top - stack->stack;
@@ -827,7 +913,7 @@ static void pushParam(IntStack* stack, int num) {
 
 #define REQUIRE_NONEMPTY(s) \
     if(s.top == s.stack) { LV_EXPR_ERROR = XPE_UNBAL_GROUP; return; } else (void)0
-    
+
 /**
  * Sets the negative placeholder arity to positive on
  * the first (prefix) or second (infix) function argument.
@@ -844,7 +930,7 @@ static void fixArityFirstArg(ExprContext* cxt) {
 //and checks function arity if applicable.
 //Returns whether an error occurred.
 static bool shuntOps(ExprContext* cxt) {
-    
+
     if(isLiteral(cxt->ops.top, ']'))
         handleRightBracket(cxt);
     else {
@@ -898,7 +984,7 @@ static bool shuntOps(ExprContext* cxt) {
  * be moved verbatim to the right of the next sub-expression.
  */
 static void handleRightBracket(ExprContext* cxt) {
-    
+
     assert(isLiteral(cxt->ops.top, ']'));
     assert(cxt->params.top != cxt->params.stack);
     int arity = *cxt->params.top--;
@@ -936,7 +1022,7 @@ static void handleRightBracket(ExprContext* cxt) {
  *      to functions match arity.
  */
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
-    
+
     if(obj->type == OPT_EMPTY_ARGS) {
         //set source args explicitly to 0 (or 1 for infix)
         if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
