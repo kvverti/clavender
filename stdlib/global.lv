@@ -240,6 +240,10 @@ def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
     [[obj1 onlyIf isObject(obj1)](\++\)](obj2) else sys:cat(obj1, obj2)
 )
 
+(def i_slice(obj, bgn, end) =>
+    [[obj onlyIf isObject(obj)](\slice\)](bgn, end) else sys:__slice__(obj, bgn, end)
+)
+
 ' Converts the given object to a vect.
 (def i_toVect(obj)
     => obj ; sys:__eq__(sys:typeof(obj), "vect")

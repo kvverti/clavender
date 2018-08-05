@@ -664,6 +664,61 @@ static TextBufferObj fold(TextBufferObj* args) {
     return res;
 }
 
+/** Slices the given vect or string */
+static TextBufferObj slice(TextBufferObj* args) {
+
+    TextBufferObj res;
+    if(args[1].type != OPT_NUMBER || args[2].type != OPT_NUMBER) {
+        //check that index args are numbers
+        res.type = OPT_UNDEFINED;
+    } else if(args[0].type != OPT_VECT && args[0].type != OPT_STRING) {
+        //check that the receiver is of appropriate type
+        res.type = OPT_UNDEFINED;
+    } else {
+        int start = (int) args[1].number;
+        int end = (int) args[2].number;
+        //sanity check
+        if(start > end || start < 0 || end < 0) {
+            res.type = OPT_UNDEFINED;
+        } else if(args[0].type == OPT_VECT) {
+            size_t len = args[0].vect->len;
+            //bounds check
+            if((size_t)start > len || (size_t)end > len) {
+                res.type = OPT_UNDEFINED;
+            } else {
+                //create new vect
+                res.type = OPT_VECT;
+                res.vect = lv_alloc(sizeof(LvVect) + (end - start) * sizeof(TextBufferObj));
+                res.vect->refCount = 0;
+                res.vect->len = end - start;
+                //copy over elements
+                for(size_t i = 0; i < res.vect->len; i++) {
+                    res.vect->data[i] = args[0].vect->data[start + i];
+                    incRefCount(&res.vect->data[i]);
+                }
+            }
+        } else if(args[0].type == OPT_STRING) {
+            size_t len = args[0].str->len;
+            //bounds check
+            if((size_t)start > len || (size_t)end > len) {
+                res.type = OPT_UNDEFINED;
+            } else {
+                //create new string (include NUL terminator)
+                res.type = OPT_STRING;
+                res.str = lv_alloc(sizeof(LvString) + (end - start + 1));
+                res.str->refCount = 0;
+                res.str->len = end - start;
+                //copy over elements
+                memcpy(res.str->value, &args[0].str->value[start], res.str->len);
+                res.str->value[res.str->len] = '\0';
+            }
+        } else {
+            res.type = OPT_UNDEFINED;
+        }
+    }
+    return res;
+}
+
 void lv_blt_onStartup(void) {
 
     mkTypes();
@@ -731,6 +786,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(map, 2);
     MK_FUNCN(filter, 2);
     MK_FUNCN(fold, 3);
+    MK_FUNCN(slice, 3);
     #undef MK_FUNC
     #undef MK_FUNCN
     #undef MK_FUNCR
