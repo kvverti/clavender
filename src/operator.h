@@ -1,41 +1,23 @@
 #ifndef OPERATOR_H
 #define OPERATOR_H
+#include "operator_fwd.h"
+#include "textbuffer_fwd.h"
 #include "token.h"
 #include <stddef.h>
 #include <stdbool.h>
 
-typedef enum FuncType {
-    FUN_FUNCTION,   //function definition
-    FUN_BUILTIN,    //built in operator
-    FUN_FWD_DECL    //function declaration (not present in final code)
-} FuncType;
-
-typedef enum Fixing {
-    FIX_PRE = 'u',
-    FIX_LEFT_IN = 'i',
-    FIX_RIGHT_IN = 'r'
-} Fixing;
-
-typedef enum FuncNamespace {
-    FNS_PREFIX = 0,
-    FNS_INFIX,
-    FNS_COUNT       //number of namespaces
-} FuncNamespace;
-
-typedef struct Param {
+struct Param {
     char* name;
     bool byName;
-} Param;
+};
 
-//builtin callback type
-struct TextBufferObj;
-typedef struct TextBufferObj (*Builtin)(struct TextBufferObj*);
+typedef TextBufferObj (*Builtin)(TextBufferObj*);
 
 /**
  * A struct that stores a Lavender function and its name.
  * These values are stored in a global hashtable.
  */
-typedef struct Operator {
+struct Operator {
     char* name;
     FuncType type;
     int arity;
@@ -46,9 +28,9 @@ typedef struct Operator {
         Param* params;
         Builtin builtin;
     };
-    struct Operator* next;
+    Operator* next;
     bool varargs;
-} Operator;
+};
 
 /**
  * Retrieves the operator with the given name.

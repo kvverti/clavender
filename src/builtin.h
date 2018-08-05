@@ -1,6 +1,6 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
-#include "textbuffer.h"
+#include "textbuffer_fwd.h"
 
 bool lv_blt_toBool(TextBufferObj* obj);
 

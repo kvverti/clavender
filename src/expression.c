@@ -1,6 +1,7 @@
 #include "expression.h"
 #include "lavender.h"
 #include "command.h"
+#include "operator.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>

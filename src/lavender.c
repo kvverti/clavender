@@ -1,5 +1,6 @@
 #include "lavender.h"
 #include "expression.h"
+#include "operator.h"
 #include "builtin.h"
 #include "command.h"
 #include "dynbuffer.h"
@@ -24,7 +25,7 @@ static size_t fp;   //frame pointer: index of the first argument
 static Operator* atFunc; //built in sys:__at__
 
 static void push(TextBufferObj* obj) {
-    
+
     if(obj->type & LV_DYNAMIC)
         ++*obj->refCount;
     if(lv_maxStackSize
@@ -45,14 +46,14 @@ static void push(TextBufferObj* obj) {
 }
 
 static void popAll(size_t numToPop) {
-    
+
     TextBufferObj* start = lv_buf_get(&stack, stack.len - numToPop);
     lv_expr_cleanup(start, numToPop);
     stack.len -= numToPop;
 }
 
 static TextBufferObj removeTop(void) {
-    
+
     TextBufferObj res;
     lv_buf_pop(&stack, &res);
     if(res.type & LV_DYNAMIC)
@@ -65,7 +66,7 @@ static TextBufferObj removeTop(void) {
 static DynBuffer importedFiles; //of char*
 
 static bool addFile(char* file) {
-    
+
     for(size_t i = 0; i < importedFiles.len; i++) {
         char* str = *(char**)lv_buf_get(&importedFiles, i);
         if(strcmp(str, file) == 0)
@@ -79,7 +80,7 @@ static bool addFile(char* file) {
 }
 
 void lv_run(void) {
-    
+
     lv_startup();
     if(lv_mainFile) {
         bool read = lv_readFile(lv_mainFile);
@@ -146,7 +147,7 @@ void lv_run(void) {
 }
 
 void* lv_alloc(size_t size) {
-    
+
     void* value = malloc(size);
     if(!value) {
         printf("Allocation failed: %lu bytes\n", size);
@@ -156,7 +157,7 @@ void* lv_alloc(size_t size) {
 }
 
 void* lv_realloc(void* ptr, size_t size) {
-    
+
     void* tmp = realloc(ptr, size);
     if(!tmp) {
         free(ptr);
@@ -167,12 +168,12 @@ void* lv_realloc(void* ptr, size_t size) {
 }
 
 void lv_free(void* ptr) {
-    
+
     free(ptr);
 }
 
 void lv_startup(void) {
-    
+
     pc = fp = 0;
     lv_buf_init(&stack, sizeof(TextBufferObj));
     lv_buf_init(&importedFiles, sizeof(char*));
@@ -184,7 +185,7 @@ void lv_startup(void) {
 }
 
 void lv_shutdown(void) {
-    
+
     lv_cmd_onShutdown();
     lv_blt_onShutdown();
     lv_tb_onShutdown();
@@ -199,12 +200,12 @@ void lv_shutdown(void) {
 }
 
 void lv_repl(void) {
-    
+
     readInput(stdin, true);
 }
 
 static bool isFuncDef(Token* head) {
-    
+
     //functions may have one level of parens
     assert(head);
     if(head->type == TTY_LITERAL && head->value[0] == '(') {
@@ -222,7 +223,7 @@ typedef struct HelperDeclObj {
 static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls);
 
 bool lv_readFile(char* name) {
-    
+
     if(!addFile(name))
         return true; //nothing to do..
     //open file
@@ -294,7 +295,7 @@ bool lv_readFile(char* name) {
 
 /** Parse a function definition OR a runtime command. */
 static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
-    
+
     Token* head = lv_tkn_split(file);
     if(LV_TKN_ERROR) {
         printf("Error parsing input: %s\nHere: '%s'\n",
@@ -344,7 +345,7 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
 }
 
 static void readInput(FILE* in, bool repl) {
-    
+
     if(repl)
         printf("> ");
     Token* toks = lv_tkn_split(in);
@@ -416,7 +417,7 @@ static void readInput(FILE* in, bool repl) {
 }
 
 static void makeVect(int length) {
-    
+
     TextBufferObj vect;
     vect.type = OPT_VECT;
     vect.vect = lv_alloc(sizeof(LvVect) + length * sizeof(TextBufferObj));
@@ -501,7 +502,7 @@ static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underl
  * Returns the value of the current (old) frame.
  */
 static size_t jumpAndLink(Operator* func) {
-    
+
     assert(func);
     size_t frame = fp;
     switch(func->type) {
@@ -545,7 +546,7 @@ static size_t jumpAndLink(Operator* func) {
 }
 
 static void runCycle(void) {
-    
+
     TextBufferObj* value = &TEXT_BUFFER[pc++];
     TextBufferObj func; //used in OPT_FUNC_CALL
     switch(value->type) {
@@ -633,17 +634,15 @@ static void runCycle(void) {
  * Calls the function given with the parameters given and returns
  * the result. This function handles captures, vects, strings, and functions.
  */
-TextBufferObj lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args) {
-    
+void lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args, TextBufferObj* ret) {
+
     //push args onto stack
     Operator* op;
     for(size_t i = 0; i < numArgs; i++) {
         push(&args[i]);
     }
     if(!setUpFuncCall(func, numArgs, &op)) {
-        TextBufferObj nan;
-        nan.type = OPT_UNDEFINED;
-        return nan;
+        ret->type = OPT_UNDEFINED;
     } else {
         size_t frame = jumpAndLink(op);
         //we stop executing when the frame pushed by
@@ -651,6 +650,6 @@ TextBufferObj lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj
         while(fp != frame) {
             runCycle();
         }
-        return removeTop();
+        *ret = removeTop();
     }
 }

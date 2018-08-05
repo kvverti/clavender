@@ -16,7 +16,7 @@ struct LvMainArgs {
 void lv_run(void);
 void lv_repl(void);
 bool lv_readFile(char* name);
-TextBufferObj lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args);
+void lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args, TextBufferObj* ret);
 void lv_startup(void);
 void lv_shutdown(void);
 void* lv_alloc(size_t size);

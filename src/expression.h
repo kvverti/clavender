@@ -1,6 +1,6 @@
 #ifndef EXPRESSION_H
 #define EXPRESSION_H
-#include "textbuffer.h"
+#include "textbuffer_fwd.h"
 
 typedef enum ExprError {
     XPE_NOT_FUNCT = 1,  //expr does not define a function

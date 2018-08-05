@@ -1,6 +1,7 @@
 #include "builtin.h"
 #include "lavender.h"
 #include "expression.h"
+#include "operator.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -11,7 +12,7 @@
  * Returns whether the argument is defined (i.e. not undefined).
  */
 static TextBufferObj defined(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_NUMBER;
     res.number = (args[0].type != OPT_UNDEFINED);
@@ -22,7 +23,7 @@ static TextBufferObj defined(TextBufferObj* args) {
  * Returns the undefined value.
  */
 static TextBufferObj undefined(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_UNDEFINED;
     return res;
@@ -32,7 +33,7 @@ static TextBufferObj undefined(TextBufferObj* args) {
 static LvString* types[NUM_TYPES];
 
 static void mkTypes(void) {
-    
+
     #define INIT(i, n) \
         types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
         types[i]->len = sizeof(n) - 1; \
@@ -51,7 +52,7 @@ static void mkTypes(void) {
  * Possible types are: "undefined", "number", "string", "vect", "function"
  */
 static TextBufferObj typeof_(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_STRING;
     switch(args[0].type) {
@@ -78,7 +79,7 @@ static TextBufferObj typeof_(TextBufferObj* args) {
 }
 
 static void incRefCount(TextBufferObj* obj) {
-    
+
     if(obj->type & LV_DYNAMIC)
         ++*obj->refCount;
 }
@@ -87,7 +88,7 @@ static void incRefCount(TextBufferObj* obj) {
  * Gets the n'th capture value from the given function.
  */
 static TextBufferObj cval(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if((args[0].type == OPT_CAPTURE)
     && (args[1].type == OPT_NUMBER)
@@ -104,7 +105,7 @@ static TextBufferObj cval(TextBufferObj* args) {
  * vector of elements.
  */
 static TextBufferObj cat(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_VECT;
     assert(args[0].type == OPT_VECT);
@@ -139,13 +140,13 @@ static TextBufferObj cat(TextBufferObj* args) {
  * packed into the varargs vector.
  */
 static TextBufferObj call(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     TextBufferObj func = args[0];
     if(args[1].type != OPT_VECT) {
         res.type = OPT_UNDEFINED;
     } else {
-        res = lv_callFunction(&func, args[1].vect->len, args[1].vect->data);
+        lv_callFunction(&func, args[1].vect->len, args[1].vect->data, &res);
     }
     return res;
 }
@@ -154,7 +155,7 @@ static TextBufferObj call(TextBufferObj* args) {
  * Returns the i'th element of the given string or vect.
  */
 static TextBufferObj at(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER) {
         if(args[1].type == OPT_STRING
@@ -178,7 +179,7 @@ static TextBufferObj at(TextBufferObj* args) {
 }
 
 bool lv_blt_toBool(TextBufferObj* obj) {
-    
+
     return (obj->type != OPT_UNDEFINED)
         && (obj->type != OPT_NUMBER || obj->number != 0.0)
         && (obj->type != OPT_STRING || obj->str->len != 0)
@@ -189,7 +190,7 @@ bool lv_blt_toBool(TextBufferObj* obj) {
  * Converts to bool.
  */
 static TextBufferObj bool_(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_NUMBER;
     res.number = lv_blt_toBool(&args[0]);
@@ -200,7 +201,7 @@ static TextBufferObj bool_(TextBufferObj* args) {
  * Converts object to string.
  */
 static TextBufferObj str(TextBufferObj* args) {
-    
+
     if(args[0].type == OPT_STRING)
         return args[0];
     TextBufferObj res;
@@ -211,7 +212,7 @@ static TextBufferObj str(TextBufferObj* args) {
 
 /** Converts object to number. */
 static TextBufferObj num(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER)
         return args[0];
@@ -236,7 +237,7 @@ static TextBufferObj num(TextBufferObj* args) {
  * Returns length of object if defined.
  */
 static TextBufferObj len(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     switch(args[0].type) {
         case OPT_STRING:
@@ -264,7 +265,7 @@ static TextBufferObj len(TextBufferObj* args) {
 }
 
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
-    
+
     if(a->type != b->type) {
         //can't be equal if they have different types
         return false;
@@ -305,7 +306,7 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
  * Compares two objects for equality.
  */
 static TextBufferObj eq(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_NUMBER;
     res.number = equal(&args[0], &args[1]);
@@ -316,7 +317,7 @@ static TextBufferObj eq(TextBufferObj* args) {
  * Compares two objects for less than.
  */
 static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
-    
+
     if(a->type != b->type) {
         return (a->type < b->type);
     }
@@ -358,7 +359,7 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
 }
 
 static TextBufferObj lt(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_NUMBER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
@@ -375,7 +376,7 @@ static TextBufferObj lt(TextBufferObj* args) {
 //the Lavender comparison functions use either lt or ge
 //as appropriate.
 static TextBufferObj ge(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     res.type = OPT_NUMBER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
@@ -392,7 +393,7 @@ static TextBufferObj ge(TextBufferObj* args) {
  * Addition and string concatenation. Assumes two arguments.
  */
 static TextBufferObj add(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_STRING && args[1].type == OPT_STRING) {
         //string concatenation
@@ -421,7 +422,7 @@ static TextBufferObj add(TextBufferObj* args) {
  * Subtraction. Assumes two arguments.
  */
 static TextBufferObj sub(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -434,7 +435,7 @@ static TextBufferObj sub(TextBufferObj* args) {
 
 /** Multiplication */
 static TextBufferObj mul(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -447,7 +448,7 @@ static TextBufferObj mul(TextBufferObj* args) {
 
 /** Division */
 static TextBufferObj div_(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -468,7 +469,7 @@ static TextBufferObj div_(TextBufferObj* args) {
 
 /** Remainder */
 static TextBufferObj rem(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -489,7 +490,7 @@ static TextBufferObj rem(TextBufferObj* args) {
 
 /** Exponentiation */
 static TextBufferObj pow_(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -502,7 +503,7 @@ static TextBufferObj pow_(TextBufferObj* args) {
 
 /** Unary + function */
 static TextBufferObj pos(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -515,7 +516,7 @@ static TextBufferObj pos(TextBufferObj* args) {
 
 /** Negation function */
 static TextBufferObj neg(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -560,7 +561,7 @@ DECL_MATH_FUNC(round);
 #undef DECL_MATH_FUNC
 
 static TextBufferObj atan2_(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -573,7 +574,7 @@ static TextBufferObj atan2_(TextBufferObj* args) {
 
 /** Sign function. Returns +1 for +0 and -1 for -0. */
 static TextBufferObj sgn(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
@@ -588,7 +589,7 @@ static TextBufferObj sgn(TextBufferObj* args) {
 
 /** Functional map */
 static TextBufferObj map(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_VECT) {
         TextBufferObj func = args[1]; //in case the stack is reallocated
@@ -598,7 +599,8 @@ static TextBufferObj map(TextBufferObj* args) {
         vect->refCount = 0;
         vect->len = len;
         for(size_t i = 0; i < len; i++) {
-            TextBufferObj obj = lv_callFunction(&func, 1, &oldData[i]);
+            TextBufferObj obj;
+            lv_callFunction(&func, 1, &oldData[i], &obj);
             incRefCount(&obj);
             vect->data[i] = obj;
         }
@@ -612,7 +614,7 @@ static TextBufferObj map(TextBufferObj* args) {
 
 /** Functional filter */
 static TextBufferObj filter(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_VECT) {
         TextBufferObj func = args[1];
@@ -622,7 +624,8 @@ static TextBufferObj filter(TextBufferObj* args) {
         vect->refCount = 0;
         size_t newLen = 0;
         for(size_t i = 0; i < len; i++) {
-            TextBufferObj passed = lv_callFunction(&func, 1, &oldData[i]);
+            TextBufferObj passed;
+            lv_callFunction(&func, 1, &oldData[i], &passed);
             incRefCount(&passed); //so lv_expr_cleanup doesn't blow up
             if(lv_blt_toBool(&passed)) {
                 incRefCount(&oldData[i]);
@@ -643,7 +646,7 @@ static TextBufferObj filter(TextBufferObj* args) {
 
 /** Functional fold */
 static TextBufferObj fold(TextBufferObj* args) {
-    
+
     TextBufferObj res;
     if(args[0].type == OPT_VECT) {
         size_t len = args[0].vect->len;
@@ -652,7 +655,7 @@ static TextBufferObj fold(TextBufferObj* args) {
         TextBufferObj func = args[2];
         for(size_t i = 0; i < len; i++) {
             accum[1] = oldData[i];
-            accum[0] = lv_callFunction(&func, 2, accum);
+            lv_callFunction(&func, 2, accum, &accum[0]);
         }
         res = accum[0];
     } else {
@@ -662,7 +665,7 @@ static TextBufferObj fold(TextBufferObj* args) {
 }
 
 void lv_blt_onStartup(void) {
-    
+
     mkTypes();
     #define BUILTIN_NS "sys:"
     //creates a builtin function with given impl, arity, and name
@@ -736,7 +739,7 @@ void lv_blt_onStartup(void) {
 }
 
 void lv_blt_onShutdown(void) {
-    
+
     for(int i = 0; i < NUM_TYPES; i++)
         lv_free(types[i]);
 }

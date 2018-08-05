@@ -1,6 +1,7 @@
 #include "textbuffer.h"
 #include "lavender.h"
 #include "expression.h"
+#include "operator.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -14,7 +15,7 @@ static size_t textBufferTop;    //one past the top of the buffer
  * Adds the text to the buffer and appends a return object to the end.
  */
 static void pushText(TextBufferObj* text, size_t len) {
-    
+
     if(textBufferLen - textBufferTop < len) {
         //we must reallocate the buffer
         TEXT_BUFFER =
@@ -29,7 +30,7 @@ static void pushText(TextBufferObj* text, size_t len) {
 //calculate the number of decimal digits
 //in practice the index is usually < 10
 static size_t length(int number) {
-    
+
     size_t len = 1;
     while((number /= 10) != 0)
         len++;
@@ -37,7 +38,7 @@ static size_t length(int number) {
 }
 
 LvString* lv_tb_getString(TextBufferObj* obj) {
-    
+
     LvString* res;
     switch(obj->type) {
         case OPT_UNDEFINED: {
@@ -200,7 +201,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
 }
 
 static void rollback(Operator* decl, size_t top) {
-    
+
     lv_op_removeOperator(decl->name,
         decl->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX);
     //reset the text buffer
@@ -212,7 +213,7 @@ static void rollback(Operator* decl, size_t top) {
 }
 
 static bool isExprEnd(Token* head) {
-    
+
     //')' and ']' mark the end of the expression, ';' delimits conditionals
     return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == ';';
 }
@@ -232,7 +233,7 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
 }
 
 Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
-    
+
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
     //function begin, often the same as top, but
@@ -365,7 +366,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             decl->arity,
             decl->captureCount,
             decl->fixing,
-            decl->varargs ? "true" : "false", 
+            decl->varargs ? "true" : "false",
             decl->textOffset);
         for(size_t i = decl->textOffset; i < textBufferTop; i++) {
             LvString* str = lv_tb_getString(&TEXT_BUFFER[i]);
@@ -383,7 +384,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
 static size_t startOfTmpExpr;
 
 Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* end) {
-    
+
     TextBufferObj* tmp;
     size_t tlen;
     Token* ret = lv_expr_parseExpr(tokens, scope, &tmp, &tlen);
@@ -400,14 +401,14 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
 }
 
 void lv_tb_clearExpr(void) {
-    
+
     lv_expr_cleanup(TEXT_BUFFER + startOfTmpExpr, textBufferTop - startOfTmpExpr);
     textBufferTop = startOfTmpExpr;
     startOfTmpExpr = textBufferTop;
 }
 
 void lv_tb_onStartup(void) {
- 
+
     TEXT_BUFFER = lv_alloc(INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
     memset(TEXT_BUFFER, 0, INIT_TEXT_BUFFER_LEN * sizeof(TextBufferObj));
     textBufferLen = INIT_TEXT_BUFFER_LEN;
@@ -416,6 +417,6 @@ void lv_tb_onStartup(void) {
 }
 
 void lv_tb_onShutdown(void) {
-    
+
     lv_expr_free(TEXT_BUFFER, textBufferTop);
 }
