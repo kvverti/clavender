@@ -37,19 +37,19 @@
 ' See binarySearchAs for details of the search.
 def binarySearch(vect, elem) => binarySearchAs(vect, elem, \<\)
 
-' ' Returns an object that represents the set defined by the given function.
-' ' The expression 'x in SetOf(func)' will return true if and only if 'func(x)'
-' ' returns true.
-' (def SetOf(func) =>
-    ' (def obj(a)
-        ' => __yes__ ; a = __object__
-        ' => func ; a = \in\
-    ' )
-' )
+' Returns an object that represents the set defined by the given function.
+' The expression 'x in SetOf(func)' will return true if and only if 'func(x)'
+' returns true.
+(def SetOf(func) =>
+    (def obj(a)
+        => __yes__ ; a = __object__
+        => func ; a = \in\
+    )
+)
 
-' ' Returns a function that tests elements against the given set. The expression
-' ' '[Filter(set)](elem)' will return true if and only if 'elem in set' returns true.
-' def Filter(set) => def impl(a) => a in set
+' Returns a function that tests elements against the given set. The expression
+' '[Filter(set)](elem)' will return true if and only if 'elem in set' returns true.
+def Filter(set) => def impl(a) => a in set
 
 ' An object representing a pair of elements.
 (def Pair(a, b) =>
@@ -74,4 +74,3 @@ def uncurry(curried) => def impl(a, b) => [[curried](a)](b)
 ' Returns a function that reverses the arguments to 'binaryop', passing
 ' the first as the second and the second as the first.
 def flip(binaryop) => def impl(a, b) => [binaryop](b, a)
-    
