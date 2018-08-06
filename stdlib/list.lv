@@ -1,0 +1,77 @@
+' The list namespace defines the list function and other useful
+' operations on lists. The list defined here is a linked list,
+' in contrast to the built in vect type, which is random access.
+
+@import global
+@import hof
+@using global
+@using hof:Constant
+@using hof:Identity
+
+' Returns a linked list with the given head and tail.
+' Lists can use all of the basic functional operators
+' defined in the global namespace except those which
+' rely on random access (slice and indexing).
+(def List(head, tail) =>
+    (def obj(a)
+        => __yes__ ; a = __object__
+        => 1 + len(tail) ; a = \len
+        => "[ " + (\obj fold ("", def(a, b) => a + str(b) + " ")) + "]" ; a = \str
+        ' => (def(el) => head = el || (el in tail)) ; a = \in\
+        => (def(f) => [f](head) :: (tail map f)) ; a = \map\
+        => (def(f) => [f](head) ++ (tail flatmap f)) ; a = \flatmap\
+        => (def(f)
+            => head :: (tail filter f) ; [f](head)
+            => tail filter f ; 1
+        ) ; a = \filter\
+        => (def(id, f) => tail fold ([f](id, head), f)) ; a = \fold\
+        => (def(list2) => head :: (tail ++ list2)) ; a = \++\
+        => \obj fold (Vect(), def(ac, el)
+            => sys:cat(ac, Vect(el)) ; sys:typeof(el) = "vect"
+            => sys:cat(ac, el) ; 1
+        ) ; a = \toVect\
+    )
+)
+
+' Nil is the value which represents the empty list.
+(def Nil() =>
+    (def value(a)
+        => __yes__ ; a = __object__
+        => 0 ; a = \len
+        => "[]" ; a = \str
+        ' => false ; a = \in\
+        => Constant(\value) ; a = \map\
+        => Constant(\value) ; a = \flatmap\
+        => Constant(\value) ; a = \filter\
+        => (def(id, f) => id) ; a = \fold\
+        => Identity ; a = \++\
+        => Vect() ; a = \toVect\
+    )
+)
+
+' The list cons operator. The first parameter is the new head
+' while the second parameter is an existing tail list (which may
+' be Nil). This function may be used to build up lists in a natural manner.
+def r_::(head, tail) => List(head, tail)
+
+' Returns the head of the given list.
+def head(list) => sys:cval(list, 0)
+
+' Returns the tail of the given list.
+def tail(list) => sys:cval(list, 1)
+
+' Uses the given generator function to generate a list.
+' The generator is called with the integers [0..] until
+' the generator returns undefined.
+(def mklist(gen) =>
+    [def impl(i)
+        => [gen](i) :: impl(i + 1) ; sys:defined([gen](i))
+        => Nil ; 1
+    ](0)
+)
+
+' Returns a list of integers in the half-open interval [a..b).
+def i_until(a, b) => mklist(def(i) => a + i ; i < b - a)
+
+' Returns a list of integers in the closed interval [a..b].
+def i_to(a, b) => mklist(def(i) => a + i ; i < b - a + 1)
