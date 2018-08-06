@@ -1,0 +1,108 @@
+' The string namespace contains function for operating
+' on strings, such as slicing, indexing, and spliting.
+
+@import global
+@using global
+
+' Value representing the end index of a string to
+' functions in this namespace.
+def End() => def value(a) => sys:undefined
+
+' ASCII Whitespace characters.
+def AsciiSpace() => " \t\n"
+
+' ASCII blank characters.
+def AsciiBlank() => " \t"
+
+' ASCII uppercase characters.
+def AsciiUpper() => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+' ASCII lowercase characters.
+def AsciiLower() => "abcdefghijklmnopqrstuvwxyz"
+
+' ASCII Alphabetical characters.
+def AsciiAlpha() => AsciiUpper + AsciiLower
+
+' ASCII digit characters.
+def AsciiDigit() => "0123456789"
+
+' ASCII hex digit characters.
+def AsciiHex() => "0123456789abcdefABCDEF"
+
+' ASCII alphanumeric characters.
+def AsciiAlnum() => AsciiAlpha + AsciiDigit
+
+' ASCII word characters.
+def AsciiWord() => AsciiAlnum + "_"
+
+' ASCII punctuation characters.
+def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+
+' Takes the substring of the given string beginning at start and
+' n characters in length. This is similar to the global function
+' `slice`, except that it accepts a length instead of an end position.
+(def i_substr(self, start, len)
+    => sys:__slice__(self, start, global:len(self)) ; len = End
+    => sys:__slice__(self, start, start + len) ; 1
+)
+
+' Finds the first index of the given substring in the
+' given string, starting at the given index.
+(def i_indexOf(self, str, idx) =>
+    [def impl(i)
+        => -1 ; i >= len(self)
+        => i ; _indexStartsWith(self, str, i)
+        => impl(i + 1) ; 1
+    ](idx)
+)
+
+' Returns whether the substring starting at the given index
+' starts with the given string.
+(def _indexStartsWith(self, str, idx) =>
+    [def impl(i)
+        => true ; i >= len(str)
+        => false ; [self](idx + i) != [str](i)
+        => impl(i + 1) ; 1
+    ](0)
+)
+
+' Splits this string along the given delimiter, also a string.
+' Consecutive instances of the delimiter result in the empty string
+' being placed in the result vect. Spliting along the empty string
+' splits this string into a vect of characters.
+(def i_split(self, delim)
+    => _splitToChars(self, 0) ; delim = ""
+    => [def impl(bgn, end)
+        => Vect() ; bgn >= len(self)
+        => Vect(self slice (bgn, len(self))) ; end < 0
+        => (self slice (bgn, end))
+        ++ impl(end + len(delim),
+            self indexOf (delim, end + len(delim))) ; 1
+    ](0, self indexOf (delim, 0)) ; 1
+)
+
+' Returns a vect of characters of the given string.
+(def _splitToChars(str, idx)
+    => Vect() ; idx = len(str)
+    => [str](idx) ++ _splitToChars(str, idx + 1) ; 1
+)
+
+' Splits the string on occurrences of the given characters.
+' In contrast to `split`, this function treats consecutive
+' occurrences of delimiters as a single delimiter.
+(def i_splitOn(self, chars) =>
+    [def impl(bgn, end)
+        => Vect() ; bgn >= len(self)
+        => impl(bgn + 1, _indexOfChars(self, chars, bgn + 1)) ; bgn = end
+        => (self slice (bgn, end))
+        ++ impl(end + 1, _indexOfChars(self, chars, end + 1)) ; 1
+    ](0, _indexOfChars(self, chars, 0))
+)
+
+' Returns the first index of any of the given characters
+' in the given string, starting at the given index.
+(def _indexOfChars(str, chars, idx)
+    => idx ; idx >= len(str)
+    => idx ; (chars indexOf ([str](idx), 0)) >= 0
+    => _indexOfChars(str, chars, idx + 1) ; 1
+)
