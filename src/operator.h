@@ -23,6 +23,7 @@ struct Operator {
     int arity;
     Fixing fixing;
     int captureCount;
+    int locals;
     union {
         int textOffset;
         Param* params;

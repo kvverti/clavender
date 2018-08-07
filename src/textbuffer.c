@@ -361,10 +361,11 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
     decl->textOffset = fbgn;
     if(lv_debug) {
         //print function info
-        printf("Function name=%s, arity=%d, capture=%d, fixing=%c, varargs=%s, offset=%u\n",
+        printf("Function name=%s, arity=%d, capture=%d, locals=%d, fixing=%c, varargs=%s, offset=%u\n",
             decl->name,
             decl->arity,
             decl->captureCount,
+            decl->locals,
             decl->fixing,
             decl->varargs ? "true" : "false",
             decl->textOffset);
