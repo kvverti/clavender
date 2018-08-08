@@ -29,12 +29,12 @@ static size_t hashInit(size_t init, char* str) {
 }
 
 static size_t hash(char* str) {
-    
+
     return hashInit(5381, str);
 }
 
 static size_t hashQual(char* scope, char* name) {
-    
+
     static char* col = ":";
     size_t res = hash(scope);
     res = hashInit(res, col);
@@ -43,7 +43,7 @@ static size_t hashQual(char* scope, char* name) {
 }
 
 static bool qualNameEq(char* name1, char* scope, char* name2) {
-    
+
     size_t len = strlen(scope);
     if(strncmp(name1, scope, len) != 0)
         return false;
@@ -55,7 +55,7 @@ static bool qualNameEq(char* name1, char* scope, char* name2) {
 }
 
 Operator* lv_op_getOperator(char* name, FuncNamespace ns) {
-    
+
     assert(ns >= 0 && ns < FNS_COUNT);
     OpHashtable* table = &funcNamespaces[ns];
     //hash(name) % cap
@@ -78,7 +78,7 @@ Operator* lv_op_getScopedOperator(char* scope, char* name, FuncNamespace ns) {
 }
 
 bool lv_op_addOperator(Operator* op, FuncNamespace ns) {
-    
+
     assert(op);
     if(op->name[strlen(op->name) - 1] == ':') {
         //anonymous function
@@ -126,7 +126,7 @@ bool lv_op_removeOperator(char* name, FuncNamespace ns) {
 }
 
 static void resizeTable(OpHashtable* table) {
-    
+
     Operator** oldTable = table->table;
     size_t oldCap = table->cap;
     table->table = lv_alloc(oldCap * 2 * sizeof(Operator*));
@@ -145,12 +145,12 @@ static void resizeTable(OpHashtable* table) {
 }
 
 static void freeOp(Operator* op) {
-    
+
     lv_free(op->name);
     if(op->type == FUN_FWD_DECL) {
         //free param names
         Param* params = op->params;
-        int arity = op->arity;
+        int arity = op->arity + op->locals;
         for(int i = 0; i < arity; i++) {
             lv_free(params[i].name);
         }
@@ -160,7 +160,7 @@ static void freeOp(Operator* op) {
 }
 
 static void freeList(Operator* head) {
-    
+
     while(head) {
         Operator* tmp = head->next;
         freeOp(head);
@@ -169,7 +169,7 @@ static void freeList(Operator* head) {
 }
 
 void lv_op_onStartup(void) {
-    
+
     for(int i = 0; i < FNS_COUNT; i++) {
         funcNamespaces[i].table = lv_alloc(INIT_TABLE_LEN * sizeof(Operator*));
         memset(funcNamespaces[i].table, 0, INIT_TABLE_LEN * sizeof(Operator*));
@@ -179,7 +179,7 @@ void lv_op_onStartup(void) {
 }
 
 void lv_op_onShutdown(void) {
-    
+
     freeList(anonFuncs);
     for(int i = 0; i < FNS_COUNT; i++) {
         for(size_t j = 0; j < funcNamespaces[i].cap; j++)

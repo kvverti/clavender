@@ -394,7 +394,8 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
 
     if(cxt->expectOperand) {
         //try parameter names first
-        for(int i = 0; i < cxt->decl->arity; i++) {
+        int numParams = cxt->decl->arity + cxt->decl->locals;
+        for(int i = 0; i < numParams; i++) {
             if(strcmp(cxt->head->value, cxt->decl->params[i].name) == 0) {
                 //save param name
                 obj->type = OPT_PARAM;
@@ -719,7 +720,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         for(int i = obj->func->captureCount; i > 0; i--) {
             TextBufferObj obj;
             obj.type = OPT_PARAM;
-            obj.param = cxt->decl->arity - i;
+            obj.param = (cxt->decl->arity + cxt->decl->locals) - i;
             pushStack(&cxt->out, &obj);
         }
         pushStack(&cxt->out, obj);

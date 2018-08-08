@@ -23,13 +23,12 @@
 ' '(-idx - 1)' where 'idx' is an index where the element would be if it
 ' were in the collection.
 (def binarySearchAs(vect, elem, cmp) =>
-    [def impl(lo, hi) =>
-        [def(mid)
-            => -mid - 1 ; lo >= hi
-            => impl(lo, mid) ; [cmp](elem, [vect](mid))
-            => impl(mid + 1, hi) ; [cmp]([vect](mid), elem)
-            => mid ; 1
-        ]((lo + hi) / 2)
+    [def impl(lo, hi)
+        let mid(sys:__floor__((lo + hi) / 2))
+        => -mid - 1 ; lo >= hi
+        => impl(lo, mid) ; [cmp](elem, [vect](mid))
+        => impl(mid + 1, hi) ; [cmp]([vect](mid), elem)
+        => mid ; 1
     ](0, len(vect))
 )
 

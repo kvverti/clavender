@@ -523,8 +523,9 @@ static size_t jumpAndLink(Operator* func) {
         }
         case FUN_FUNCTION: {
             //calling convention
+            //  0. push <undefined> into local slots
             //  1. push fp
-            //  2. set fp = stack.len - func.arity - 1 (first argument)
+            //  2. set fp = stack.len - func.arity - func.locals - 1 (first argument)
             //  3. push pc (return value)
             //  4. set pc = first inst of function
             //The stack looks like this:
@@ -532,10 +533,14 @@ static size_t jumpAndLink(Operator* func) {
             //       ^^
             //       fp
             TextBufferObj obj;
+            obj.type = OPT_UNDEFINED;
+            for(int i = 0; i < func->locals; i++) {
+                push(&obj);
+            }
             obj.type = OPT_ADDR;
             obj.addr = fp;
             push(&obj);
-            fp = stack.len - func->arity - 1;
+            fp = stack.len - func->arity - func->locals - 1;
             obj.addr = pc;
             push(&obj);
             pc = func->textOffset;
@@ -548,7 +553,7 @@ static size_t jumpAndLink(Operator* func) {
 static void runCycle(void) {
 
     TextBufferObj* value = &TEXT_BUFFER[pc++];
-    TextBufferObj func; //used in OPT_FUNC_CALL
+    TextBufferObj func; //used in some operations
     switch(value->type) {
         case OPT_FUNC_CAP: {
             //capture outer arguments into function object
@@ -584,6 +589,13 @@ static void runCycle(void) {
             //push i'th param
             push(lv_buf_get(&stack, fp + value->param));
             break;
+        case OPT_PUT_PARAM: {
+            //pop top and place in i'th param
+            TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
+            lv_buf_pop(&stack, &func);
+            *param = func;
+            break;
+        }
         case OPT_BEQZ: {
             TextBufferObj obj = removeTop();
             if(!lv_blt_toBool(&obj))

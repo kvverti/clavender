@@ -4,6 +4,7 @@
 #include "operator.h"
 #include <string.h>
 #include <stdio.h>
+#include <assert.h>
 
 //redeclaration of the global text buffer
 TextBufferObj* TEXT_BUFFER;
@@ -151,6 +152,17 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
             return res;
         }
+        case OPT_PUT_PARAM: {
+            static char str[] = "put ";
+            size_t len = length(obj->param);
+            len += sizeof(str) - 1;
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
+            res->len = len;
+            strcpy(res->value, str);
+            sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
+            return res;
+        }
         case OPT_MAKE_VECT:
         case OPT_FUNC_CALL: {
             static char str[] = " CALL";
@@ -232,13 +244,15 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     return head;
 }
 
+static bool parseFunctionLocals(Operator* decl);
+
 Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
 
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
     //function begin, often the same as top, but
     //different if there are nested functions.
-    size_t fbgn;
+    size_t fbgn = textBufferTop;
     bool setbgn = false;
     bool conditional = false;
     //the index of the previous conditional branch
@@ -250,6 +264,16 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         rollback(decl, top);
         return NULL;
+    }
+    //parse function local initializers (if any)
+    setbgn = parseFunctionLocals(decl);
+    if(LV_EXPR_ERROR) {
+        rollback(decl, top);
+        return NULL;
+    }
+    if(setbgn) {
+        //set the branch addr to the top for local jump
+        prevCondBranch = textBufferTop - 1;
     }
     while(!isExprEnd(head)) {
         TextBufferObj* text;
@@ -324,6 +348,9 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                     }
                 }
                 lv_free(cond);
+            } else if(prevCondBranch) {
+                //set locals jump to the first instruction of the body
+                TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
             }
         } else if(conditional) {
             //function did not have a condition for one of its bodies
@@ -331,6 +358,9 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             rollback(decl, top);
             lv_expr_free(text, len);
             return NULL;
+        } else if(prevCondBranch) {
+            //set locals jump to the first instruction of the body
+            TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
         }
         if(!setbgn) {
             fbgn = textBufferTop;
@@ -380,6 +410,64 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         }
     }
     return head;
+}
+
+/**
+ * Parses each function local initializer and places the code in sequence
+ * before the function proper. The value of the initializer expression
+ * is placed into the function local positions using the PUT operation.
+ * Returns whether locals were parsed.
+ */
+static bool parseFunctionLocals(Operator* decl) {
+
+    assert(decl->type == FUN_FWD_DECL);
+    if(decl->locals == 0) {
+        return false;
+    }
+    //array to store the local initializers
+    struct Initializer {
+        TextBufferObj* code;
+        size_t len;
+    } initializers[decl->locals];
+    int len = decl->arity + decl->locals;
+    for(int i = decl->arity; i < len; i++) {
+        //parse the initializer
+        Token* startOfInit = decl->params[i].initializer;
+        assert(startOfInit);
+        struct Initializer* init = &initializers[i - decl->arity];
+        startOfInit = lv_expr_parseExpr(startOfInit, decl, &init->code, &init->len);
+        if(!startOfInit) {
+            //there was an error parsing the initializer
+            return false;
+        }
+        //startOfInit should now point to the closing paren
+        //check that no params >= i are being accessed
+        //this precludes functions being defined in function locals (#10)
+        for(size_t j = 0; j < init->len; j++) {
+            if(init->code[j].type == OPT_PARAM && init->code[j].param >= i) {
+                LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
+                //free all the initializers
+                for(size_t k = 0; k < decl->locals; k++) {
+                    lv_expr_free(initializers[k].code, initializers[k].len);
+                }
+                return false;
+            }
+        }
+        assert(startOfInit->value[0] == ')');
+    }
+    //push initializer and put operation
+    for(size_t i = 0; i < decl->locals; i++) {
+        pushText(initializers[i].code + 1, initializers[i].len - 1);
+        lv_free(initializers[i].code);
+        TextBufferObj put = { .type = OPT_PUT_PARAM, .param = i + decl->arity };
+        pushText(&put, 1);
+    }
+    TextBufferObj jump[2] = {
+        { .type = OPT_NUMBER, .number = 0 },
+        { .type = OPT_BEQZ, .branchAddr = 0 }
+    };
+    pushText(jump, 2);
+    return true;
 }
 
 static size_t startOfTmpExpr;

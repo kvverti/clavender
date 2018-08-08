@@ -11,6 +11,7 @@ typedef enum OpType {
     OPT_UNDEFINED,      //undefined value
     OPT_NUMBER,         //Lavender number
     OPT_PARAM,          //function parameter
+    OPT_PUT_PARAM,      //store top in param
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value
     OPT_FUNC_CAP,       //capture function with params

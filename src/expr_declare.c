@@ -60,7 +60,10 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         return NULL;
     }
     if(context.head->type == TTY_EMPTY_ARGS) {
+        //no formal parameters, but maybe still locals
         context.arity = 0;
+        INCR_HEAD(context.head);
+        parseLocals(context.head);
     } else {
         INCR_HEAD(context.head);
         //collect args
@@ -78,15 +81,10 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     //holds the parameters (formal, captured, and local) and their names
     int totalParams = context.arity + nspace->arity + nspace->locals + context.locals;
     Param args[totalParams];
-    if(context.arity == 0) {
-        //incr past close paren
-        context.head = context.head->next;
-    } else {
-        //set up the args array
-        setupArgsArray(args);
-        if(LV_EXPR_ERROR)
-            return NULL;
-    }
+    //set up the args array
+    setupArgsArray(args);
+    if(LV_EXPR_ERROR)
+        return NULL;
     REQUIRE_MORE_TOKENS(context.head);
     if(strcmp(context.head->value, "=>") != 0) {
         //sorry, a function body is required
@@ -210,9 +208,12 @@ static void setupArgsArray(Param params[]) {
         //store the beginning of the init expression
         params[i].initializer = currentLocal;
         do {
-            switch(currentLocal->value[0]) {
-                case '(': parenNesting++; break;
-                case ')': parenNesting--; break;
+            //check type because empty args exists
+            if(currentLocal->type == TTY_LITERAL) {
+                switch(currentLocal->value[0]) {
+                    case '(': parenNesting++; break;
+                    case ')': parenNesting--; break;
+                }
             }
             currentLocal = currentLocal->next;
         } while(parenNesting >= 0);
@@ -248,6 +249,8 @@ static void parseArity(void) {
     Token* head = context.head;
     assert(head);
     if(head->value[0] == ')') {
+        INCR_HEAD(head);
+        parseLocals(head);
         context.arity = 0;
         context.varargs = false;
         return;
@@ -335,9 +338,12 @@ static void parseLocals(Token* head) {
             //we must remember the number of parens inside the expression
             int numParens = 0;
             do {
-                switch(head->value[0]) {
-                    case '(': numParens++; break;
-                    case ')': numParens--; break;
+                //check type because empty args exists
+                if(head->type == TTY_LITERAL) {
+                    switch(head->value[0]) {
+                        case '(': numParens++; break;
+                        case ')': numParens--; break;
+                    }
                 }
                 INCR_HEAD(head);
             } while(numParens >= 0);
