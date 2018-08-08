@@ -8,6 +8,7 @@
 
 struct Param {
     char* name;
+    Token* initializer;
     bool byName;
 };
 

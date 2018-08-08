@@ -26,7 +26,7 @@ static struct DeclContext {
 
 static bool specifiesFixing(void);
 static void parseArity(void);
-static void parseLocals(void);
+static void parseLocals(Token* head); //called by parseArity
 static void parseNameAndFixing(void);
 static void setupArgsArray(Param params[]);
 static void buildFuncName(void);
@@ -75,8 +75,9 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         LV_EXPR_ERROR = XPE_BAD_FIXING;
         return NULL;
     }
-    //holds the arguments and their names
-    Param args[context.arity + nspace->arity];
+    //holds the parameters (formal, captured, and local) and their names
+    int totalParams = context.arity + nspace->arity + nspace->locals + context.locals;
+    Param args[totalParams];
     if(context.arity == 0) {
         //incr past close paren
         context.head = context.head->next;
@@ -87,7 +88,6 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
             return NULL;
     }
     REQUIRE_MORE_TOKENS(context.head);
-    parseLocals();
     if(strcmp(context.head->value, "=>") != 0) {
         //sorry, a function body is required
         LV_EXPR_ERROR = XPE_MISSING_BODY;
@@ -113,15 +113,15 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         funcObj->name = context.name;
         funcObj->next = NULL;
         funcObj->type = FUN_FWD_DECL;
-        funcObj->arity = context.arity + nspace->arity;
+        funcObj->arity = totalParams - context.locals;
         funcObj->fixing = context.fixing;
-        funcObj->captureCount = nspace->arity;
+        funcObj->captureCount = nspace->arity + nspace->locals;
         funcObj->locals = context.locals;
-        funcObj->params = lv_alloc((context.arity + nspace->arity) * sizeof(Param));
+        funcObj->params = lv_alloc(totalParams * sizeof(Param));
         funcObj->varargs = context.varargs;
-        memcpy(funcObj->params, args, (context.arity + nspace->arity) * sizeof(Param));
+        memcpy(funcObj->params, args, totalParams * sizeof(Param));
         //copy param names
-        for(int i = 0; i < (context.arity + nspace->arity); i++) {
+        for(int i = 0; i < totalParams; i++) {
             char* name = lv_alloc(strlen(args[i].name) + 1);
             strcpy(name, args[i].name);
             funcObj->params[i].name = name;
@@ -160,11 +160,19 @@ static void parseNameAndFixing(void) {
     #undef RETVAL
 }
 
+/**
+ * Puts information (name and passing convention) on each
+ * function parameter. Function parameters include (in this order):
+ * formal parameters, all parameters from the enclosing function,
+ * function local parameters.
+ */
 static void setupArgsArray(Param params[]) {
 
+    //context.arity is the number of formal parameters
     int arity = context.arity;
     //assign formal parameters
     for(int i = 0; i < arity; i++) {
+        params[i].initializer = NULL;
         params[i].byName = (context.head->type == TTY_SYMBOL);
         if(params[i].byName) //incr past by name symbol
             context.head = context.head->next;
@@ -182,7 +190,38 @@ static void setupArgsArray(Param params[]) {
         context.head = context.head->next->next; //skip comma or close paren
     }
     //copy over captured params (if any)
-    memcpy(params + arity, context.nspace->params, context.nspace->arity * sizeof(Param));
+    memcpy(params + arity, context.nspace->params,
+        (context.nspace->arity + context.nspace->locals) * sizeof(Param));
+    int offset = arity + context.nspace->arity + context.nspace->locals;
+    //assign function locals
+    Token* currentLocal = context.localStart;
+    for(int i = offset; i < (offset + context.locals); i++) {
+        //locals are never by name
+        params[i].byName = false;
+        //get local name from currentLocal
+        assert(currentLocal->type == TTY_IDENT);
+        params[i].name = currentLocal->value;
+        currentLocal = currentLocal->next;
+        //consume open paren
+        assert(currentLocal->value[0] == '(');
+        currentLocal = currentLocal->next;
+        //keep track of nesting so we know when to stop
+        int parenNesting = 0;
+        //store the beginning of the init expression
+        params[i].initializer = currentLocal;
+        do {
+            switch(currentLocal->value[0]) {
+                case '(': parenNesting++; break;
+                case ')': parenNesting--; break;
+            }
+            currentLocal = currentLocal->next;
+        } while(parenNesting >= 0);
+        //consume the comma
+        if(currentLocal->value[0] == ',') {
+            currentLocal = currentLocal->next;
+        }
+        context.head = currentLocal;
+    }
 }
 
 static bool specifiesFixing(void) {
@@ -236,9 +275,11 @@ static void parseArity(void) {
             res++;
             INCR_HEAD(head);
             //must be a comma or a close paren
-            if(head->value[0] == ')')
+            if(head->value[0] == ')') {
+                //incr past close paren
+                INCR_HEAD(head);
                 break; //we're done
-            else if(head->value[0] != ',') {
+            } else if(head->value[0] != ',') {
                 //must separate params with commas!
                 LV_EXPR_ERROR = XPE_BAD_ARGS;
                 return;
@@ -252,6 +293,7 @@ static void parseArity(void) {
             return;
         }
     }
+    parseLocals(head);
     context.arity = res;
     context.varargs = varargs;
     #undef RETVAL
@@ -259,49 +301,48 @@ static void parseArity(void) {
 
 /**
  * A word on locals:
- * This function simply validates that the function local values are
+ * This function validates that the function local values are
  * properly formatted, counts the number of function locals, and saves
- * a pointer to the first function local declaration. The function locals'
- * names and initializers are actually parsed when the function is defined
- * (this file handles declaring functions). This is not a problem because
- * function locals may only be used after their initialization.
+ * a pointer to the first function local declaration. The function
+ * locals' initializers are actually parsed when the function is defined
+ * (this file handles declaring functions). Note that we duplicate the walking
+ * (minus the validation) later in setupArgsArray().
  */
-static void parseLocals(void) {
+static void parseLocals(Token* head) {
 
-    //TODO: extract the local names as well using a DynBuffer
     #define RETVAL
-    if(strcmp(context.head->value, "let") == 0) {
+    if(strcmp(head->value, "let") == 0) {
         //this function has defines function locals
         //the locals are of the form <id>(<expr>) , ...
         //and end when we reach the arrow token
         int locals = 0;
-        context.localStart = context.head->next;
+        context.localStart = head->next;
         do {
             locals++;
-            INCR_HEAD(context.head);
+            INCR_HEAD(head);
             //check that this is a name
-            if(context.head->type != TTY_IDENT) {
+            if(head->type != TTY_IDENT) {
                 LV_EXPR_ERROR = XPE_BAD_LOCALS;
                 return;
             }
-            INCR_HEAD(context.head);
+            INCR_HEAD(head);
             //check for the opening paren
-            if(context.head->value[0] != '(') {
+            if(head->value[0] != '(') {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 return;
             }
-            INCR_HEAD(context.head);
+            INCR_HEAD(head);
             //we must remember the number of parens inside the expression
             int numParens = 0;
             do {
-                switch(context.head->value[0]) {
+                switch(head->value[0]) {
                     case '(': numParens++; break;
                     case ')': numParens--; break;
                 }
-                INCR_HEAD(context.head);
+                INCR_HEAD(head);
             } while(numParens >= 0);
             //head should point at a comma or arrow
-        } while(context.head->value[0] == ',');
+        } while(head->value[0] == ',');
         context.locals = locals;
     } else {
         context.localStart = NULL;

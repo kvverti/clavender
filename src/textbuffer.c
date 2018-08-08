@@ -353,7 +353,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         pushText(nan, 2);
     }
     //free param metadata
-    for(int i = 0; i < decl->arity; i++)
+    for(int i = 0; i < (decl->arity + decl->locals); i++)
         lv_free(decl->params[i].name);
     lv_free(decl->params);
     //set out param value
