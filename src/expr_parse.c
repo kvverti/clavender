@@ -653,9 +653,14 @@ static void handleRightBracket(ExprContext* cxt) {
     REQUIRE_NONEMPTY(cxt->ops);
     //shunt over operators
     do {
-        if(isLiteral(cxt->ops.top, ']'))
+        if(isLiteral(cxt->ops.top, ']')) {
             handleRightBracket(cxt);
-        else {
+        } else if(cxt->ops.top->type == OPT_FUNC_CALL2) {
+            //func call 2 was already shunted from ops onto out
+            //(because its open paren is pushed brfore it)
+            //so don't re-shunt it
+            pushStack(&cxt->out, cxt->ops.top--);
+        } else {
             if(!shuntOps(cxt))
                 return;
             REQUIRE_NONEMPTY(cxt->ops);
