@@ -396,14 +396,9 @@ static void readInput(FILE* in, bool repl) {
                 while(pc != endIdx) {
                     runCycle();
                 }
-                assert(stack.len != 0);
+                assert(stack.len == 1);
                 TextBufferObj obj;
                 lv_buf_pop(&stack, &obj);
-                if(stack.len == 1) {
-                    assert(((TextBufferObj*)stack.data)[0].type == OPT_FUNC_CALL2);
-                    lv_buf_pop(&stack, NULL);
-                }
-                assert(stack.len == 0);
                 LvString* str = lv_tb_getString(&obj);
                 puts(str->value);
                 if(str->refCount == 0) {
@@ -523,6 +518,16 @@ static size_t jumpAndLink(Operator* func) {
             size_t tmpFp = stack.len - func->arity;
             TextBufferObj res = func->builtin(lv_buf_get(&stack, tmpFp));
             popAll(func->arity);
+            if(stack.len > 0) {
+                TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
+                if(top->type == OPT_FUNC_CALL2) {
+                    //must increment refCount manually
+                    if(res.type & LV_DYNAMIC)
+                        ++*res.refCount;
+                    *top = res;
+                    break;
+                }
+            } //else
             push(&res);
             break;
         }
@@ -641,7 +646,6 @@ static void runCycle(void) {
                 top->type = OPT_UNDEFINED;
             } else {
                 jumpAndLink(op);
-                fp++; //since fp points at the function, not the first arg
             }
             break;
         }

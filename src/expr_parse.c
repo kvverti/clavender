@@ -161,6 +161,19 @@ static int getLexicographicPrecedence(char c) {
     }
 }
 
+static int getFixingValue(TextBufferObj* obj) {
+
+    if(obj->type == OPT_FUNC_CALL2) {
+        return 1;
+    }
+    assert(obj->type == OPT_FUNCTION);
+    if(obj->func->fixing == FIX_PRE || obj->func->arity == 1) {
+        return 2;
+    } else {
+        return 0;
+    }
+}
+
 /** Whether this object represents the literal character c. */
 static bool isLiteral(TextBufferObj* obj, char c) {
 
@@ -193,21 +206,14 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
         return -1;
     if(isLiteral(b, '(') || isLiteral(b, '['))
         return 1;
-    //function call 2 has lower precedence than all functions
-    if(a->type == OPT_FUNC_CALL2)
-        return -1;
-    if(b->type == OPT_FUNC_CALL2)
-        return 1;
-    assert(a->type == OPT_FUNCTION);
-    assert(b->type == OPT_FUNCTION);
     //check fixing
-    //prefix > infix = postfix
+    //prefix > call 2 > infix = postfix
     {
-        int afix = (a->func->fixing == FIX_PRE || a->func->arity == 1);
-        int bfix = (b->func->fixing == FIX_PRE || b->func->arity == 1);
-        if(afix ^ bfix)
+        int afix = getFixingValue(a);
+        int bfix = getFixingValue(b);
+        if(afix != bfix)
             return afix - bfix;
-        if(afix) //prefix functions always have equal precedence
+        if(afix != 0) //prefix functions and call2 always have equal precedence
             return 0;
     }
     //compare infix operators with modified Scala ordering
@@ -753,9 +759,13 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         fixArityFirstArg(cxt);
         pushStack(&cxt->out, &cap);
     } else if(obj->type == OPT_FUNC_CALL2) {
-        //func call 2 is applied before operators appearing textually before,
-        //but after operators appearing textually after, so just push it
-        //to ops
+        //special case of the else branch
+        //call 2 fixing=FIX_LEFT_IN
+        while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - 1) < 0) {
+            if(!shuntOps(cxt))
+                return;
+        }
+        //push an lparen because we pop with rparen
         TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
         pushStack(&cxt->ops, &lparen);
         pushStack(&cxt->ops, obj);
