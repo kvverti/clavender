@@ -730,6 +730,7 @@ void lv_blt_onStartup(void) {
         memcpy(op->name, BUILTIN_NS nm, sizeof(BUILTIN_NS nm)); \
         op->type = FUN_BUILTIN; \
         op->arity = ar; \
+        op->locals = 0; \
         op->fixing = FIX_PRE; \
         op->captureCount = 0; \
         op->varargs = false; \

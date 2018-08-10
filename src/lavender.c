@@ -396,9 +396,14 @@ static void readInput(FILE* in, bool repl) {
                 while(pc != endIdx) {
                     runCycle();
                 }
-                assert(stack.len == 1);
+                assert(stack.len != 0);
                 TextBufferObj obj;
                 lv_buf_pop(&stack, &obj);
+                if(stack.len == 1) {
+                    assert(((TextBufferObj*)stack.data)[0].type == OPT_FUNC_CALL2);
+                    lv_buf_pop(&stack, NULL);
+                }
+                assert(stack.len == 0);
                 LvString* str = lv_tb_getString(&obj);
                 puts(str->value);
                 if(str->refCount == 0) {
@@ -617,6 +622,29 @@ static void runCycle(void) {
             }
             break;
         }
+        case OPT_FUNC_CALL2: {
+            int arity = value->callArity;
+            //in contrast to func call 1, the function is at the bottom
+            {
+                //remove the function logically from the stack
+                TextBufferObj* pos = lv_buf_get(&stack, stack.len - arity);
+                func = *pos;
+                //signal for return instruction to remove bottom func
+                pos->type = OPT_FUNC_CALL2;
+            }
+            Operator* op;
+            bool setup = setUpFuncCall(&func, arity - 1, &op);
+            lv_expr_cleanup(&func, 1);
+            if(!setup) {
+                assert(stack.len > 0);
+                TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
+                top->type = OPT_UNDEFINED;
+            } else {
+                jumpAndLink(op);
+                fp++; //since fp points at the function, not the first arg
+            }
+            break;
+        }
         case OPT_FUNCTION: {
             jumpAndLink(value->func);
             break;
@@ -633,11 +661,18 @@ static void runCycle(void) {
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
+            if(stack.len > 0) {
+                TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
+                if(top->type == OPT_FUNC_CALL2) {
+                    *top = retVal;
+                    break;
+                }
+            } //else
             lv_buf_push(&stack, &retVal);
             break;
         }
         default:
-            //set error
+            assert(false);
             return;
     }
 }

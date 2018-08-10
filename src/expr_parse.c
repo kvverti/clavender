@@ -172,9 +172,9 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
 
     //values have highest precedence
     {
-        int ar = (a->type != OPT_LITERAL &&
+        int ar = (a->type != OPT_LITERAL && a->type != OPT_FUNC_CALL2 &&
             (a->type != OPT_FUNCTION || a->func->arity == 0));
-        int br = (b->type != OPT_LITERAL &&
+        int br = (b->type != OPT_LITERAL && b->type != OPT_FUNC_CALL2 &&
             (b->type != OPT_FUNCTION || b->func->arity == 0));
         if(ar || br) {
             assert(false);
@@ -192,6 +192,11 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
     if(isLiteral(a, '(') || isLiteral(a, '['))
         return -1;
     if(isLiteral(b, '(') || isLiteral(b, '['))
+        return 1;
+    //function call 2 has lower precedence than all functions
+    if(a->type == OPT_FUNC_CALL2)
+        return -1;
+    if(b->type == OPT_FUNC_CALL2)
         return 1;
     assert(a->type == OPT_FUNCTION);
     assert(b->type == OPT_FUNCTION);
@@ -238,6 +243,15 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
     obj->literal = cxt->head->value[0];
     switch(obj->literal) {
         case '(':
+            if(!cxt->expectOperand) {
+                //value call 2 operator
+                obj->type = OPT_FUNC_CALL2;
+                cxt->expectOperand = true;
+            }
+            //else parenthesized expression
+            //increment nesting in either case
+            cxt->nesting++;
+            break;
         case '[':
             cxt->nesting++;
             //open groupings are "operands"
@@ -599,6 +613,15 @@ static bool shuntOps(ExprContext* cxt) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
                 return false;
             }
+        } else if(tmp->type == OPT_FUNC_CALL2) {
+            //get the proper param count
+            int ar = *cxt->params.top--;
+            if(ar < 0) {
+                LV_EXPR_ERROR = XPE_BAD_ARITY;
+            } else {
+                tmp->callArity = ar;
+                pushStack(&cxt->out, tmp);
+            }
         } else {
             pushStack(&cxt->out, tmp);
         }
@@ -698,8 +721,9 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 cxt->ops.top--;
                 break;
             case ',':
-                //shunt ops until a left paren
-                while(!isLiteral(cxt->ops.top, '(')) {
+                //shunt ops until a left paren or func call 2
+                while(!isLiteral(cxt->ops.top, '(')
+                && cxt->ops.top->type != OPT_FUNC_CALL2) {
                     REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
@@ -728,11 +752,21 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         cap.type = OPT_FUNC_CAP;
         fixArityFirstArg(cxt);
         pushStack(&cxt->out, &cap);
+    } else if(obj->type == OPT_FUNC_CALL2) {
+        //func call 2 is applied before operators appearing textually before,
+        //but after operators appearing textually after, so just push it
+        //to ops
+        TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
+        pushStack(&cxt->ops, &lparen);
+        pushStack(&cxt->ops, obj);
+        //func call 2 is an infix operator
+        pushParam(&cxt->params, -2);
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
         fixArityFirstArg(cxt);
         pushStack(&cxt->out, obj);
-    } else if(obj->type == OPT_FUNCTION) {
+    } else {
+        assert(obj->type == OPT_FUNCTION);
         //shunt over the ops of greater precedence if right assoc.
         //and greater or equal precedence if left assoc.
         int sub = (obj->func->fixing != FIX_LEFT_IN ? 0 : 1);
@@ -753,7 +787,5 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             pushParam(&cxt->params, 1);
         else
             pushParam(&cxt->params, -2);
-    } else {
-        assert(false);
     }
 }

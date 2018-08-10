@@ -164,16 +164,19 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             return res;
         }
         case OPT_MAKE_VECT:
+        case OPT_FUNC_CALL2:
         case OPT_FUNC_CALL: {
-            static char str[] = " CALL";
+            #define LEN sizeof(" CALL")
             size_t len = length(obj->callArity);
-            len += sizeof(str) - 1;
-            res = lv_alloc(sizeof(LvString) + len + sizeof(str));
+            len += LEN - 1;
+            res = lv_alloc(sizeof(LvString) + len + LEN);
             res->refCount = 0;
             res->len = len;
             sprintf(res->value, "%d", obj->callArity);
-            strcat(res->value, obj->type == OPT_MAKE_VECT ? " VECT" : " CALL");
+            strcat(res->value, obj->type == OPT_MAKE_VECT ? " VECT"
+                : obj->type == OPT_FUNC_CALL2 ? " CAL2" : " CALL");
             return res;
+            #undef LEN
         }
         case OPT_FUNC_CAP: {
             static char str[] = "CAP";
