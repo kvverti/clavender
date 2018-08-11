@@ -735,8 +735,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 break;
             case ',':
                 //shunt ops until a left paren or func call 2
-                while(!isLiteral(cxt->ops.top, '(')
-                && cxt->ops.top->type != OPT_FUNC_CALL2) {
+                while(!isLiteral(cxt->ops.top, '(')) {
                     REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
@@ -767,8 +766,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         pushStack(&cxt->out, &cap);
     } else if(obj->type == OPT_FUNC_CALL2) {
         //special case of the else branch
-        //call 2 fixing=FIX_RIGHT_IN
-        while(cxt->ops.top != cxt->ops.stack && compare(obj, cxt->ops.top) < 0) {
+        //call 2 fixing=FIX_LEFT_IN
+        while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - 1) < 0) {
             if(!shuntOps(cxt))
                 return;
         }
@@ -776,8 +775,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             //nonzero arity version
             //push an lparen because we pop with rparen
             TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
-            pushStack(&cxt->ops, &lparen);
             pushStack(&cxt->ops, obj);
+            pushStack(&cxt->ops, &lparen);
             //func call 2 is an 'infix' operator
             pushParam(&cxt->params, -2);
         } else {

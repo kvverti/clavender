@@ -91,12 +91,12 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' In contrast to `split`, this function treats consecutive
 ' occurrences of delimiters as a single delimiter.
 (def i_splitOn(self, chars) =>
-    [def impl(bgn, end)
+    (def impl(bgn, end)
         => Vect() ; bgn >= len(self)
         => impl(bgn + 1, _indexOfChars(self, chars, bgn + 1)) ; bgn = end
         => (self slice (bgn, end))
         ++ impl(end + 1, _indexOfChars(self, chars, end + 1)) ; 1
-    ](0, _indexOfChars(self, chars, 0))
+    )(0, _indexOfChars(self, chars, 0))
 )
 
 ' Returns the first index of any of the given characters
