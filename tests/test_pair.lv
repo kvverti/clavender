@@ -12,9 +12,9 @@ def main(args) => test:format(
     assert(isObject(t), "isObject"),
     assert(str(t) = "hello -> world", "str"),
     assert(len(t) = 2, "len"),
-    assert([t](0) = "hello", "First elem"),
-    assert([t](1) = "world", "Second elem"),
-    assert(!sys:defined([t](2)), "Out of range"),
+    assert(t(0) = "hello", "First elem"),
+    assert(t(1) = "world", "Second elem"),
+    assert(!sys:defined(t(2)), "Out of range"),
     assert((t map \len) = Pair(5, 5), "map"),
     assert((t fold ("", \+\)) = "helloworld", "fold"),
     assert(t toVect = Vect("hello", "world"), "toVect")

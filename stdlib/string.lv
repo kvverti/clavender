@@ -49,21 +49,21 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' Finds the first index of the given substring in the
 ' given string, starting at the given index.
 (def i_indexOf(self, str, idx) =>
-    [def impl(i)
+    (def impl(i)
         => -1 ; i >= len(self)
         => i ; _indexStartsWith(self, str, i)
         => impl(i + 1) ; 1
-    ](idx)
+    )(idx)
 )
 
 ' Returns whether the substring starting at the given index
 ' starts with the given string.
 (def _indexStartsWith(self, str, idx) =>
-    [def impl(i)
+    (def impl(i)
         => true ; i >= len(str)
-        => false ; [self](idx + i) != [str](i)
+        => false ; self(idx + i) != str(i)
         => impl(i + 1) ; 1
-    ](0)
+    )(0)
 )
 
 ' Splits this string along the given delimiter, also a string.
@@ -72,19 +72,19 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' splits this string into a vect of characters.
 (def i_split(self, delim)
     => _splitToChars(self, 0) ; delim = ""
-    => [def impl(bgn, end)
+    => (def impl(bgn, end)
         => Vect() ; bgn >= len(self)
         => Vect(self slice (bgn, len(self))) ; end < 0
         => (self slice (bgn, end))
         ++ impl(end + len(delim),
             self indexOf (delim, end + len(delim))) ; 1
-    ](0, self indexOf (delim, 0)) ; 1
+    )(0, self indexOf (delim, 0)) ; 1
 )
 
 ' Returns a vect of characters of the given string.
 (def _splitToChars(str, idx)
     => Vect() ; idx = len(str)
-    => [str](idx) ++ _splitToChars(str, idx + 1) ; 1
+    => str(idx) ++ _splitToChars(str, idx + 1) ; 1
 )
 
 ' Splits the string on occurrences of the given characters.
@@ -103,6 +103,6 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' in the given string, starting at the given index.
 (def _indexOfChars(str, chars, idx)
     => idx ; idx >= len(str)
-    => idx ; (chars indexOf ([str](idx), 0)) >= 0
+    => idx ; (chars indexOf (str(idx), 0)) >= 0
     => _indexOfChars(str, chars, idx + 1) ; 1
 )

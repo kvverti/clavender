@@ -29,7 +29,7 @@ def __yes__() => def value(a) => sys:undefined
 
 ' Returns whether the argument is object-like. A function is object-like
 ' if and only if the value __object__ maps to the value __yes__.
-def isObject(a) => sys:__eq__([a](__object__), __yes__)
+def isObject(a) => sys:__eq__(a(__object__), __yes__)
 
 ' Returns the logical NOT of the argument
 ' after conversion to bool.
@@ -98,8 +98,8 @@ def i_onlyIf(=> expr, pred) => expr ; pred
 ' * The only value which breaks reflexivity is the floating point
 '   NaN value.
 (def i_=(a, b)
-    => [[a](\=\)](b) ; sys:defined([a onlyIf isObject(a)](\=\))
-                    && sys:defined([b onlyIf isObject(b)](\=\))
+    => a(\=\)(b) ; sys:defined((a onlyIf isObject(a))(\=\))
+                    && sys:defined((b onlyIf isObject(b))(\=\))
     => sys:__eq__(a, b) ; 1
 )
 
@@ -120,16 +120,16 @@ def i_!=(a, b) => !(a = b)
 '
 ' * NaN always compares false with anything, even itself.
 (def i_<(a, b)
-    => [[a](\<\)](b) ; sys:defined([a onlyIf isObject(a)](\<\))
-                    && sys:defined([b onlyIf isObject(b)](\<\))
+    => a(\<\)(b) ; sys:defined((a onlyIf isObject(a))(\<\))
+                && sys:defined((b onlyIf isObject(b))(\<\))
     => sys:__lt__(a, b) ; 1
 )
 
 ' Greater than or equal comparision function.
 (def i_>=(a, b)
     ' We do this because NaN always compares false.
-    => ![[a](\<\)](b) ; sys:defined([a onlyIf isObject(a)](\<\))
-                     && sys:defined([b onlyIf isObject(b)](\<\))
+    => !(a(\<\)(b)) ; sys:defined((a onlyIf isObject(a))(\<\))
+                    && sys:defined((b onlyIf isObject(b))(\<\))
     => sys:__ge__(a, b) ; 1
 )
 
@@ -140,109 +140,109 @@ def i_>(a, b) => b < a
 def i_<=(a, b) => b >= a
 
 ' Converts argument to a string. Forwards if possible.
-def str(a) => [a onlyIf isObject(a)](\str) else sys:__str__(a)
+def str(a) => (a onlyIf isObject(a))(\str) else sys:__str__(a)
 
 ' Converts argument to number. Forwards if possible.
-def num(a) => [a onlyIf isObject(a)](\num) else sys:__num__(a)
+def num(a) => (a onlyIf isObject(a))(\num) else sys:__num__(a)
 
 ' Converts the argument to bool. Forwards if possible.
-def bool(a) => [a onlyIf isObject(a)](\bool) else sys:__bool__(a)
+def bool(a) => (a onlyIf isObject(a))(\bool) else sys:__bool__(a)
 
 ' Returns the length of the argument. Forwards if possible.
 ' For strings, returns the length. For functions, returns the arity.
 ' For numbers, returns undefined.
-def len(a) => [a onlyIf isObject(a)](\len) else sys:__len__(a)
+def len(a) => (a onlyIf isObject(a))(\len) else sys:__len__(a)
 
 ' Unary + function. Forwards if defined for its argument.
 ' This is a no-op for numbers, but returns undefined
 ' if the argument is not a number.
-def +(a) => [a onlyIf isObject(a)](\+) else sys:__pos__(a)
+def +(a) => (a onlyIf isObject(a))(\+) else sys:__pos__(a)
 
 ' Negation function. Forwards if negation is defined for
 ' its argument.
-def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
+def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
 
 ' Addition function. Forwards if addition is defined for both
 ' arguments.
 (def i_+(a, b)
-    => [[a](\+\)](b) ; sys:defined([a onlyIf isObject(a)](\+\))
-                    && sys:defined([b onlyIf isObject(b)](\+\))
+    => a(\+\)(b) ; sys:defined((a onlyIf isObject(a))(\+\))
+                && sys:defined((b onlyIf isObject(b))(\+\))
     => sys:__add__(a, b) ; 1
 )
 
 ' Subtraction function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_-(a, b)
-    => [[a](\-\)](b) ; sys:defined([a onlyIf isObject(a)](\-\))
-                    && sys:defined([b onlyIf isObject(b)](\-\))
+    => a(\-\)(b) ; sys:defined((a onlyIf isObject(a))(\-\))
+                && sys:defined((b onlyIf isObject(b))(\-\))
     => sys:__sub__(a, b) ; 1
 )
 
 ' Multiplication function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_*(a, b)
-    => [[a](\*\)](b) ; sys:defined([a onlyIf isObject(a)](\*\))
-                    && sys:defined([b onlyIf isObject(b)](\*\))
+    => a(\*\)(b) ; sys:defined((a onlyIf isObject(a))(\*\))
+                && sys:defined((b onlyIf isObject(b))(\*\))
     => sys:__mul__(a, b) ; 1
 )
 
 ' Division function. Forwards if subtraction is defined for
 ' both arguments.
 (def i_/(a, b)
-    => [[a](\/\)](b) ; sys:defined([a onlyIf isObject(a)](\/\))
-                    && sys:defined([b onlyIf isObject(b)](\/\))
+    => a(\/\)(b) ; sys:defined((a onlyIf isObject(a))(\/\))
+                && sys:defined((b onlyIf isObject(b))(\/\))
     => sys:__div__(a, b) ; 1
 )
 
 ' Remainder function. Forwards if remainder is defined for
 ' both arguments.
 (def i_%(a, b)
-    => [[a](\%\)](b) ; sys:defined([a onlyIf isObject(a)](\%\))
-                    && sys:defined([b onlyIf isObject(b)](\%\))
+    => a(\%\)(b) ; sys:defined((a onlyIf isObject(a))(\%\))
+                && sys:defined((b onlyIf isObject(b))(\%\))
     => sys:__rem__(a, b) ; 1
 )
 
 ' Exponentiation function. Forwards if exponentiation is defined
 ' for both arguments.
 (def r_**(a, b)
-    => [[a](\**\)](b) ; sys:defined([a onlyIf isObject(a)](\**\))
-                     && sys:defined([b onlyIf isObject(b)](\**\))
+    => a(\**\)(b) ; sys:defined((a onlyIf isObject(a))(\**\))
+                 && sys:defined((b onlyIf isObject(b))(\**\))
     => sys:__pow__(a, b) ; 1
 )
 
 ' Maps each element of the given object using the given mapping
 ' function.
 (def i_map(obj, func) =>
-    [[obj onlyIf isObject(obj)](\map\)](func) else sys:__map__(obj, func)
+    (obj onlyIf isObject(obj))(\map\)(func) else sys:__map__(obj, func)
 )
 
 ' Maps each element of the given object to zero or more new values
 ' using the given mapping function.
 (def i_flatmap(obj, func)
     => sys:call(\sys:cat, sys:__map__(obj, func)) ; sys:__eq__(sys:typeof(obj), "vect")
-    => [[obj onlyIf isObject(obj)](\flatmap\)](func) ; 1
+    => (obj onlyIf isObject(obj))(\flatmap\)(func) ; 1
 )
 
 ' Filters the elements of the given object according to the given
 ' predicate.
 (def i_filter(obj, func) =>
-    [[obj onlyIf isObject(obj)](\filter\)](func) else sys:__filter__(obj, func)
+    (obj onlyIf isObject(obj))(\filter\)(func) else sys:__filter__(obj, func)
 )
 
 ' Combines the elements of the given object according to the
 ' given fold function with the given initial value.
 (def i_fold(obj, id, func) =>
-    [[obj onlyIf isObject(obj)](\fold\)](id, func) else sys:__fold__(obj, id, func)
+    (obj onlyIf isObject(obj))(\fold\)(id, func) else sys:__fold__(obj, id, func)
 )
 
 ' Concatenates the elements of the two objects.
 (def i_++(obj1, obj2) =>
-    [[obj1 onlyIf isObject(obj1)](\++\)](obj2) else sys:cat(obj1, obj2)
+    (obj1 onlyIf isObject(obj1))(\++\)(obj2) else sys:cat(obj1, obj2)
 )
 
 ' Returns the subsequence of obj from bgn (inclusive) to end (exclusive).
 (def i_slice(obj, bgn, end) =>
-    [[obj onlyIf isObject(obj)](\slice\)](bgn, end) else sys:__slice__(obj, bgn, end)
+    (obj onlyIf isObject(obj))(\slice\)(bgn, end) else sys:__slice__(obj, bgn, end)
 )
 
 ' Returns whether the given element is contained in the given object.
@@ -251,7 +251,7 @@ def -(a) => [a onlyIf isObject(a)](\-) else sys:__neg__(a)
         ; sys:__eq__(sys:typeof(obj), "vect")
     => _in_str(el, obj, sys:__sub__(sys:__len__(obj), sys:__len__(el)), sys:__len__(el))
         ; sys:__eq__(sys:typeof(obj), "string")
-    => [[obj](\in\)](el) ; 1
+    => obj(\in\)(el) ; 1
 )
 
 ' Returns !(el in obj).
@@ -260,7 +260,7 @@ def i_notin(el, obj) => !(el in obj)
 ' Implementation of in for vects.
 (def _in_vect(el, obj, idx)
     => 0 ; sys:__lt__(idx, 0)
-    => 1 ; [obj](idx) = el ' Use the override of equals
+    => 1 ; obj(idx) = el ' Use the override of equals
     => _in_vect(el, obj, sys:__sub__(idx, 1)) ; 1
 )
 
@@ -274,5 +274,5 @@ def i_notin(el, obj) => !(el in obj)
 ' Converts the given object to a vect.
 (def i_toVect(obj)
     => obj ; sys:__eq__(sys:typeof(obj), "vect")
-    => [obj onlyIf isObject(obj)](\toVect\) ; 1
+    => (obj onlyIf isObject(obj))(\toVect\) ; 1
 )

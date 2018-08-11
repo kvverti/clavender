@@ -2,7 +2,9 @@
 ' the possible absence of a value.
 
 @import global
+@import hof
 @using global
+@using hof:Constant
 
 ' Returns Some(value) if value is defined, None otherwise
 (def Option(value)
@@ -17,12 +19,12 @@
         => 1 ; b = \len
         => "Some(" + str(a) + ")" ; b = \str
         => (def(=> default) => a) ; b = \valueElse\
-        => (def(f) => Option([f](a))) ; b = \map\
-        => (def(f) => [f](a)) ; b = \flatmap\
+        => (def(f) => Option(f(a))) ; b = \map\
+        => (def(f) => f(a)) ; b = \flatmap\
         => (def(f)
-            => \obj ; [f](a)
+            => \obj ; f(a)
             => None ; 1) ; b = \filter\
-        => (def(id, f) => [f](id, a)) ; b = \fold\
+        => (def(id, f) => f(id, a)) ; b = \fold\
     )
 )
 
@@ -33,14 +35,14 @@
         => 0 ; a = \len
         => "None" ; a = \str
         => (def(default) => default) ; a = \valueElse\
-        => (def(f) => \value) ; a = \map\
-        => (def(f) => \value) ; a = \flatmap\
-        => (def(f) => \value) ; a = \filter\
+        => Constant(\value) ; a = \map\
+        => Constant(\value) ; a = \flatmap\
+        => Constant(\value) ; a = \filter\
         => (def(id, f) => id) ; a = \fold\
     )
 )
 
 ' Get the value if defined, else the default value.
 (def i_valueElse(self, => default) =>
-    [[self](\valueElse\)](default) ; isObject(self)
+    self(\valueElse\)(default) ; isObject(self)
 )

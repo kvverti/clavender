@@ -18,13 +18,13 @@
         => 1 + len(tail) ; a = \len
         => "[ " + (\obj fold ("", def(a, b) => a + str(b) + " ")) + "]" ; a = \str
         => (def(el) => head = el || (el in tail)) ; a = \in\
-        => (def(f) => [f](head) :: (tail map f)) ; a = \map\
-        => (def(f) => [f](head) ++ (tail flatmap f)) ; a = \flatmap\
+        => (def(f) => f(head) :: (tail map f)) ; a = \map\
+        => (def(f) => f(head) ++ (tail flatmap f)) ; a = \flatmap\
         => (def(f)
-            => head :: (tail filter f) ; [f](head)
+            => head :: (tail filter f) ; f(head)
             => tail filter f ; 1
         ) ; a = \filter\
-        => (def(id, f) => tail fold ([f](id, head), f)) ; a = \fold\
+        => (def(id, f) => tail fold (f(id, head), f)) ; a = \fold\
         => (def(list2) => head :: (tail ++ list2)) ; a = \++\
         => \obj fold (Vect(), def(ac, el)
             => sys:cat(ac, Vect(el)) ; sys:typeof(el) = "vect"
@@ -65,12 +65,13 @@ def tail(list) => sys:cval(list, 1)
 ' value until the generator returns `undefined`. The generator
 ' should be finitely iterable.
 (def mklist(seed, gen)
-    => seed :: mklist([gen](seed), gen) ; sys:defined([gen](seed))
+    let val(gen(seed))
+    => seed :: mklist(val, gen) ; sys:defined(val)
     => Nil ; 1
 )
 
 ' Returns a list of integers in the half-open interval [a..b).
-def i_until(a, b) => mklist(a, def(c) => c + 1 ; c < b)
-
-' Returns a list of integers in the closed interval [a..b].
-def i_to(a, b) => mklist(a, def(c) => c + 1 ; c <= b)
+' def i_until(a, b) => mklist(a, def(c) => c + 1 ; c < b)
+'
+' ' Returns a list of integers in the closed interval [a..b].
+' def i_to(a, b) => mklist(a, def(c) => c + 1 ; c <= b)

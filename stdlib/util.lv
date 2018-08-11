@@ -26,8 +26,8 @@
     [def impl(lo, hi)
         let mid(sys:__floor__((lo + hi) / 2))
         => -mid - 1 ; lo >= hi
-        => impl(lo, mid) ; [cmp](elem, [vect](mid))
-        => impl(mid + 1, hi) ; [cmp]([vect](mid), elem)
+        => impl(lo, mid) ; cmp(elem, vect(mid))
+        => impl(mid + 1, hi) ; cmp(vect(mid), elem)
         => mid ; 1
     ](0, len(vect))
 )
@@ -58,18 +58,18 @@ def Filter(set) => def impl(a) => a in set
         => b ; c = 1
         => 2 ; c = \len
         => str(a) + " -> " + str(b) ; c = \str
-        => (def(f) => Pair([f](a), [f](b))) ; c = \map\
-        => (def(id, f) => [f]([f](id, a), b)) ; c = \fold\
+        => (def(f) => Pair(f(a), f(b))) ; c = \map\
+        => (def(id, f) => f(f(id, a), b)) ; c = \fold\
         => Vect(a, b) ; c = \toVect\
     )
 )
 
 ' Returns the curried form of the given binary function.
-def curry(binaryop) => def left(a) => def right(b) => [binaryop](a, b)
+def curry(binaryop) => def left(a) => def right(b) => binaryop(a, b)
 
 ' Returns the uncurried form of the given curried binary function.
-def uncurry(curried) => def impl(a, b) => [[curried](a)](b)
+def uncurry(curried) => def impl(a, b) => curried(a)(b)
 
 ' Returns a function that reverses the arguments to 'binaryop', passing
 ' the first as the second and the second as the first.
-def flip(binaryop) => def impl(a, b) => [binaryop](b, a)
+def flip(binaryop) => def impl(a, b) => binaryop(b, a)
