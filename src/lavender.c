@@ -217,6 +217,7 @@ static bool isFuncDef(Token* head) {
 /** Helper struct to organize function declaration data. */
 typedef struct HelperDeclObj {
     Operator* func;
+    Token* exprStart;
     Token* body;
 } HelperDeclObj;
 
@@ -285,7 +286,7 @@ bool lv_readFile(char* name) {
     }
     for(size_t i = 0; i < decls.len; i++) {
         HelperDeclObj* obj = lv_buf_get(&decls, i);
-        lv_tkn_free(obj->body);
+        lv_tkn_free(obj->exprStart);
     }
     lv_free(decls.data);
     fclose(importFile);
@@ -310,10 +311,10 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     if(head->value[0] == '@') {
         //runtime command
         //push next and free '@' token
-        HelperDeclObj toPush = { NULL, head->next };
+        HelperDeclObj toPush = { NULL, head, head->next };
         lv_buf_push(decls, &toPush);
-        head->next = NULL;
-        lv_tkn_free(head);
+        // head->next = NULL;
+        // lv_tkn_free(head);
         return true;
     }
     if(!isFuncDef(head)) {
@@ -333,14 +334,14 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         return false;
     }
     //push declaration and body pointer
-    HelperDeclObj toPush = { op, body };
+    HelperDeclObj toPush = { op, head, body };
     lv_buf_push(decls, &toPush);
     //free decl tokens only
-    Token* tmp = head;
-    while(tmp->next != body)
-        tmp = tmp->next;
-    tmp->next = NULL;
-    lv_tkn_free(head);
+    // Token* tmp = head;
+    // while(tmp->next != body)
+    //     tmp = tmp->next;
+    // tmp->next = NULL;
+    // lv_tkn_free(head);
     return true;
 }
 
