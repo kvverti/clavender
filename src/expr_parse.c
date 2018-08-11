@@ -485,7 +485,9 @@ static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
     //we should be expecting an operand, then we change to
     //expecting an operator
     if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_PRE;
+        //unless this is a func call 2!
+        obj->type = OPT_FUNC_CALL2;
+        //expectOperand is already false
     } else {
         obj->type = OPT_EMPTY_ARGS;
         cxt->expectOperand = false;
@@ -655,14 +657,8 @@ static void handleRightBracket(ExprContext* cxt) {
     do {
         if(isLiteral(cxt->ops.top, ']')) {
             handleRightBracket(cxt);
-        } else if(cxt->ops.top->type == OPT_FUNC_CALL2) {
-            //func call 2 was already shunted from ops onto out
-            //(because its open paren is pushed brfore it)
-            //so don't re-shunt it
-            pushStack(&cxt->out, cxt->ops.top--);
         } else {
-            if(!shuntOps(cxt))
-                return;
+            pushStack(&cxt->out, cxt->ops.top--);
             REQUIRE_NONEMPTY(cxt->ops);
         }
     } while(!isLiteral(cxt->ops.top, '['));
@@ -708,6 +704,12 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 pushStack(&cxt->out, obj);
                 break;
             case ']':
+                //shunt ops onto out until '['
+                //so we can validate remaining ops
+                while(!isLiteral(cxt->ops.top, '[')) {
+                    REQUIRE_NONEMPTY(cxt->ops);
+                    pushStack(&cxt->out, cxt->ops.top--);
+                }
                 //pop out onto op until '['
                 //then push ']' onto op
                 while(!isLiteral(cxt->out.top, '[')) {
@@ -765,17 +767,26 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         pushStack(&cxt->out, &cap);
     } else if(obj->type == OPT_FUNC_CALL2) {
         //special case of the else branch
-        //call 2 fixing=FIX_LEFT_IN
-        while(cxt->ops.top != cxt->ops.stack && (compare(obj, cxt->ops.top) - 1) < 0) {
+        //call 2 fixing=FIX_RIGHT_IN
+        while(cxt->ops.top != cxt->ops.stack && compare(obj, cxt->ops.top) < 0) {
             if(!shuntOps(cxt))
                 return;
         }
-        //push an lparen because we pop with rparen
-        TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
-        pushStack(&cxt->ops, &lparen);
-        pushStack(&cxt->ops, obj);
-        //func call 2 is an infix operator
-        pushParam(&cxt->params, -2);
+        if(cxt->expectOperand) {
+            //nonzero arity version
+            //push an lparen because we pop with rparen
+            TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
+            pushStack(&cxt->ops, &lparen);
+            pushStack(&cxt->ops, obj);
+            //func call 2 is an 'infix' operator
+            pushParam(&cxt->params, -2);
+        } else {
+            //zero arity version
+            //push directly to out, since there are no args
+            obj->callArity = 1;
+            pushStack(&cxt->out, obj);
+            //no need to push param because it's already on out
+        }
     } else if(obj->type != OPT_FUNCTION || obj->func->arity == 0) {
         //it's a value, shunt it over
         fixArityFirstArg(cxt);
