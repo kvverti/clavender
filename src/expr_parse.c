@@ -194,17 +194,17 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
             return ar - br;
         }
     }
-    //close groupers ']' and ')' have next highest
+    //close groupers '}', ']' and ')' have next highest
     {
-        int ac = (isLiteral(a, ')') || isLiteral(a, ']'));
-        int bc = (isLiteral(b, ')') || isLiteral(b, ']'));
+        int ac = (isLiteral(a, ')') || isLiteral(a, ']') || isLiteral(a, '}'));
+        int bc = (isLiteral(b, ')') || isLiteral(b, ']') || isLiteral(b, '}'));
         if(ac || bc)
             return ac - bc;
     }
-    //openers '(' and '[' have the lowest
-    if(isLiteral(a, '(') || isLiteral(a, '['))
+    //openers '{', '(' and '[' have the lowest
+    if(isLiteral(a, '(') || isLiteral(a, '[') || isLiteral(a, '{'))
         return -1;
-    if(isLiteral(b, '(') || isLiteral(b, '['))
+    if(isLiteral(b, '(') || isLiteral(b, '[') || isLiteral(b, '{'))
         return 1;
     //check fixing
     //prefix > call 2 > infix = postfix
@@ -259,11 +259,16 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
             cxt->nesting++;
             break;
         case '[':
+        case '{':
             cxt->nesting++;
             //open groupings are "operands"
             if(!cxt->expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_PRE;
             }
+            break;
+        case '}': //can be in either an operator or operand position
+            cxt->nesting--;
+            cxt->expectOperand = false;
             break;
         case ']':
         case ')':
@@ -703,12 +708,37 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 pushStack(&cxt->ops, obj);
                 pushStack(&cxt->out, obj);
                 break;
+            case '{':
+                //push '{' to ops and push -1 to params
+                fixArityFirstArg(cxt);
+                pushStack(&cxt->ops, obj);
+                pushParam(&cxt->params, -1);
+                break;
+            case '}': {
+                //shunt ops onto out until '{'
+                //then pop '{', get param count, and push VECT to out
+                while(!isLiteral(cxt->ops.top, '{')) {
+                    REQUIRE_NONEMPTY(cxt->ops);
+                    if(!shuntOps(cxt))
+                        return;
+                }
+                REQUIRE_NONEMPTY(cxt->ops);
+                cxt->ops.top--;
+                assert(cxt->params.top != cxt->params.stack);
+                int arity = *cxt->params.top--;
+                if(arity < 0) //{} construct
+                    arity = 0;
+                TextBufferObj vect = { .type = OPT_MAKE_VECT, .callArity = arity };
+                pushStack(&cxt->out, &vect);
+                break;
+            }
             case ']':
                 //shunt ops onto out until '['
                 //so we can validate remaining ops
                 while(!isLiteral(cxt->ops.top, '[')) {
                     REQUIRE_NONEMPTY(cxt->ops);
-                    pushStack(&cxt->out, cxt->ops.top--);
+                    if(!shuntOps(cxt))
+                        return;
                 }
                 //pop out onto op until '['
                 //then push ']' onto op
@@ -734,8 +764,9 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 cxt->ops.top--;
                 break;
             case ',':
-                //shunt ops until a left paren or func call 2
-                while(!isLiteral(cxt->ops.top, '(')) {
+                //shunt ops until a left paren or left brace
+                while(!isLiteral(cxt->ops.top, '(')
+                    && !isLiteral(cxt->ops.top, '{')) {
                     REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;

@@ -73,8 +73,8 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 (def i_split(self, delim)
     => _splitToChars(self, 0) ; delim = ""
     => (def impl(bgn, end)
-        => Vect() ; bgn >= len(self)
-        => Vect(self slice (bgn, len(self))) ; end < 0
+        => {} ; bgn >= len(self)
+        => { self slice (bgn, len(self)) } ; end < 0
         => (self slice (bgn, end))
         ++ impl(end + len(delim),
             self indexOf (delim, end + len(delim))) ; 1
@@ -83,7 +83,7 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 
 ' Returns a vect of characters of the given string.
 (def _splitToChars(str, idx)
-    => Vect() ; idx = len(str)
+    => {} ; idx = len(str)
     => str(idx) ++ _splitToChars(str, idx + 1) ; 1
 )
 
@@ -92,7 +92,7 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' occurrences of delimiters as a single delimiter.
 (def i_splitOn(self, chars) =>
     (def impl(bgn, end)
-        => Vect() ; bgn >= len(self)
+        => {} ; bgn >= len(self)
         => impl(bgn + 1, _indexOfChars(self, chars, bgn + 1)) ; bgn = end
         => (self slice (bgn, end))
         ++ impl(end + 1, _indexOfChars(self, chars, end + 1)) ; 1

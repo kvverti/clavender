@@ -60,7 +60,7 @@ def Filter(set) => def impl(a) => a in set
         => str(a) + " -> " + str(b) ; c = \str
         => (def(f) => Pair(f(a), f(b))) ; c = \map\
         => (def(id, f) => f(f(id, a), b)) ; c = \fold\
-        => Vect(a, b) ; c = \toVect\
+        => { a, b } ; c = \toVect\
     )
 )
 

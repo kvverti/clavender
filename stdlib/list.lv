@@ -26,8 +26,8 @@
         ) ; a = \filter\
         => (def(id, f) => tail fold (f(id, head), f)) ; a = \fold\
         => (def(list2) => head :: (tail ++ list2)) ; a = \++\
-        => \obj fold (Vect(), def(ac, el)
-            => sys:cat(ac, Vect(el)) ; sys:typeof(el) = "vect"
+        => \obj fold ({}, def(ac, el)
+            => sys:cat(ac, { el }) ; sys:typeof(el) = "vect"
             => sys:cat(ac, el) ; 1
         ) ; a = \toVect\
     )
@@ -45,7 +45,7 @@
         => Constant(\value) ; a = \filter\
         => (def(id, f) => id) ; a = \fold\
         => Identity ; a = \++\
-        => Vect() ; a = \toVect\
+        => {} ; a = \toVect\
     )
 )
 

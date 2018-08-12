@@ -6,35 +6,35 @@
 @using assert
 @using list
 
-def ListVal() => 1 :: 2 :: "hello" :: Vect(1, 2) :: Nil
-def VectVal() => Vect(1, 2, "hello", Vect(1, 2))
+def ListVal() => 1 :: 2 :: "hello" :: { 1, 2 } :: Nil
+def VectVal() => { 1, 2, "hello", { 1, 2 } }
 
 def flatmapFunc(a) => a :: a :: Nil
 def filterFunc(a) => sys:typeof(a) = "string"
 def foldFunc(ac, el) => ac + str(el)
 
 def main(args) => test:format(
-    assert(ListVal = (1::2::"hello"::Vect(1,2)::Nil), "List"),
+    assert(ListVal = (1::2::"hello"::{1,2}::Nil), "List"),
     assert(isObject(ListVal), "List isObject"),
     assert(head(ListVal) = 1, "List head"),
-    assert(tail(ListVal) = (2::"hello"::Vect(1,2)::Nil), "List tail"),
+    assert(tail(ListVal) = (2::"hello"::{1,2}::Nil), "List tail"),
     assert(len(ListVal) = 4, "List len"),
     assert(str(ListVal) = "[ 1 2 hello [ 1, 2 ] ]", "List str"),
     assert("hello" in ListVal, "List in"),
     assert(ListVal toVect = VectVal, "List toVect"),
     assert((ListVal map \str) = ("1"::"2"::"hello"::"[ 1, 2 ]"::Nil), "List map"),
-    assert((ListVal flatmap \flatmapFunc) = (1::1::2::2::"hello"::"hello"::Vect(1,2)::Vect(1,2)::Nil), "List flatmap"),
+    assert((ListVal flatmap \flatmapFunc) = (1::1::2::2::"hello"::"hello"::{1,2}::{1,2}::Nil), "List flatmap"),
     assert((ListVal filter \filterFunc) = ("hello"::Nil), "List filter"),
     assert((ListVal filter hof:False) = Nil, "List filter Nil"),
     assert((ListVal fold ("", \foldFunc)) = "12hello[ 1, 2 ]", "List fold"),
-    assert((ListVal ++ (3::4::Nil)) = (1::2::"hello"::Vect(1,2)::3::4::Nil), "List ++"),
+    assert((ListVal ++ (3::4::Nil)) = (1::2::"hello"::{1,2}::3::4::Nil), "List ++"),
     assert(isObject(Nil), "Nil isObject"),
     assert(!sys:defined(head(Nil)), "Nil head"),
     assert(!sys:defined(tail(Nil)), "Nil tail"),
     assert(len(Nil) = 0, "Nil len"),
     assert("hello" notin Nil, "Nil in"),
     assert(str(Nil) = "[]", "Nil str"),
-    assert(Nil toVect = Vect(), "Nil toVect"),
+    assert(Nil toVect = {}, "Nil toVect"),
     assert((Nil map \str) = Nil, "Nil map"),
     assert((Nil flatmap \flatmapFunc) = Nil, "Nil flatmap"),
     assert((Nil filter \filterFunc) = Nil, "Nil filter"),

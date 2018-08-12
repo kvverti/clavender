@@ -17,5 +17,5 @@ def main(args) => test:format(
     assert(!sys:defined(t(2)), "Out of range"),
     assert((t map \len) = Pair(5, 5), "map"),
     assert((t fold ("", \+\)) = "helloworld", "fold"),
-    assert(t toVect = Vect("hello", "world"), "toVect")
+    assert(t toVect = { "hello", "world" }, "toVect")
 )

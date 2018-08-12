@@ -17,7 +17,7 @@ static TokenType getNumber(void);
 static TokenType getLiteral(void);
 
 char* lv_tkn_getError(TokenError err) {
-    
+
     #define LEN 8
     static char* msg[LEN] = {
         "Namespace without name",
@@ -35,7 +35,7 @@ char* lv_tkn_getError(TokenError err) {
 }
 
 void lv_tkn_free(Token* head) {
-    
+
     while(head) {
         Token* tail = head->next;
         lv_free(head);
@@ -51,6 +51,7 @@ static int idx; //current index in the buffer
 static FILE* input;
 static int bracketNesting; //bracket nesting
 static int parenNesting; //paren nesting
+static int braceNesting; //curly brace nesting
 
 static bool reallocBuffer(void);
 
@@ -58,6 +59,7 @@ static void setInputEnd(void) {
     //set inputEnd for the global buffer
     bool endOfLine = (parenNesting == 0
         && bracketNesting == 0
+        && braceNesting == 0
         && buffer[0]
         && buffer[strlen(buffer) - 1] == '\n');
     inputEnd = (feof(input) || endOfLine);
@@ -70,7 +72,7 @@ static int issymb(int c) {
 }
 
 static int isidbgn(int c) {
-    
+
     static char* chars =
         "QWERTYUIOPASDFGHJKLZXCVBNM"
         "qwertyuiopasdfghjklzxcvbnm"
@@ -79,19 +81,19 @@ static int isidbgn(int c) {
 }
 
 static int isident(int c) {
-    
+
     return isidbgn(c) || isdigit(c);
 }
 
 static int isdot(int c) {
-    
+
     return c == '.';
 }
 
 //loops over the input while the passed
 //predicate is satisfied and there is input.
 static void getInputWhile(int (*pred)(int)) {
-    
+
     do {
         idx++;
         if(!buffer[idx] && !reallocBuffer()) {
@@ -104,7 +106,7 @@ static void getInputWhile(int (*pred)(int)) {
 //eats comment without saving the input
 //so we don't have to reallocate the buffer
 static void eatComment(void) {
-    
+
     do {
         bgn++;
         idx++;
@@ -116,7 +118,7 @@ static void eatComment(void) {
 }
 
 static void fgetsWrapper(char* buf, int n, FILE* stream) {
-    
+
     fgets(buf, n, stream);
     //if there was a NUL character in the text stream that got added into
     //the buffer, the lexing code will get confused about the amount of
@@ -141,7 +143,7 @@ static void fgetsWrapper(char* buf, int n, FILE* stream) {
 //at 'bgn'. If bgn == 0, also increases the buffer size.
 //returns whether the buffer was reallocated.
 static bool reallocBuffer(void) {
-    
+
     assert(bgn >= 0 && bgn < BUFFER_LEN);
     if(inputEnd)
         return false;
@@ -171,7 +173,7 @@ static bool reallocBuffer(void) {
 }
 
 Token* lv_tkn_split(FILE* in) {
-    
+
     if(LV_TKN_ERROR)
         return NULL;
     //reset static vars
@@ -181,7 +183,7 @@ Token* lv_tkn_split(FILE* in) {
     buffer = lv_alloc(BUFFER_LEN);
     memset(buffer, 0, BUFFER_LEN); //initialize buffer
     bgn = idx = parenNesting = bracketNesting = 0;
-    
+
     Token* head = NULL;
     Token* tail = head;
     fgetsWrapper(buffer, BUFFER_LEN, input);
@@ -252,7 +254,7 @@ Token* lv_tkn_split(FILE* in) {
 }
 
 static TokenType getLiteral(void) {
-    
+
     switch(buffer[idx]) {
         case '(': parenNesting++;
             break;
@@ -262,8 +264,12 @@ static TokenType getLiteral(void) {
             break;
         case ']': bracketNesting--;
             break;
+        case '{': braceNesting++;
+            break;
+        case '}': braceNesting--;
+            break;
     }
-    if(parenNesting < 0 || bracketNesting < 0) {
+    if(parenNesting < 0 || bracketNesting < 0 || braceNesting < 0) {
         LV_TKN_ERROR = TE_UNBAL_PAREN;
         return -1;
     }
@@ -346,7 +352,7 @@ static TokenType tryGetQualName(void) {
 }
 
 static TokenType tryGetEllipsis(void) {
-    
+
     assert(buffer[idx] == '.');
     getInputWhile(isdot);
     if((idx - bgn) == 3)
@@ -357,7 +363,7 @@ static TokenType tryGetEllipsis(void) {
 }
 
 static TokenType tryGetEmptyArgs(void) {
-    
+
     assert(buffer[idx] == '(');
     idx++;
     if((buffer[idx] || reallocBuffer()) && buffer[idx] == ')') {
@@ -370,14 +376,14 @@ static TokenType tryGetEmptyArgs(void) {
 }
 
 static TokenType getSymbol(void) {
-    
+
     assert(issymb(buffer[idx]));
     getInputWhile(issymb);
     return TTY_SYMBOL;
 }
 
 static TokenType getNumber(void) {
-    
+
     if(isdigit(buffer[idx])) {
         //start with whole number
         getInputWhile(isdigit);
@@ -434,7 +440,7 @@ static TokenType getNumber(void) {
 }
 
 static TokenType getFuncVal(void) {
-    
+
     assert(buffer[idx] == '\\');
     idx++;
     TokenType res;
@@ -470,7 +476,7 @@ static TokenType getFuncVal(void) {
 }
 
 static TokenType getString(void) {
-    
+
     //idx = bgn;
     assert(buffer[idx] == '"');
     do {
