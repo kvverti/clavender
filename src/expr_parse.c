@@ -266,7 +266,14 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
                 LV_EXPR_ERROR = XPE_EXPECT_PRE;
             }
             break;
-        case '}': //can be in either an operator or operand position
+        case '}':
+            if(cxt->expectOperand
+            && cxt->params.top != cxt->params.stack
+            && *cxt->params.top > 0) {
+                //in an operand position, `}` may only directly
+                //follow `{`
+                LV_EXPR_ERROR = XPE_EXPECT_PRE;
+            }
             cxt->nesting--;
             cxt->expectOperand = false;
             break;

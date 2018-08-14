@@ -229,8 +229,8 @@ static void rollback(Operator* decl, size_t top) {
 
 static bool isExprEnd(Token* head) {
 
-    //')' and ']' mark the end of the expression, ';' delimits conditionals
-    return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == ';';
+    //')' and ']' and '}' mark the end of the expression, ';' delimits conditionals
+    return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == '}' || head->value[0] == ';';
 }
 
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {

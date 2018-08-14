@@ -182,7 +182,7 @@ Token* lv_tkn_split(FILE* in) {
     BUFFER_LEN = 64;
     buffer = lv_alloc(BUFFER_LEN);
     memset(buffer, 0, BUFFER_LEN); //initialize buffer
-    bgn = idx = parenNesting = bracketNesting = 0;
+    bgn = idx = parenNesting = bracketNesting = braceNesting = 0;
 
     Token* head = NULL;
     Token* tail = head;
