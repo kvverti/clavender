@@ -724,12 +724,12 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             case '}': {
                 //shunt ops onto out until '{'
                 //then pop '{', get param count, and push VECT to out
+                REQUIRE_NONEMPTY(cxt->ops);
                 while(!isLiteral(cxt->ops.top, '{')) {
-                    REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
+                    REQUIRE_NONEMPTY(cxt->ops);
                 }
-                REQUIRE_NONEMPTY(cxt->ops);
                 cxt->ops.top--;
                 assert(cxt->params.top != cxt->params.stack);
                 int arity = *cxt->params.top--;
@@ -742,18 +742,19 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             case ']':
                 //shunt ops onto out until '['
                 //so we can validate remaining ops
+                REQUIRE_NONEMPTY(cxt->ops);
                 while(!isLiteral(cxt->ops.top, '[')) {
-                    REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
+                    REQUIRE_NONEMPTY(cxt->ops);
                 }
                 //pop out onto op until '['
                 //then push ']' onto op
-                while(!isLiteral(cxt->out.top, '[')) {
-                    REQUIRE_NONEMPTY(cxt->out);
-                    pushStack(&cxt->ops, cxt->out.top--);
-                }
                 REQUIRE_NONEMPTY(cxt->out);
+                while(!isLiteral(cxt->out.top, '[')) {
+                    pushStack(&cxt->ops, cxt->out.top--);
+                    REQUIRE_NONEMPTY(cxt->out);
+                }
                 cxt->out.top--;
                 //see below for why this is set to -1
                 pushParam(&cxt->params, -1);
@@ -762,21 +763,22 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             case ')':
                 //shunt over all operators until we hit left paren
                 //if we underflow, then unbalanced parens
+                REQUIRE_NONEMPTY(cxt->ops);
                 while(!isLiteral(cxt->ops.top, '(')) {
-                    REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
+                    REQUIRE_NONEMPTY(cxt->ops);
                 }
-                REQUIRE_NONEMPTY(cxt->ops);
                 cxt->ops.top--;
                 break;
             case ',':
                 //shunt ops until a left paren or left brace
+                REQUIRE_NONEMPTY(cxt->ops);
                 while(!isLiteral(cxt->ops.top, '(')
                     && !isLiteral(cxt->ops.top, '{')) {
-                    REQUIRE_NONEMPTY(cxt->ops);
                     if(!shuntOps(cxt))
                         return;
+                    REQUIRE_NONEMPTY(cxt->ops);
                 }
                 //there cannot be more args after () in the current function
                 //(this is why we shunt ops over first!)
