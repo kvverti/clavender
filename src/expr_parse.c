@@ -793,10 +793,13 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
     } else if(obj->type == OPT_FUNCTION_VAL && obj->func->captureCount > 0) {
         //push capture params onto stack, then push obj, then push CAP
         //out: ... cap1 cap2 .. capn obj CAP ...
+        //self capture does not capture locals
+        int ar = (obj->func == cxt->decl) ? cxt->decl->arity
+            : (cxt->decl->arity + cxt->decl->locals);
         for(int i = obj->func->captureCount; i > 0; i--) {
             TextBufferObj obj;
             obj.type = OPT_PARAM;
-            obj.param = (cxt->decl->arity + cxt->decl->locals) - i;
+            obj.param = ar - i;
             pushStack(&cxt->out, &obj);
         }
         pushStack(&cxt->out, obj);
