@@ -1,19 +1,30 @@
 ' The util namespace contains miscellaneous utility functions.
 
 @import global
+@import hof
 @using global
+@using hof:not
 
-' Returns the minimum of a and b, according to '<'.
-(def min(a, b)
-    => a ; a < b
-    => b ; 1
+' Returns the minimum of the given values, according to the
+' given comparator.
+(def minOf(vals, cmp)
+    let siz(len(vals)) =>
+    (def impl(min, idx)
+        => min ; idx = siz
+        => impl(vals(idx), idx + 1) ; cmp(vals(idx), min)
+        => impl(min, idx + 1) ; 1
+    )(vals(0), 0)
 )
+
+' Returns the maximum of the given values, according to the
+' given comparator.
+def maxOf(vals, cmp) => minOf(vals, not(cmp))
+
+' Returns the minimum of the given values, according to '<'.
+def min(...vals) => minOf(vals, \<\)
 
 ' Returns the maximum of a and b, according to '<'.
-(def max(a, b)
-    => b ; a < b
-    => a ; 1
-)
+def max(...vals) => minOf(vals, \>\)
 
 ' Performs a binary search for the given element in the given collection
 ' using the given comparison function. The function should implement the
@@ -23,13 +34,13 @@
 ' '(-idx - 1)' where 'idx' is an index where the element would be if it
 ' were in the collection.
 (def binarySearchAs(vect, elem, cmp) =>
-    [def impl(lo, hi)
+    (def impl(lo, hi)
         let mid(sys:__floor__((lo + hi) / 2))
         => -mid - 1 ; lo >= hi
         => impl(lo, mid) ; cmp(elem, vect(mid))
         => impl(mid + 1, hi) ; cmp(vect(mid), elem)
         => mid ; 1
-    ](0, len(vect))
+    )(0, len(vect))
 )
 
 ' Performs a binary search using the global comparison function '<'.
@@ -73,3 +84,30 @@ def uncurry(curried) => def impl(a, b) => curried(a)(b)
 ' Returns a function that reverses the arguments to 'binaryop', passing
 ' the first as the second and the second as the first.
 def flip(binaryop) => def impl(a, b) => binaryop(b, a)
+
+' An object which represents the half-open range [a..b). Ranges cannot be
+' mapped or filtered, but they can be folded over. Ranges take up much
+' less space compared to the equivalent vector of numbers.
+(def Range(a, b) =>
+    (def obj(c)
+        => __yes__ ; c = __object__
+        => b - a ; c = \len
+        => "[" + str(a) + ".." + str(b) + ")" ; c = \str
+        => (def(el) => el >= a && el < b) ; c = \in\
+        => (def(id, f) => _rangeFold(a, b, f)(id, a)) ; c = \fold\
+        => \obj fold ({}, \sys:cat) ; c = \toVect\
+    )
+)
+
+(def _rangeFold(a, b, f) =>
+    (def impl(ac, idx)
+        => ac ; idx = b
+        => impl(f(ac, idx), idx + 1) ; 1
+    )
+)
+
+' Returns the start of the range.
+def start(range) => sys:cval(range, 0)
+
+' Returns the stop of the range.
+def stop(range) => sys:cval(range, 1)

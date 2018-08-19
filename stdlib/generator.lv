@@ -1,0 +1,39 @@
+' Abstraction for generators. Generators in Lavender are logically
+' functions that take in an input (the seed) and return two outputs:
+' the new seed and the output value.
+
+@import global
+@import hof
+@using global
+@using hof:Identity
+@using hof:bindRight
+
+' Returns a generator which uses the given functions to generate new values.
+(def _Generator(seedFunc, valueFunc) =>
+    ' seed = next seed, value = current value
+    (def impl(seed, value) =>
+        def value(a, b) => impl(seedFunc(a), valueFunc(b))
+    )
+)
+
+' Creates a generator from the given function with the given initial seed.
+def of(seed, func) => _Generator(func, Identity)(func(seed), seed)
+
+' Creates a generator from the given seed function and seed, transforming
+' each seed to a final value used by `generator:value`.
+def withMap(seed, func, map) => _Generator(func, map)(func(seed), map(seed))
+
+' Creates a generator from the given elements.
+def ofVect(...els) => _Generator(bindRight(\+\, 1), els)(1, els(0))
+
+' Seeds the given generator with the given value.
+def seed(gen, seed) => gen(seed, seed)
+
+' Returns a generator representing the next element of this generator.
+(def next(gen)
+    let seed(sys:cval(gen, 0)) =>
+    gen(seed, seed)
+)
+
+' Retrieves the current value in this generator.
+def value(gen) => sys:cval(gen, 1)

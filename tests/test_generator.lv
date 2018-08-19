@@ -1,0 +1,34 @@
+@import global
+@import assert
+@import test
+@import hof
+@import generator
+@using global
+@using assert
+@using hof
+@using generator:next
+@using generator:value
+@using generator:seed
+
+def Naturals() => generator:of(0, bindRight(\+\, 1))
+def Vect() => generator:ofVect(2, 7, -3, 10)
+def Mapped() => generator:withMap(0,
+    bindRight(\+\, 1),
+    bindLeft(\+\, "#") o \str)
+
+def main(args) => test:format(
+    assert(value(Naturals) = 0, "nat initial"),
+    assert(value(next Naturals) = 1, "nat next"),
+    assert(value(next next Naturals) = 2, "nat next next"),
+    assert(value(next seed(Naturals, -4)) = -3, "nat seed"),
+    assert(value(Mapped) = "#0", "mapped initial"),
+    assert(value(next Mapped) = "#1", "mapped next"),
+    assert(value(next next Mapped) = "#2", "mapped next next"),
+    assert(value(next seed(Mapped, 100)) = "#101", "mapped seed"),
+    assert(value(Vect) = 2, "vect initial"),
+    assert(value(next Vect) = 7, "vect next"),
+    assert(value(next next Vect) = -3, "vect next next"),
+    assert(value(next next next Vect) = 10, "vect next next next"),
+    assert(value(next next next next Vect) = sys:undefined, "vect undef"),
+    assert(value(seed(Vect, 2)) = -3, "vect seed")
+)

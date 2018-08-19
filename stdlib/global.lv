@@ -241,6 +241,11 @@ def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
     (obj onlyIf isObject(obj))(\slice\)(bgn, end) else sys:__slice__(obj, bgn, end)
 )
 
+' Truncates the sequence to its first `len` elements.
+(def i_limit(obj, len)
+    => (obj onlyIf isObject(obj))(\limit\)(len) else (obj slice (0, len))
+)
+
 ' Returns whether the given element is contained in the given object.
 (def i_in(el, obj)
     => _in_vect(el, obj, sys:__sub__(sys:__len__(obj), 1))

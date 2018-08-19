@@ -1,0 +1,33 @@
+@import global
+@import assert
+@import hof
+@import test
+@using global
+@using assert
+@using hof:union
+@using hof:intersection
+
+def pred1(x) => x < 0
+def pred2(x) => x > 5
+def pred3(x) => x = 3
+def pred4(x) => x > 0
+def pred5(x) => x < 5
+def pred6(x) => x != 3
+
+' x < 0 OR x > 5 OR x = 3
+def UnionVal() => union(\pred1, \pred2, \pred3)
+' x > 0 AND x < 5 AND x != 3
+def InterVal() => intersection(\pred4, \pred5, \pred6)
+
+def main(args) => test:format(
+    assert(UnionVal(-2), "union < 0"),
+    assert(UnionVal(7), "union > 5"),
+    assert(UnionVal(3), "union = 3"),
+    assert(!(UnionVal(2)), "union 2"),
+    assert(!(UnionVal(4)), "union 4"),
+    assert(InterVal(2), "inter > 0 < 5"),
+    assert(InterVal(4), "inter > 0 < 5 2"),
+    assert(!(InterVal(3)), "inter = 3"),
+    assert(!(InterVal(-2)), "inter < 0"),
+    assert(!(InterVal(7)), "inter > 5")
+)

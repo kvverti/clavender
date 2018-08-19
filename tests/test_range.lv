@@ -1,0 +1,23 @@
+@import global
+@import assert
+@import util
+@import test
+@using global
+@using assert
+@using util:Range
+@using util:start
+@using util:stop
+
+def range() => Range(-5, 5)
+
+def main(args) => test:format(
+    assert(isObject(range), "isObject"),
+    assert(start(range) = -5, "start"),
+    assert(stop(range) = 5, "stop"),
+    assert(len(range) = 10, "len"),
+    assert(str(range) = "[-5..5)", "str"),
+    assert(2 in range, "2 in range"),
+    assert(7 notin range, "7 notin range"),
+    assert(3.5 in range, "3.5 in range"),
+    assert(range toVect = {-5,-4,-3,-2,-1,0,1,2,3,4}, "toVect")
+)

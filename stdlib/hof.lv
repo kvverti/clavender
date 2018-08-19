@@ -14,7 +14,7 @@ def Constant(value) => def impl(a) => value
 
 ' Returns the composition of 'f' and 'g'. The returned function
 ' is equivalent to 'f(g(a))' for all inputs 'a'.
-def i_o(f, g) => def impl(a) => f(g(a))
+def r_o(f, g) => def impl(a) => f(g(a))
 
 ' Returns a function equivalent to applying the function
 ' 'f' and then 'g' on inputs. This is equivalent to the composition of 'g'
@@ -42,6 +42,12 @@ def i_|>(func, pred) => (Identity <| pred) o func
 
 ' Alternative spelling of '|>'.
 def i_restrictRight(func, pred) => func |> pred
+
+' Binds the left operand of a binary operator.
+def bindLeft(op, left) => def impl(right) => op(left, right)
+
+' Binds the right operand of a binary operator.
+def bindRight(op, right) => def impl(left) => op(left, right)
 
 ' The constant function of true.
 def True() => Constant(1)
@@ -71,3 +77,29 @@ def i_or(f, g) => def impl(a) => f(a) || g(a)
 ' function returns true if and only if exactly one of the input functions
 ' returns true.
 def i_xor(f, g) => def impl(a) => f(a) ^ g(a)
+
+' Returns the union of the given predicates. This is generally more
+' space efficient than the equivalent construction using `or`.
+(def union(...preds)
+    let siz(len(preds)) =>
+    (def impl(a) =>
+        (def call(idx)
+            => false ; idx = siz
+            => true ; preds(idx)(a)
+            => call(idx + 1) ; 1
+        )(0)
+    )
+)
+
+' Returns the intersection of the given predicates. This is generally
+' more space efficient than the equivalent construction using `and`.
+(def intersection(...preds)
+    let siz(len(preds)) =>
+    (def impl(a) =>
+        (def call(idx)
+            => true ; idx = siz
+            => call(idx + 1) ; preds(idx)(a)
+            => false ; 1
+        )(0)
+    )
+)
