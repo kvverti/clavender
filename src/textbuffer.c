@@ -109,7 +109,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         case OPT_VECT: {
             //handle Nil vect separately
             if(obj->vect->len == 0) {
-                static char str[] = "[ ]";
+                static char str[] = "{ }";
                 res = lv_alloc(sizeof(LvString) + sizeof(str));
                 res->refCount = 0;
                 res->len = sizeof(str) - 1;
@@ -120,7 +120,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             size_t len = 2;
             res = lv_alloc(sizeof(LvString) + len + 1);
             res->refCount = 0;
-            res->value[0] = '[';
+            res->value[0] = '{';
             res->value[1] = ' ';
             res->value[2] = '\0';
             //concatenate values
@@ -136,7 +136,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
                     lv_free(tmp);
             }
             res->value[len - 2] = ' ';
-            res->value[len - 1] = ']';
+            res->value[len - 1] = '}';
             res->len = len;
             return res;
         }
