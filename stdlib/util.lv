@@ -1,9 +1,7 @@
 ' The util namespace contains miscellaneous utility functions.
 
 @import global
-@import hof
 @using global
-@using hof:not
 
 ' Returns the minimum of the given values, according to the
 ' given comparator.
@@ -18,7 +16,7 @@
 
 ' Returns the maximum of the given values, according to the
 ' given comparator.
-def maxOf(vals, cmp) => minOf(vals, not(cmp))
+def maxOf(vals, cmp) => minOf(vals, flip(cmp))
 
 ' Returns the minimum of the given values, according to '<'.
 def min(...vals) => minOf(vals, \<\)
