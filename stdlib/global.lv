@@ -11,7 +11,7 @@ def true() => 1
 def false() => 0
 
 ' Alternative spelling of 'true'.
-def rest() => 1
+def otherwise() => 1
 
 ' The value passed by forwarding functions to determine if a function is
 ' object-like. Object-like functions should return the value __yes__ when
@@ -141,6 +141,9 @@ def str(a) => (a onlyIf isObject(a))(\str) else sys:__str__(a)
 ' Converts argument to number. Forwards if possible.
 def num(a) => (a onlyIf isObject(a))(\num) else sys:__num__(a)
 
+' Converts argument to int. Forwards if possible.
+def int(a) => (a onlyIf isObject(a))(\int) else sys:__int__(a)
+
 ' Converts the argument to bool. Forwards if possible.
 def bool(a) => (a onlyIf isObject(a))(\bool) else sys:__bool__(a)
 
@@ -188,6 +191,14 @@ def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
     => a(\/\)(b) ; sys:defined((a onlyIf isObject(a))(\/\))
                 && sys:defined((b onlyIf isObject(b))(\/\))
     => sys:__div__(a, b) ; 1
+)
+
+' Integer division function. Forwards if integer division is
+' defined for both arguments.
+(def i_//(a, b)
+    => a(\//\)(b) ; sys:defined((a onlyIf isObject(a))(\//\))
+                 && sys:defined((b onlyIf isObject(b))(\//\))
+    => sys:__idiv__(a, b) ; 1
 )
 
 ' Remainder function. Forwards if remainder is defined for

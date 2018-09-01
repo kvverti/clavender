@@ -4,6 +4,7 @@
 #include "operator.h"
 #include <string.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <assert.h>
 
 //redeclaration of the global text buffer
@@ -57,23 +58,31 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         case OPT_NUMBER: {
             //because rather nontrivial to find the length of a
             //floating-point value before putting it into a string,
-            //we first make a reasonable (read: arbitrary) guess as
-            //to the buffer length required. Then, we take the actual
-            //number of characters printed by snprintf and reallocate
+            //we first call snprintf with an empty buffer. Then, we take
+            //the number of characters printed by snprintf and allocate
             //the buffer to that length (plus 1 for the terminator).
-            //If our initial guess was to little, we call snprintf
-            //again in order to get all the characters.
-            #define GUESS_LEN 16
-            res = lv_alloc(sizeof(LvString) + GUESS_LEN); //first guess
+            int len = snprintf(NULL, 0, "%g", obj->number);
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            snprintf(res->value, len + 1, "%g", obj->number);
             res->refCount = 0;
-            int len = snprintf(res->value, GUESS_LEN, "%g", obj->number);
-            res = lv_realloc(res, sizeof(LvString) + len + 1);
-            if(len >= GUESS_LEN) {
-                snprintf(res->value, len + 1, "%g", obj->number);
-            }
             res->len = len;
             return res;
-            #undef GUESS_LEN
+        }
+        case OPT_INTEGER: {
+            //get the sign bit
+            bool negative = obj->integer >> 63;
+            //get the magnitude of the value
+            uint64_t value = negative ? (-obj->integer) : obj->integer;
+            //get the length (+1 for minus sign)
+            size_t len = snprintf(NULL, 0, "%"PRIu64, value);
+            res = lv_alloc(sizeof(LvString) + negative + len + 1);
+            res->refCount = 0;
+            res->len = negative + len;
+            if(negative) {
+                res->value[0] = '-';
+            }
+            snprintf(res->value + negative, len + 1, "%"PRIu64, value);
+            return res;
         }
         case OPT_FUNCTION:
         case OPT_FUNCTION_VAL: {

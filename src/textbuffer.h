@@ -3,6 +3,7 @@
 #include "textbuffer_fwd.h"
 #include "operator_fwd.h"
 #include <stddef.h>
+#include <stdint.h>
 
 /**
  * Lavender's built in string object.
@@ -22,6 +23,7 @@ struct TextBufferObj {
     OpType type;
     union {
         double number;
+        uint64_t integer;
         LvString* str;
         LvVect* vect;
         int param;

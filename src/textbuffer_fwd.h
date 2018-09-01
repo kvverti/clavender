@@ -10,6 +10,7 @@
 typedef enum OpType {
     OPT_UNDEFINED,      //undefined value
     OPT_NUMBER,         //Lavender number
+    OPT_INTEGER,        //signed 64bit int
     OPT_PARAM,          //function parameter
     OPT_PUT_PARAM,      //store top in param
     OPT_FUNCTION,       //function definition

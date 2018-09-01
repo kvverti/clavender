@@ -6,6 +6,7 @@ typedef enum TokenType {
     TTY_IDENT,          //simple alphanumeric
     TTY_QUAL_IDENT,     //qualified alphanumeric
     TTY_NUMBER,         //numeric (floating-point)
+    TTY_INTEGER,        //numeric (integral)
     TTY_SYMBOL,         //simple symbol
     TTY_QUAL_SYMBOL,    //qualified symbol
     TTY_FUNC_SYMBOL,    //symbolic function with prefix

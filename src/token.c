@@ -398,6 +398,9 @@ static TokenType getNumber(void) {
                 return -1;
             }
             getInputWhile(isdigit);
+        } else {
+            //no decimal -> integral value
+            return TTY_INTEGER;
         }
     } else {
         //required decimal

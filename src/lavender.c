@@ -591,8 +591,10 @@ static void runCycle(void) {
         case OPT_FUNCTION_VAL:
         case OPT_UNDEFINED:
         case OPT_NUMBER:
+        case OPT_INTEGER:
         case OPT_STRING:
         case OPT_CAPTURE:
+        case OPT_VECT:
             //push it on the stack
             push(value);
             break;
@@ -676,7 +678,9 @@ static void runCycle(void) {
             lv_buf_push(&stack, &retVal);
             break;
         }
-        default:
+        case OPT_LITERAL:
+        case OPT_ADDR:
+        case OPT_EMPTY_ARGS:
             assert(false);
             return;
     }

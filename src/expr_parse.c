@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define INIT_STACK_LEN 16
 typedef struct TextStack {
@@ -41,6 +42,7 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt);
 static void parseSymbol(TextBufferObj* obj, ExprContext* cxt);
 static void parseQualName(TextBufferObj* obj, ExprContext* cxt);
 static void parseNumber(TextBufferObj* obj, ExprContext* cxt);
+static void parseInteger(TextBufferObj* obj, ExprContext* cxt);
 static void parseString(TextBufferObj* obj, ExprContext* cxt);
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt);
 static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt);
@@ -453,6 +455,18 @@ static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
     cxt->expectOperand = false;
 }
 
+static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
+
+    if(!cxt->expectOperand) {
+        LV_EXPR_ERROR = XPE_EXPECT_PRE;
+        return;
+    }
+    uint64_t num = (uint64_t) strtoumax(cxt->head->value, NULL, 10);
+    obj->type = OPT_INTEGER;
+    obj->integer = num;
+    cxt->expectOperand = false;
+}
+
 static void parseString(TextBufferObj* obj, ExprContext* cxt) {
 
     if(!cxt->expectOperand) {
@@ -524,6 +538,9 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
             break;
         case TTY_NUMBER:
             parseNumber(obj, cxt);
+            break;
+        case TTY_INTEGER:
+            parseInteger(obj, cxt);
             break;
         case TTY_STRING:
             parseString(obj, cxt);
