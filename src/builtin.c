@@ -637,8 +637,13 @@ static TextBufferObj pow_(TextBufferObj* args) {
         uint64_t a = args[0].integer;
         uint64_t b = args[1].integer;
         if(isNegative(b)) {
-            //negative powers are not defined on the integers
-            res.type = OPT_UNDEFINED;
+            if(a == 0) {
+                res.type = OPT_UNDEFINED;
+            } else {
+                //negative powers are equiv. to 1 / (a ** b)
+                res.type = OPT_NUMBER;
+                res.number = pow(intToNum(a), intToNum(b));
+            }
         } else if(a == 2) {
             //2 ** x can be implemented with a bit shift by (b & 63)
             res.type = OPT_INTEGER;
