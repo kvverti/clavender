@@ -4,6 +4,7 @@
 
 @import global
 @import hof
+@import generator
 @using global
 @using hof:Constant
 @using hof:Identity
@@ -60,18 +61,11 @@ def head(list) => sys:cval(list, 0)
 ' Returns the tail of the given list.
 def tail(list) => sys:cval(list, 1)
 
-' Uses the given generator function to generate a list.
-' The generator is iterated using `seed` as the initial
-' value until the generator returns `undefined`. The generator
-' should be finitely iterable.
-(def mklist(seed, gen)
-    let val(gen(seed))
-    => seed :: mklist(val, gen) ; sys:defined(val)
+' Uses the given generator to generate a list.
+' The generator is iterated until it returns `undefined`.
+' The generator should be finitely iterable.
+(def mklist(gen)
+    let val(generator:value(gen))
+    => val :: mklist(generator:next(gen)) ; sys:defined(val)
     => Nil ; 1
 )
-
-' Returns a list of integers in the half-open interval [a..b).
-def i_until(a, b) => mklist(a, def(c) => c + 1 ; c < b)
-
-' Returns a list of integers in the closed interval [a..b].
-def i_to(a, b) => mklist(a, def(c) => c + 1 ; c <= b)
