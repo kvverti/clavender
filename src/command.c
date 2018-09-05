@@ -155,7 +155,11 @@ static bool using(Token* head) {
                 simpleName = lv_alloc(len);
                 memcpy(simpleName, tmp, len);
             }
-            lv_tbl_put(&usingNames, simpleName, qualName);
+            bool put = lv_tbl_put(&usingNames, simpleName, qualName);
+            if(!put) {
+                lv_free(qualName);
+                lv_free(simpleName);
+            }
             lv_cmd_message = "Using successful";
             return true;
         }
