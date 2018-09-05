@@ -1,6 +1,7 @@
 #include "command.h"
 #include "lavender.h"
 #include "operator.h"
+#include "hashtable.h"
 #include <string.h>
 #include <assert.h>
 
@@ -21,7 +22,7 @@ static CommandElement COMMANDS[] = {
 #define NUM_COMMANDS (sizeof(COMMANDS) / sizeof(CommandElement))
 
 bool lv_cmd_run(Token* head) {
-    
+
     if(!head || head->type != TTY_IDENT) {
         lv_cmd_message = "Not a command";
         return false;
@@ -36,136 +37,21 @@ bool lv_cmd_run(Token* head) {
 }
 
 static bool quit(Token* head) {
-    
+
     lv_tkn_free(head);
     lv_shutdown();
     return true; //never reached
 }
 
-//string to string hashtable for storing
-//imported file names and imported function mappings
-#define INIT_TABLE_LEN 64 //must be power of two
-#define TABLE_LOAD_FACT 0.75
-typedef struct StrHashNode {
-    //key and value must be dynamically allocated
-    char* key;
-    char* value;
-    struct StrHashNode* next;
-} StrHashNode;
+//dyn alloc keys and vals
+static Hashtable usingNames;
 
-typedef struct StrHashtable {
-    size_t size;
-    size_t cap;
-    StrHashNode** table;
-} StrHashtable;
+//destructor function for usingNames data
+static void freeUsingNames(char* key, void* value) {
 
-static char* tableGet(StrHashtable* table, char* key);
-static bool tableAdd(StrHashtable* table, char* key, char* value);
-static bool tableRemove(StrHashtable* table, char* key);
-static void tableClear(StrHashtable* table);
-static void tableResize(StrHashtable* table);
-static void nodeFree(StrHashNode* node);
-
-static size_t hash(char* str) {
-    //djb2 hash
-    size_t res = 5381;
-    int c;
-    while((c = *str++))
-        res = ((res << 5) + res) + c;
-    return res;
+    lv_free(key);
+    lv_free(value);
 }
-
-static char* tableGet(StrHashtable* table, char* key) {
-    
-    size_t idx = hash(key) & (table->cap - 1);
-    StrHashNode* head = table->table[idx];
-    while(head && strcmp(key, head->key) != 0)
-        head = head->next;
-    return head ? head->value : NULL;
-}
-
-static bool tableAdd(StrHashtable* table, char* key, char* value) {
-    
-    if(((double) table->size / table->cap) > TABLE_LOAD_FACT)
-        tableResize(table);
-    size_t idx = hash(key) & (table->cap - 1);
-    StrHashNode* head = table->table[idx];
-    StrHashNode* tmp = head;
-    while(tmp && strcmp(key, tmp->key) != 0)
-        tmp = tmp->next;
-    if(tmp) {
-        return false;
-    } else {
-        tmp = lv_alloc(sizeof(StrHashNode));
-        tmp->key = key;
-        tmp->value = value;
-        tmp->next = head;
-        table->table[idx] = tmp;
-        table->size++;
-        return true;
-    }
-}
-
-static bool tableRemove(StrHashtable* table, char* key) {
-    
-    size_t idx = hash(key) & (table->cap - 1);
-    StrHashNode** tmp = &table->table[idx];
-    while(*tmp && strcmp(key, (*tmp)->key) != 0)
-        tmp = &(*tmp)->next;
-    StrHashNode* toFree = *tmp;
-    if(toFree) {
-        *tmp = toFree->next;
-        nodeFree(toFree);
-        table->size--;
-        return true;
-    }
-    return false;
-}
-
-static void tableClear(StrHashtable* table) {
-    
-    size_t cap = table->cap;
-    for(size_t i = 0; i < cap; i++) {
-        StrHashNode* node = table->table[i];
-        while(node) {
-            StrHashNode* tmp = node->next;
-            nodeFree(node);
-            node = tmp;
-        }
-    }
-    memset(table->table, 0, cap * sizeof(StrHashNode*));
-    table->size = 0;
-}
-
-static void tableResize(StrHashtable* table) {
-    
-    StrHashNode** oldTable = table->table;
-    size_t oldCap = table->cap;
-    table->table = lv_alloc(oldCap * 2 * sizeof(StrHashNode*));
-    memset(table->table, 0, oldCap * 2 * sizeof(StrHashNode*));
-    table->cap *= 2;
-    table->size = 0;
-    for(size_t i = 0; i < oldCap; i++) {
-        StrHashNode* node = oldTable[i];
-        while(node) {
-            tableAdd(table, node->key, node->value);
-            StrHashNode* tmp = node->next;
-            lv_free(node);
-            node = tmp;
-        }
-    }
-    lv_free(oldTable);
-}
-
-static void nodeFree(StrHashNode* node) {
-    
-    lv_free(node->key);
-    lv_free(node->value);
-    lv_free(node);
-}
-
-static StrHashtable importNames;
-static StrHashtable usingNames;
 
 //number of imported scopes should be small
 #define INIT_NUM_SCOPES 8
@@ -176,14 +62,14 @@ static struct Scopes {
 } nameScopes;
 
 static void initNameScopes(void) {
-    
+
     nameScopes.data = lv_alloc(INIT_NUM_SCOPES * sizeof(char*));
     nameScopes.cap = INIT_NUM_SCOPES;
     nameScopes.len = 0;
 }
 
 static void freeNameScopes(void) {
-    
+
     for(size_t i = 0; i < nameScopes.len; i++) {
         lv_free(nameScopes.data[i]);
     }
@@ -191,36 +77,27 @@ static void freeNameScopes(void) {
 }
 
 void lv_cmd_onStartup(void) {
-    
-    importNames.table = lv_alloc(INIT_TABLE_LEN * sizeof(StrHashNode*));
-    memset(importNames.table, 0, INIT_TABLE_LEN * sizeof(StrHashNode*));
-    importNames.cap = INIT_TABLE_LEN;
-    importNames.size = 0;
-    usingNames.table = lv_alloc(INIT_TABLE_LEN * sizeof(StrHashNode*));
-    memset(usingNames.table, 0, INIT_TABLE_LEN * sizeof(StrHashNode*));
-    usingNames.cap = INIT_TABLE_LEN;
-    usingNames.size = 0;
+
+    lv_tbl_init(&usingNames);
     initNameScopes();
 }
 
 void lv_cmd_onShutdown(void) {
-    
+
     freeNameScopes();
-    tableClear(&importNames);
-    tableClear(&usingNames);
-    lv_free(importNames.table);
+    lv_tbl_clear(&usingNames, freeUsingNames);
     lv_free(usingNames.table);
 }
 
 //end hashtable impl
 
 char* lv_cmd_getQualNameFor(char* simpleName) {
-    
-    return tableGet(&usingNames, simpleName);
+
+    return lv_tbl_get(&usingNames, simpleName);
 }
 
 void addScope(char* sc) {
-    
+
     if(nameScopes.len + 1 == nameScopes.cap) {
         nameScopes.data = lv_realloc(nameScopes.data, nameScopes.cap * 2 * sizeof(char*));
         nameScopes.cap *= 2;
@@ -229,13 +106,13 @@ void addScope(char* sc) {
 }
 
 void lv_cmd_getUsingScopes(char*** scopes, size_t* len) {
-    
+
     *scopes = nameScopes.data;
     *len = nameScopes.len;
 }
 
 static bool using(Token* head) {
-    
+
     head = head->next;
     if(!head || head->next) {
         lv_cmd_message = "Usage: @using <name(space)>";
@@ -278,7 +155,7 @@ static bool using(Token* head) {
                 simpleName = lv_alloc(len);
                 memcpy(simpleName, tmp, len);
             }
-            tableAdd(&usingNames, simpleName, qualName);
+            lv_tbl_put(&usingNames, simpleName, qualName);
             lv_cmd_message = "Using successful";
             return true;
         }
@@ -290,7 +167,7 @@ static bool using(Token* head) {
 }
 
 static bool import(Token* head) {
-    
+
     head = head->next;
     if(!head || head->next) {
         lv_cmd_message = "Usage: @import <file>";
