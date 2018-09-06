@@ -1,6 +1,8 @@
 ' The math namespace contains mathematical
 ' functions which operate on numeric values.
 
+@import sys
+
 ' The floating point NaN value.
 def NaN() => sys:__num__("NaN")
 
@@ -14,59 +16,59 @@ def pi() => 3.141592653589793
 def e() => 2.718281828459045
 
 ' The sin function.
-def sin(a) => sys:__sin__(a)
+def sin(a) => native
 
 ' The cosine function.
-def cos(a) => sys:__cos__(a)
+def cos(a) => native
 
 ' The tangent function.
-def tan(a) => sys:__tan__(a)
+def tan(a) => native
 
 ' The inverse sine function.
-def asin(a) => sys:__asin__(a)
+def asin(a) => native
 
 ' The inverse cosine function.
-def acos(a) => sys:__acos__(a)
+def acos(a) => native
 
 ' The inverse tangent function.
-def atan(a) => sys:__atan__(a)
+def atan(a) => native
 
 ' The angle between the +x axis and the point (x, y)
-def atan2(y, x) => sys:__atan2__(y, x)
+def atan2(y, x) => native
 
 ' The hyperbolic sine function.
-def sinh(a) => sys:__sinh__(a)
+def sinh(a) => native
 
 ' The hyperbolic cosine function.
-def cosh(a) => sys:__cosh__(a)
+def cosh(a) => native
 
 ' The hyperbolic tangent function.
-def tanh(a) => sys:__tanh__(a)
+def tanh(a) => native
 
 ' Returns e ** a. Note that this should in general be faster than 'e ** a'.
-def exp(a) => sys:__exp__(a)
+def exp(a) => native
 
 ' Returns the natural log of a.
-def log(a) => sys:__log__(a)
+def log(a) => native
 
 ' Returns the common log of a.
-def log10(a) => sys:__log10__(a)
+def log10(a) => native
 
 ' Returns the square root of a. Note that this should in general be faster
 ' than 'a ** 0.5'.
-def sqrt(a) => sys:__sqrt__(a)
+def sqrt(a) => native
 
 ' Returns the nearest integer greater than a.
-def ceil(a) => sys:__ceil__(a)
+def ceil(a) => native
 
 ' Returns the nearest integer smaller than a.
-def floor(a) => sys:__floor__(a)
+def floor(a) => native
 
 ' Returns the nearest integer to a, ties round toward infinity.
-def round(a) => sys:__round__(a)
+def round(a) => native
 
 ' Returns the absolute value of a.
-def abs(a) => sys:__abs__(a)
+def abs(a) => native
 
 ' Returns the sign of a. Note that 0 returns +1, and -0 returns -1.
-def sgn(a) => sys:__sgn__(a)
+def sgn(a) => native

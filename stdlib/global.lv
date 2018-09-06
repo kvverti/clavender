@@ -1,8 +1,8 @@
 ' The global namespace contains the basic essential functions of Lavender.
 ' These include the bool values, logical operators, mathematical operators,
-' comparison operators, and conversion functions. Many of these functions
-' wrap and extend the intrinsic functions of the sys namespace, and should
-' be preferred to them.
+' comparison operators, and conversion functions.
+
+@import sys
 
 ' The bool value 'true'.
 def true() => 1

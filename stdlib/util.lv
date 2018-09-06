@@ -33,7 +33,7 @@ def max(...vals) => minOf(vals, \>\)
 ' were in the collection.
 (def binarySearchAs(vect, elem, cmp) =>
     (def impl(lo, hi)
-        let mid(sys:__floor__((lo + hi) / 2))
+        let mid((lo + hi) // 2)
         => -mid - 1 ; lo >= hi
         => impl(lo, mid) ; cmp(elem, vect(mid))
         => impl(mid + 1, hi) ; cmp(vect(mid), elem)

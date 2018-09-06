@@ -22,7 +22,8 @@ static void runCycle(void);
 static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
-static Operator* atFunc; //built in sys:__at__
+// static Operator* atFunc; //built in sys:__at__
+static Operator atFunc; //built in sys:__at__
 
 static void push(TextBufferObj* obj) {
 
@@ -181,7 +182,13 @@ void lv_startup(void) {
     lv_tb_onStartup();
     lv_blt_onStartup();
     lv_cmd_onStartup();
-    atFunc = lv_op_getOperator("sys:__at__", FNS_PREFIX);
+    // atFunc = lv_op_getOperator("sys:__at__", FNS_PREFIX);
+    memset(&atFunc, 0, sizeof(atFunc));
+    atFunc.type = FUN_BUILTIN;
+    atFunc.name = "sys:__at__";
+    atFunc.arity = 2;
+    atFunc.builtin = lv_blt_getIntrinsic("sys:__at__");
+    assert(atFunc.builtin);
 }
 
 void lv_shutdown(void) {
@@ -482,7 +489,7 @@ static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underl
         case OPT_STRING:
         case OPT_VECT:
             if(numArgs == 1) {
-                op = atFunc;
+                op = &atFunc;
                 push(func);
                 success = true;
             }

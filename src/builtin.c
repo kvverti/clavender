@@ -2,6 +2,7 @@
 #include "lavender.h"
 #include "expression.h"
 #include "operator.h"
+#include "hashtable.h"
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -1001,86 +1002,82 @@ static TextBufferObj slice(TextBufferObj* args) {
     return res;
 }
 
+Hashtable intrinsics;
+
+Builtin lv_blt_getIntrinsic(char* name) {
+
+    return lv_tbl_get(&intrinsics, name);
+}
+
 void lv_blt_onStartup(void) {
 
+    #define SYS "sys:"
+    #define MATH "math:"
+    #define MK_FUNCT(s, f) lv_tbl_put(&intrinsics, s#f, f)
+    #define MK_FUNCN(s, f) lv_tbl_put(&intrinsics, s"__"#f"__", f)
+    #define MK_FUNCR(s, f) lv_tbl_put(&intrinsics, s#f, f##_)
+    #define MK_FUNNR(s, f) lv_tbl_put(&intrinsics, s"__"#f"__", f##_)
     mkTypes();
-    #define BUILTIN_NS "sys:"
-    //creates a builtin function with given impl, arity, and name
-    #define MK_FUNC_IMPL(fnc, ar, nm) \
-        op = lv_alloc(sizeof(Operator)); \
-        op->name = lv_alloc(sizeof(BUILTIN_NS nm)); \
-        memcpy(op->name, BUILTIN_NS nm, sizeof(BUILTIN_NS nm)); \
-        op->type = FUN_BUILTIN; \
-        op->arity = ar; \
-        op->locals = 0; \
-        op->fixing = FIX_PRE; \
-        op->captureCount = 0; \
-        op->varargs = false; \
-        op->builtin = fnc; \
-        lv_op_addOperator(op, FNS_PREFIX)
-    //creates "external" builtin function
-    #define MK_FUNC(fnc, ar) MK_FUNC_IMPL(fnc, ar, #fnc)
-    //creates "internal" builtin function
-    #define MK_FUNCN(fnc, ar) MK_FUNC_IMPL(fnc, ar, "__"#fnc"__")
-    //creates a function that happens to have a C reserved id as a name
-    #define MK_FUNCR(fnc, ar) MK_FUNC_IMPL(fnc##_, ar, "__"#fnc"__")
-    Operator* op;
-    MK_FUNC(defined, 1);
-    MK_FUNC(undefined, 0);
-    MK_FUNC_IMPL(typeof_, 1, "typeof");
-    MK_FUNCN(str, 1);
-    MK_FUNCN(num, 1);
-    MK_FUNCR(int, 1);
-    MK_FUNC(cval, 2);
-    MK_FUNC(cat, 1); op->varargs = true;
-    MK_FUNC(call, 2);
-    MK_FUNCN(at, 2);
-    MK_FUNCR(bool, 1);
-    MK_FUNCN(eq, 2);
-    MK_FUNCN(lt, 2);
-    MK_FUNCN(ge, 2);
-    MK_FUNCN(add, 2);
-    MK_FUNCN(sub, 2);
-    MK_FUNCN(mul, 2);
-    MK_FUNCR(div, 2);
-    MK_FUNCN(idiv, 2);
-    MK_FUNCN(rem, 2);
-    MK_FUNCR(pow, 2);
-    MK_FUNCN(pos, 1);
-    MK_FUNCN(neg, 1);
-    MK_FUNCN(len, 1);
-    MK_FUNCR(sin, 1);
-    MK_FUNCR(cos, 1);
-    MK_FUNCR(tan, 1);
-    MK_FUNCR(asin, 1);
-    MK_FUNCR(acos, 1);
-    MK_FUNCR(atan, 1);
-    MK_FUNCR(atan2, 2);
-    MK_FUNCR(sinh, 1);
-    MK_FUNCR(cosh, 1);
-    MK_FUNCR(tanh, 1);
-    MK_FUNCR(exp, 1);
-    MK_FUNCR(log, 1);
-    MK_FUNCR(log10, 1);
-    MK_FUNCR(sqrt, 1);
-    MK_FUNCR(ceil, 1);
-    MK_FUNCR(floor, 1);
-    MK_FUNCR(abs, 1);
-    MK_FUNCR(round, 1);
-    MK_FUNCN(sgn, 1);
-    MK_FUNCN(map, 2);
-    MK_FUNCN(filter, 2);
-    MK_FUNCN(fold, 3);
-    MK_FUNCN(slice, 3);
-    #undef MK_FUNC
-    #undef MK_FUNCN
+    lv_tbl_init(&intrinsics);
+    MK_FUNCT(SYS, defined);
+    MK_FUNCT(SYS, undefined);
+    MK_FUNCR(SYS, typeof);
+    MK_FUNCN(SYS, str);
+    MK_FUNCN(SYS, num);
+    MK_FUNNR(SYS, int);
+    MK_FUNCT(SYS, cval);
+    MK_FUNCT(SYS, cat);
+    MK_FUNCT(SYS, call);
+    MK_FUNCN(SYS, at);
+    MK_FUNNR(SYS, bool);
+    MK_FUNCN(SYS, eq);
+    MK_FUNCN(SYS, lt);
+    MK_FUNCN(SYS, ge);
+    MK_FUNCN(SYS, add);
+    MK_FUNCN(SYS, sub);
+    MK_FUNCN(SYS, mul);
+    MK_FUNNR(SYS, div);
+    MK_FUNCN(SYS, idiv);
+    MK_FUNCN(SYS, rem);
+    MK_FUNNR(SYS, pow);
+    MK_FUNCN(SYS, pos);
+    MK_FUNCN(SYS, neg);
+    MK_FUNCN(SYS, len);
+    MK_FUNCN(SYS, map);
+    MK_FUNCN(SYS, filter);
+    MK_FUNCN(SYS, fold);
+    MK_FUNCN(SYS, slice);
+    MK_FUNCR(MATH, sin);
+    MK_FUNCR(MATH, cos);
+    MK_FUNCR(MATH, tan);
+    MK_FUNCR(MATH, asin);
+    MK_FUNCR(MATH, acos);
+    MK_FUNCR(MATH, atan);
+    MK_FUNCR(MATH, atan2);
+    MK_FUNCR(MATH, sinh);
+    MK_FUNCR(MATH, cosh);
+    MK_FUNCR(MATH, tanh);
+    MK_FUNCR(MATH, exp);
+    MK_FUNCR(MATH, log);
+    MK_FUNCR(MATH, log10);
+    MK_FUNCR(MATH, sqrt);
+    MK_FUNCR(MATH, ceil);
+    MK_FUNCR(MATH, floor);
+    MK_FUNCR(MATH, abs);
+    MK_FUNCR(MATH, round);
+    MK_FUNCT(MATH, sgn);
+    #undef MK_FUNNR
     #undef MK_FUNCR
-    #undef MK_FUNC_IMPL
-    #undef BUILTIN_NS
+    #undef MK_FUNCN
+    #undef MK_FUNCT
+    #undef MATH
+    #undef SYS
 }
 
 void lv_blt_onShutdown(void) {
 
+    lv_tbl_clear(&intrinsics, NULL);
+    lv_free(intrinsics.table);
     for(int i = 0; i < NUM_TYPES; i++)
         lv_free(types[i]);
 }

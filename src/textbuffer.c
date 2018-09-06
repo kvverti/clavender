@@ -2,6 +2,7 @@
 #include "lavender.h"
 #include "expression.h"
 #include "operator.h"
+#include "builtin.h"
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -276,6 +277,33 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         rollback(decl, top);
         return NULL;
+    }
+    //test for native impl (note native impls are not allowed locals)
+    if(strcmp(head->value, "native") == 0) {
+        head = head->next;
+        if(!isExprEnd(head)) {
+            LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+            rollback(decl, top);
+            return NULL;
+        }
+        if(decl->locals > 0) {
+            LV_EXPR_ERROR = XPE_BAD_LOCALS;
+            rollback(decl, top);
+            return NULL;
+        }
+        //only intrinsics supported for now
+        Builtin func = lv_blt_getIntrinsic(decl->name);
+        if(!func) {
+            LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
+            rollback(decl, top);
+            return NULL;
+        }
+        for(int i = 0; i < (decl->arity + decl->locals); i++)
+            lv_free(decl->params[i].name);
+        lv_free(decl->params);
+        decl->type = FUN_BUILTIN;
+        decl->builtin = func;
+        return head;
     }
     //parse function local initializers (if any)
     setbgn = parseFunctionLocals(decl);
