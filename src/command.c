@@ -12,12 +12,10 @@ typedef struct CommandElement {
 
 static bool quit(Token* head);
 static bool import(Token* head);
-// static bool using(Token* head);
 
 static CommandElement COMMANDS[] = {
     { "quit", quit },
     { "import", import },
-    // { "using", using },
 };
 #define NUM_COMMANDS (sizeof(COMMANDS) / sizeof(CommandElement))
 
@@ -89,8 +87,6 @@ void lv_cmd_onShutdown(void) {
     lv_free(usingNames.table);
 }
 
-//end hashtable impl
-
 char* lv_cmd_getQualNameFor(char* simpleName) {
 
     return lv_tbl_get(&usingNames, simpleName);
@@ -110,65 +106,6 @@ void lv_cmd_getUsingScopes(char*** scopes, size_t* len) {
     *scopes = nameScopes.data;
     *len = nameScopes.len;
 }
-
-// static bool using(Token* head) {
-//
-//     head = head->next;
-//     if(!head || head->next) {
-//         lv_cmd_message = "Usage: @using <name(space)>";
-//         return false;
-//     }
-//     switch(head->type) {
-//         case TTY_IDENT: {
-//             //using namespace
-//             char* scope;
-//             {
-//                 size_t len = strlen(head->value) + 1;
-//                 scope = lv_alloc(len);
-//                 memcpy(scope, head->value, len);
-//             }
-//             addScope(scope);
-//             lv_cmd_message = "Using successful";
-//             return true;
-//         }
-//         case TTY_QUAL_IDENT:
-//         case TTY_QUAL_SYMBOL: {
-//             //using specific
-//             Operator* op = NULL;
-//             for(FuncNamespace ns = 0; (ns < FNS_COUNT) && !op; ns++) {
-//                 op = lv_op_getOperator(head->value, ns);
-//             }
-//             if(!op) {
-//                 lv_cmd_message = "Error: name not found";
-//                 return false;
-//             }
-//             char* qualName;
-//             {
-//                 size_t len = strlen(head->value) + 1;
-//                 qualName = lv_alloc(len);
-//                 memcpy(qualName, head->value, len);
-//             }
-//             char* simpleName;
-//             {
-//                 char* tmp = strchr(qualName, ':') + 1;
-//                 size_t len = strlen(tmp) + 1;
-//                 simpleName = lv_alloc(len);
-//                 memcpy(simpleName, tmp, len);
-//             }
-//             bool put = lv_tbl_put(&usingNames, simpleName, qualName);
-//             if(!put) {
-//                 lv_free(qualName);
-//                 lv_free(simpleName);
-//             }
-//             lv_cmd_message = "Using successful";
-//             return true;
-//         }
-//         default:
-//             lv_cmd_message = "Error: not a valid name";
-//             return false;
-//     }
-//     assert(false);
-// }
 
 static inline bool isIdent(TokenType type) {
 
@@ -328,12 +265,17 @@ static bool import(Token* head) {
     }
     //save using names
     struct Scopes saveScopes = nameScopes;
+    Hashtable saveUsingNames = usingNames;
     initNameScopes();
+    lv_tbl_init(&usingNames);
     //import the file
     bool res = lv_readFile(head->value);
     //restore using names
+    lv_tbl_clear(&usingNames, freeUsingNames);
+    lv_free(usingNames.table);
     freeNameScopes();
     nameScopes = saveScopes;
+    usingNames = saveUsingNames;
     if(!res) {
         lv_cmd_message = "Error: reading import";
         return false;
