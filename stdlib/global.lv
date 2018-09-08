@@ -13,6 +13,27 @@ def false() => 0
 ' Alternative spelling of 'true'.
 def otherwise() => 1
 
+' Unit, the monadic zero. Used to represent empty monadic values.
+(def Unit() =>
+    (def value(a)
+        let self(_const(\value))
+        => __yes__ ; sys:__eq__(a, __object__)
+        => 0 ; sys:__eq__(a, \len)
+        => 0 ; sys:__eq__(a, \in\)
+        => "()" ; sys:__eq__(a, \str)
+        => self ; sys:__eq__(a, \map\)
+        => self ; sys:__eq__(a, \flatmap\)
+        => self ; sys:__eq__(a, \filter\)
+        => (def(id, f) => id) ; sys:__eq__(a, \fold\)
+        => (def(a) => a) ; sys:__eq__(a, \++\)
+        => self ; sys:__eq__(a, \limit\)
+        => (def(bgn, end) => \value) ; sys:__eq__(a, \slice\)
+        => {} ; sys:__eq__(a, \toVect\)
+    )
+)
+
+def _const(val) => def(a) => val
+
 ' The value passed by forwarding functions to determine if a function is
 ' object-like. Object-like functions should return the value __yes__ when
 ' passed this value.
@@ -226,9 +247,11 @@ def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
 ' Maps each element of the given object to zero or more new values
 ' using the given mapping function.
 (def i_flatmap(obj, func)
-    => sys:call(\sys:cat, sys:__map__(obj, func)) ; sys:__eq__(sys:typeof(obj), "vect")
-    => (obj onlyIf isObject(obj))(\flatmap\)(func) ; 1
+    => obj(\flatmap\)(func) ; isObject(obj)
+    => obj map func fold (Unit, \++\) ; 1
 )
+
+def i_then(obj, val) => obj flatmap (def(a) => val)
 
 ' Filters the elements of the given object according to the given
 ' predicate.
@@ -243,8 +266,11 @@ def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
 )
 
 ' Concatenates the elements of the two objects.
-(def i_++(obj1, obj2) =>
-    (obj1 onlyIf isObject(obj1))(\++\)(obj2) else sys:cat(obj1, obj2)
+(def i_++(obj1, obj2)
+    => obj1 ; sys:__eq__(obj2, Unit) ' Concatenating Unit does nothing
+    => obj2 ; sys:__eq__(obj1, Unit) ' Concatenating Unit does nothing
+    => obj1(\++\)(obj2) ; isObject(obj1)
+    => sys:__concat__(obj1, obj2) ; 1
 )
 
 ' Returns the subsequence of obj from bgn (inclusive) to end (exclusive).

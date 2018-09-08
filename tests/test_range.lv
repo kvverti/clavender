@@ -18,6 +18,6 @@ def main(args) => test:format(
     assert(str(range) = "[-5..5)", "str"),
     assert(2 in range, "2 in range"),
     assert(7 notin range, "7 notin range"),
-    assert(3.5 in range, "3.5 in range"),
+    assert(3.5 notin range, "3.5 in range"),
     assert(range toVect = {-5,-4,-3,-2,-1,0,1,2,3,4}, "toVect")
 )

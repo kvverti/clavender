@@ -21,7 +21,7 @@ def AsciiUpper() => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 def AsciiLower() => "abcdefghijklmnopqrstuvwxyz"
 
 ' ASCII Alphabetical characters.
-def AsciiAlpha() => AsciiUpper + AsciiLower
+def AsciiAlpha() => AsciiUpper ++ AsciiLower
 
 ' ASCII digit characters.
 def AsciiDigit() => "0123456789"
@@ -30,10 +30,10 @@ def AsciiDigit() => "0123456789"
 def AsciiHex() => "0123456789abcdefABCDEF"
 
 ' ASCII alphanumeric characters.
-def AsciiAlnum() => AsciiAlpha + AsciiDigit
+def AsciiAlnum() => AsciiAlpha ++ AsciiDigit
 
 ' ASCII word characters.
-def AsciiWord() => AsciiAlnum + "_"
+def AsciiWord() => AsciiAlnum ++ "_"
 
 ' ASCII punctuation characters.
 def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"

@@ -66,7 +66,7 @@ def Filter(set) => def impl(a) => a in set
         => a ; c = 0
         => b ; c = 1
         => 2 ; c = \len
-        => str(a) + " -> " + str(b) ; c = \str
+        => str(a) ++ " -> " ++ str(b) ; c = \str
         => (def(f) => Pair(f(a), f(b))) ; c = \map\
         => (def(id, f) => f(f(id, a), b)) ; c = \fold\
         => { a, b } ; c = \toVect\
@@ -90,7 +90,7 @@ def flip(binaryop) => def impl(a, b) => binaryop(b, a)
     (def obj(c)
         => __yes__ ; c = __object__
         => b - a ; c = \len
-        => "[" + str(a) + ".." + str(b) + ")" ; c = \str
+        => "[" ++ str(a) ++ ".." ++ str(b) ++ ")" ; c = \str
         => (def(el) => el >= a && el < b) ; c = \in\
         => (def(id, f) => _rangeFold(a, b, f)(id, a)) ; c = \fold\
         => \obj fold ({}, \sys:cat) ; c = \toVect\

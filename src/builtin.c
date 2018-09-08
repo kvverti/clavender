@@ -225,6 +225,47 @@ bool lv_blt_toBool(TextBufferObj* obj) {
 }
 
 /**
+ * Concatenates two values together.
+ */
+static TextBufferObj concat(TextBufferObj* args) {
+
+    TextBufferObj res;
+    if(args[0].type == OPT_STRING && args[1].type == OPT_STRING) {
+        //string concatenation
+        size_t alen = args[0].str->len;
+        size_t blen = args[1].str->len;
+        LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
+        str->refCount = 0;
+        str->len = alen + blen;
+        memcpy(str->value, args[0].str->value, alen);
+        memcpy(str->value + alen, args[1].str->value, blen);
+        str->value[alen + blen] = '\0';
+        res.type = OPT_STRING;
+        res.str = str;
+    } else if(args[0].type == OPT_VECT && args[1].type == OPT_VECT) {
+        //vect concatenation
+        size_t alen = args[0].vect->len;
+        size_t blen = args[1].vect->len;
+        LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
+        vec->refCount = 0;
+        vec->len = alen + blen;
+        for(size_t i = 0; i < alen; i++) {
+            vec->data[i] = args[0].vect->data[i];
+            incRefCount(&vec->data[i]);
+        }
+        for(size_t i = 0; i < blen; i++) {
+            vec->data[alen + i] = args[1].vect->data[i];
+            incRefCount(&vec->data[alen + i]);
+        }
+        res.type = OPT_VECT;
+        res.vect = vec;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/**
  * Converts to bool.
  */
 static TextBufferObj bool_(TextBufferObj* args) {
@@ -519,33 +560,19 @@ static NumResult getObjsAsNumbers(TextBufferObj args[2], NumType res[2]) {
 static TextBufferObj add(TextBufferObj* args) {
 
     TextBufferObj res;
-    if(args[0].type == OPT_STRING && args[1].type == OPT_STRING) {
-        //string concatenation
-        size_t alen = args[0].str->len;
-        size_t blen = args[1].str->len;
-        LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
-        str->refCount = 0;
-        str->len = alen + blen;
-        memcpy(str->value, args[0].str->value, alen);
-        memcpy(str->value + alen, args[1].str->value, blen);
-        str->value[alen + blen] = '\0';
-        res.type = OPT_STRING;
-        res.str = str;
-    } else {
-        NumType nums[2];
-        switch(getObjsAsNumbers(args, nums)) {
-            case NR_NUMBER:
-                res.type = OPT_NUMBER;
-                res.number = nums[0].number + nums[1].number;
-                break;
-            case NR_INTEGER:
-                res.type = OPT_INTEGER;
-                res.integer = nums[0].integer + nums[1].integer;
-                break;
-            case NR_ERROR:
-                res.type = OPT_UNDEFINED;
-                break;
-        }
+    NumType nums[2];
+    switch(getObjsAsNumbers(args, nums)) {
+        case NR_NUMBER:
+            res.type = OPT_NUMBER;
+            res.number = nums[0].number + nums[1].number;
+            break;
+        case NR_INTEGER:
+            res.type = OPT_INTEGER;
+            res.integer = nums[0].integer + nums[1].integer;
+            break;
+        case NR_ERROR:
+            res.type = OPT_UNDEFINED;
+            break;
     }
     return res;
 }
@@ -1047,6 +1074,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(SYS, filter);
     MK_FUNCN(SYS, fold);
     MK_FUNCN(SYS, slice);
+    MK_FUNCN(SYS, concat);
     MK_FUNCR(MATH, sin);
     MK_FUNCR(MATH, cos);
     MK_FUNCR(MATH, tan);

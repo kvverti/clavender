@@ -14,7 +14,7 @@ def Naturals() => generator:of(0, bindRight(\+\, 1))
 def Vect() => generator:ofVect(2, 7, -3, 10)
 def Mapped() => generator:withMap(0,
     bindRight(\+\, 1),
-    bindLeft(\+\, "#") o \str)
+    bindLeft(\++\, "#") o \str)
 
 def main(args) => test:format(
     assert(value(Naturals) = 0, "nat initial"),

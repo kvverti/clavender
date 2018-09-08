@@ -11,7 +11,7 @@ def VectVal() => { 1, 2, "hello", { 1, 2 } }
 
 def flatmapFunc(a) => a :: a :: Nil
 def filterFunc(a) => sys:typeof(a) = "string"
-def foldFunc(ac, el) => ac + str(el)
+def foldFunc(ac, el) => ac ++ str(el)
 
 def main(args) => test:format(
     assert(ListVal = (1::2::"hello"::{1,2}::Nil), "List"),
@@ -31,10 +31,6 @@ def main(args) => test:format(
     assert(isObject(Nil), "Nil isObject"),
     assert(!sys:defined(head(Nil)), "Nil head"),
     assert(!sys:defined(tail(Nil)), "Nil tail"),
-    assert(len(Nil) = 0, "Nil len"),
-    assert("hello" notin Nil, "Nil in"),
-    assert(str(Nil) = "[]", "Nil str"),
-    assert(Nil toVect = {}, "Nil toVect"),
     assert((Nil map \str) = Nil, "Nil map"),
     assert((Nil flatmap \flatmapFunc) = Nil, "Nil flatmap"),
     assert((Nil filter \filterFunc) = Nil, "Nil filter"),

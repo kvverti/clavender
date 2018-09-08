@@ -17,7 +17,7 @@
     (def obj(a)
         => __yes__ ; a = __object__
         => 1 + len(tail) ; a = \len
-        => "[ " + (\obj fold ("", def(a, b) => a + str(b) + " ")) + "]" ; a = \str
+        => "[ " ++ (\obj fold ("", def(a, b) => a ++ str(b) ++ " ")) ++ "]" ; a = \str
         => (def(el) => head = el || (el in tail)) ; a = \in\
         => (def(f) => f(head) :: (tail map f)) ; a = \map\
         => (def(f) => f(head) ++ (tail flatmap f)) ; a = \flatmap\
@@ -34,21 +34,8 @@
     )
 )
 
-' Nil is the value which represents the empty list.
-(def Nil() =>
-    (def value(a)
-        => __yes__ ; a = __object__
-        => 0 ; a = \len
-        => "[]" ; a = \str
-        => false ; a = \in\
-        => Constant(\value) ; a = \map\
-        => Constant(\value) ; a = \flatmap\
-        => Constant(\value) ; a = \filter\
-        => (def(id, f) => id) ; a = \fold\
-        => Identity ; a = \++\
-        => {} ; a = \toVect\
-    )
-)
+' The empty list. Nil is a synonym for Unit.
+def Nil() => Unit
 
 ' The list cons operator. The first parameter is the new head
 ' while the second parameter is an existing tail list (which may

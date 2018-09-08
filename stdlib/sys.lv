@@ -9,8 +9,7 @@ def undefined() => native
 ' equal to `undefined`.
 def defined(val) => native
 
-' Returns the internal type of `val`. Possible return values are:
-' int, number, string, vect, function, undefined.
+' Returns the internal type of `val`.
 def typeof(val) => native
 
 ' Returns the `idx`th value captured by `val`. Returns `undefined` if
@@ -50,3 +49,4 @@ def __map__(val, f) => native
 def __filter__(val, f) => native
 def __fold__(val, id, f) => native
 def __slice__(val, a, b) => native
+def __concat__(a, b) => native

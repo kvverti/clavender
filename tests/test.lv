@@ -4,6 +4,6 @@
 ' Formats asserts output for the console.
 (def format(...asserts) =>
     asserts filter \len
-        map (def(a) => "    " + a)
-        fold ("Failed tests:", def(a, b) => a + "\n" + b)
+        map (def(a) => "    " ++ a)
+        fold ("Failed tests:", def(a, b) => a ++ "\n" ++ b)
 )
