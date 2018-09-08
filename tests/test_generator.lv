@@ -1,14 +1,8 @@
-@import global
-@import assert
+@import global using _
+@import assert using assert
 @import test
-@import hof
-@import generator
-@using global
-@using assert
-@using hof
-@using generator:next
-@using generator:value
-@using generator:seed
+@import hof using _
+@import generator using next, value, seed
 
 def Naturals() => generator:of(0, bindRight(\+\, 1))
 def Vect() => generator:ofVect(2, 7, -3, 10)

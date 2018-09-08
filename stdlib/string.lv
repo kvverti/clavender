@@ -1,8 +1,7 @@
 ' The string namespace contains function for operating
 ' on strings, such as slicing, indexing, and spliting.
 
-@import global
-@using global
+@import global using _
 
 ' Value representing the end index of a string to
 ' functions in this namespace.

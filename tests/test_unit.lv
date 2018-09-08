@@ -1,8 +1,6 @@
-@import global
-@import assert
+@import global using _
+@import assert using assert
 @import test
-@using global
-@using assert
 
 def mapper(a) => a + 1
 def flatmapper(a) => { a + 1 }

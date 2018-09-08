@@ -1,11 +1,8 @@
-@import option
-@import assert
-@import hof
+@import global using _
+@import option using _
+@import assert using assert
+@import hof using False
 @import test
-@using global
-@using assert
-@using option
-@using hof:False
 
 def SomeVal() => Option("test")
 

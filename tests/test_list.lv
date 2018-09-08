@@ -1,10 +1,8 @@
-@import list
+@import global using _
+@import list using _
 @import hof
-@import assert
+@import assert using assert
 @import test
-@using global
-@using assert
-@using list
 
 def ListVal() => 1 :: 2 :: "hello" :: { 1, 2 } :: Nil
 def VectVal() => { 1, 2, "hello", { 1, 2 } }

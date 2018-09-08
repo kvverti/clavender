@@ -1,12 +1,7 @@
-@import global
-@import assert
-@import util
+@import global using _
+@import assert using assert
+@import util using Range, start, stop
 @import test
-@using global
-@using assert
-@using util:Range
-@using util:start
-@using util:stop
 
 def range() => Range(-5, 5)
 

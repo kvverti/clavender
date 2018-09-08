@@ -2,11 +2,8 @@
 ' functions that take in an input (the seed) and return two outputs:
 ' the new seed and the output value.
 
-@import global
-@import hof
-@using global
-@using hof:Identity
-@using hof:bindRight
+@import global using _
+@import hof using Identity, bindRight
 
 ' Returns a generator which uses the given functions to generate new values.
 (def _Generator(seedFunc, valueFunc) =>

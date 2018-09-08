@@ -3,8 +3,7 @@
 ' the functional analogue of the value-based functions in the global
 ' namespace (for example, '<|' and 'onlyIf').
 
-@import global
-@using global
+@import global using _
 
 ' The identity function. For all inputs 'a', '[Identity](a) = a'
 def Identity() => def value(a) => a

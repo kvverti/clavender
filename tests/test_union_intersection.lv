@@ -1,11 +1,7 @@
-@import global
-@import assert
-@import hof
+@import global using _
+@import assert using assert
+@import hof using union, intersection
 @import test
-@using global
-@using assert
-@using hof:union
-@using hof:intersection
 
 def pred1(x) => x < 0
 def pred2(x) => x > 5

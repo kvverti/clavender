@@ -1,10 +1,7 @@
-@import global
-@import assert
-@import util
+@import global using _
+@import assert using assert
+@import util using Pair
 @import test
-@using global
-@using assert
-@using util:Pair
 
 def t() => Pair("hello", "world")
 

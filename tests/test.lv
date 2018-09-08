@@ -1,5 +1,4 @@
-@import global
-@using global
+@import global using _
 
 ' Formats asserts output for the console.
 (def format(...asserts) =>

@@ -1,7 +1,6 @@
 ' The util namespace contains miscellaneous utility functions.
 
-@import global
-@using global
+@import global using _
 
 ' Returns the minimum of the given values, according to the
 ' given comparator.

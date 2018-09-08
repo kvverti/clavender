@@ -1,10 +1,8 @@
 ' The option namespace contains the Option monad which represents
 ' the possible absence of a value.
 
-@import global
-@import hof
-@using global
-@using hof:Constant
+@import global using _
+@import hof using Constant
 
 ' Returns Some(value) if value is defined, None otherwise
 (def Option(value)

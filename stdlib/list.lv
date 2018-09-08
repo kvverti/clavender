@@ -2,12 +2,9 @@
 ' operations on lists. The list defined here is a linked list,
 ' in contrast to the built in vect type, which is random access.
 
-@import global
-@import hof
+@import global using _
+@import hof using Constant, Identity
 @import generator
-@using global
-@using hof:Constant
-@using hof:Identity
 
 ' Returns a linked list with the given head and tail.
 ' Lists can use all of the basic functional operators
