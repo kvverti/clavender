@@ -13,7 +13,7 @@ def false() => 0
 ' Alternative spelling of 'true'.
 def otherwise() => 1
 
-' Unit, the monadic zero. Used to represent empty monadic values.
+' Unit, the empty object. Used to represent empty values.
 (def Unit() =>
     (def value(a)
         let self(_const(\value))
@@ -251,7 +251,7 @@ def -(a) => (a onlyIf isObject(a))(\-) else sys:__neg__(a)
     => obj map func fold (Unit, \++\) ; 1
 )
 
-def i_then(obj, val) => obj flatmap (def(a) => val)
+def i_then(obj, val) => obj flatmap _const(val)
 
 ' Filters the elements of the given object according to the given
 ' predicate.
