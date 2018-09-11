@@ -395,7 +395,7 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             return a->integer == b->integer;
         case OPT_STRING:
             //strings use value equality
-            return (a->str->len == a->str->len)
+            return (a->str->len == b->str->len)
                 && (strcmp(a->str->value, b->str->value) == 0);
         case OPT_FUNCTION_VAL:
             return a->func == b->func;
