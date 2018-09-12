@@ -3,7 +3,6 @@
 ' in contrast to the built in vect type, which is random access.
 
 @import global using _
-@import hof using Constant, Identity
 @import generator
 
 ' Returns a linked list with the given head and tail.
@@ -33,6 +32,9 @@
 
 ' The empty list. Nil is a synonym for Unit.
 def Nil() => Unit
+
+' Returns a singleton list of the given value.
+def Single(a) => a :: Nil
 
 ' The list cons operator. The first parameter is the new head
 ' while the second parameter is an existing tail list (which may

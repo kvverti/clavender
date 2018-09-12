@@ -74,7 +74,7 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
     => (def impl(bgn, end)
         => {} ; bgn >= len(self)
         => { self slice (bgn, len(self)) } ; end < 0
-        => (self slice (bgn, end))
+        => { self slice (bgn, end) }
         ++ impl(end + len(delim),
             self indexOf (delim, end + len(delim))) ; 1
     )(0, self indexOf (delim, 0)) ; 1
@@ -83,7 +83,7 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ' Returns a vect of characters of the given string.
 (def _splitToChars(str, idx)
     => {} ; idx = len(str)
-    => str(idx) ++ _splitToChars(str, idx + 1) ; 1
+    => { str(idx) } ++ _splitToChars(str, idx + 1) ; 1
 )
 
 ' Splits the string on occurrences of the given characters.
@@ -93,7 +93,7 @@ def AsciiPunct() => "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
     (def impl(bgn, end)
         => {} ; bgn >= len(self)
         => impl(bgn + 1, _indexOfChars(self, chars, bgn + 1)) ; bgn = end
-        => (self slice (bgn, end))
+        => { self slice (bgn, end) }
         ++ impl(end + 1, _indexOfChars(self, chars, end + 1)) ; 1
     )(0, _indexOfChars(self, chars, 0))
 )
