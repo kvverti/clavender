@@ -525,17 +525,19 @@ static size_t jumpAndLink(Operator* func) {
             //(current) value.
             size_t tmpFp = stack.len - func->arity;
             TextBufferObj res = func->builtin(lv_buf_get(&stack, tmpFp));
+            //keep a reference to res while we pop
+            if(res.type & LV_DYNAMIC)
+                ++*res.refCount;
             popAll(func->arity);
             if(stack.len > 0) {
                 TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
                 if(top->type == OPT_FUNC_CALL2) {
-                    //must increment refCount manually
-                    if(res.type & LV_DYNAMIC)
-                        ++*res.refCount;
                     *top = res;
                     break;
                 }
             } //else
+            if(res.type & LV_DYNAMIC)
+                --*res.refCount;
             push(&res);
             break;
         }
