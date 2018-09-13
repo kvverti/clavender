@@ -13,6 +13,9 @@ def false() => 0
 ' Alternative spelling of 'true'.
 def otherwise() => 1
 
+' Returns a singleton vect containing `a`.
+def Vect(a) => { a }
+
 ' Unit, the empty object. Used to represent empty values.
 (def Unit() =>
     (def value(a)
