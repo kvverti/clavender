@@ -1029,6 +1029,78 @@ static TextBufferObj slice(TextBufferObj* args) {
     return res;
 }
 
+/** Takes elements from the vect while the predicate is satisfied */
+TextBufferObj take(TextBufferObj* args) {
+
+    TextBufferObj res;
+    if(args[0].type == OPT_VECT) {
+        TextBufferObj func = args[1];
+        TextBufferObj* data = args[0].vect->data;
+        size_t len = args[0].vect->len;
+        //overestimate
+        LvVect* vec = lv_alloc(sizeof(LvVect) + args[0].vect->len * sizeof(TextBufferObj));
+        vec->refCount = 0;
+        size_t newLen = 0;
+        bool cont = true;
+        while(cont && newLen < len) {
+            TextBufferObj satisfied;
+            lv_callFunction(&func, 1, &data[newLen], &satisfied);
+            incRefCount(&satisfied);
+            if(lv_blt_toBool(&satisfied)) {
+                incRefCount(&data[newLen]);
+                vec->data[newLen] = data[newLen];
+                newLen++;
+            } else {
+                cont = false;
+            }
+            lv_expr_cleanup(&satisfied, 1);
+        }
+        vec = lv_realloc(vec, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
+        vec->len = newLen;
+        res.type = OPT_VECT;
+        res.vect = vec;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+/** Drops elements from the vect while the predicate is satisifed */
+TextBufferObj skip(TextBufferObj* args) {
+
+    TextBufferObj res;
+    if(args[0].type == OPT_VECT) {
+        TextBufferObj func = args[1];
+        TextBufferObj* data = args[0].vect->data;
+        size_t len = args[0].vect->len;
+        size_t skipLen = 0;
+        bool cont = true;
+        while(cont && skipLen < len) {
+            TextBufferObj satisfied;
+            lv_callFunction(&func, 1, &data[skipLen], &satisfied);
+            incRefCount(&satisfied);
+            if(lv_blt_toBool(&satisfied)) {
+                skipLen++;
+            } else {
+                cont = false;
+            }
+            lv_expr_cleanup(&satisfied, 1);
+        }
+        LvVect* vec = lv_alloc(sizeof(LvVect) + (len - skipLen) * sizeof(TextBufferObj));
+        vec->refCount = 0;
+        vec->len = len - skipLen;
+        for(size_t i = skipLen; i < len; i++) {
+            incRefCount(&data[i]);
+            vec->data[i - skipLen] = data[i];
+        }
+        res.type = OPT_VECT;
+        res.vect = vec;
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 Hashtable intrinsics;
 
 Builtin lv_blt_getIntrinsic(char* name) {
@@ -1075,6 +1147,8 @@ void lv_blt_onStartup(void) {
     MK_FUNCN(SYS, fold);
     MK_FUNCN(SYS, slice);
     MK_FUNCN(SYS, concat);
+    MK_FUNCN(SYS, take);
+    MK_FUNCN(SYS, skip);
     MK_FUNCR(MATH, sin);
     MK_FUNCR(MATH, cos);
     MK_FUNCR(MATH, tan);

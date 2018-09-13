@@ -21,6 +21,7 @@
         => (def(f)
             => \obj ; f(a)
             => None ; 1) ; b = \filter\
+        => (def(obj2) => Some({ a, sys:cval(obj2, 0) })) ; b = \zip\
         => (def(id, f) => f(id, a)) ; b = \fold\
     )
 )

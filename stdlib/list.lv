@@ -23,6 +23,7 @@
         ) ; a = \filter\
         => (def(id, f) => tail fold (f(id, head), f)) ; a = \fold\
         => (def(list2) => head :: (tail ++ list2)) ; a = \++\
+        => (def(obj2) => { head, list:head(obj2) } :: (tail zip list:tail(obj2))) ; a = \zip\
         => \obj fold ({}, def(ac, el)
             => sys:cat(ac, { el }) ; sys:typeof(el) = "vect"
             => sys:cat(ac, el) ; 1

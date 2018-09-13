@@ -50,3 +50,5 @@ def __filter__(val, f) => native
 def __fold__(val, id, f) => native
 def __slice__(val, a, b) => native
 def __concat__(a, b) => native
+def __take__(val, f) => native
+def __skip__(val, f) => native

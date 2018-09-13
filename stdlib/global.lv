@@ -259,6 +259,20 @@ def i_then(obj, val) => obj flatmap _const(val)
     (obj onlyIf isObject(obj))(\filter\)(func) else sys:__filter__(obj, func)
 )
 
+' Returns the longest prefix of the given sequence whose elements satisfy
+' the given predicate.
+(def i_takeWhile(obj, func)
+    => obj(\takeWhile\)(func) ; isObject(obj)
+    => sys:__take__(obj, func) ; 1
+)
+
+' Drops the longest prefix of the given sequence whose elements satisfy
+' the given predicate, and returns the remaining elements.
+(def i_skipWhile(obj, func)
+    => obj(\skipWhile\)(func) ; isObject(obj)
+    => sys:__skip__(obj, func) ; 1
+)
+
 ' Combines the elements of the given object according to the
 ' given fold function with the given initial value.
 (def i_fold(obj, id, func) =>
@@ -271,6 +285,24 @@ def i_then(obj, val) => obj flatmap _const(val)
     => obj2 ; sys:__eq__(obj1, Unit) ' Concatenating Unit does nothing
     => obj1(\++\)(obj2) ; isObject(obj1)
     => sys:__concat__(obj1, obj2) ; 1
+)
+
+' Takes two sequences and returns a single sequence whose elements are
+' corresponding elements of the original sequences. The longer sequence
+' (if any) is truncated to the length of the shorter sequence.
+(def i_zip(obj1, obj2)
+    => Unit ; sys:__eq__(len(obj1), 0) || sys:__eq__(len(obj2), 0)
+    => obj1(\zip\)(obj2) ; isObject(obj1)
+    => _zip(obj1, obj2) ; sys:typeof(obj1) = "vect"
+)
+
+' Implementation of zip for vects.
+(def _zip(vec1, vec2)
+    let siz1(sys:__len__(vec1)), siz2(sys:__len__(vec2)) =>
+    (def impl(i)
+        => {} ; sys:__eq__(i, siz1) || sys:__eq__(i, siz2)
+        => sys:__concat__({{ vec1(i), vec2(i) }}, impl(i + 1)) ; 1
+    )(0)
 )
 
 ' Returns the subsequence of obj from bgn (inclusive) to end (exclusive).
