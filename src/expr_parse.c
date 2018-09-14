@@ -604,6 +604,33 @@ static void fixArityFirstArg(ExprContext* cxt) {
     }
 }
 
+static int arityFor(Operator* func, Operator* scope) {
+
+    int ar;
+    if(func == scope) {
+        //capturing this function
+        ar = scope->arity;
+    } else {
+        //detect whether this is an enclosing function or a nested
+        //function. An enclosing function does not capture any locals
+        //after its declaration.
+        size_t localsToSkip = 0;
+        Operator* outer = scope->enclosing;
+        //subtract enclosing functions' locals while we have not reached func
+        while(outer && outer != func) {
+            localsToSkip += outer->locals;
+            outer = outer->enclosing;
+        }
+        if(outer == NULL) {
+            //not found in the enclosing functions, it must be inner!
+            ar = scope->arity + scope->locals;
+        } else {
+            ar = scope->arity - localsToSkip - outer->locals;
+        }
+    }
+    return ar;
+}
+
 //shunts over one op (or handles right bracket)
 //optionally removing the top operator
 //and checks function arity if applicable.
@@ -638,10 +665,12 @@ static bool shuntOps(ExprContext* cxt) {
                 pushStack(&cxt->out, &obj);
             }
             //push any extra implicit capture args
+            int end = arityFor(tmp->func, cxt->decl);
             for(int i = tmp->func->captureCount; i > 0; i--) {
                 TextBufferObj obj;
                 obj.type = OPT_PARAM;
-                obj.param = cxt->decl->arity - i;
+                obj.param = end - i;
+                assert(obj.param >= 0);
                 pushStack(&cxt->out, &obj);
             }
             fixArityFirstArg(cxt);
@@ -811,13 +840,16 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         //push capture params onto stack, then push obj, then push CAP
         //out: ... cap1 cap2 .. capn obj CAP ...
         //self capture does not capture locals
-        int ar = (obj->func == cxt->decl) ? cxt->decl->arity
-            : (cxt->decl->arity + cxt->decl->locals);
+        // int ar = (obj->func == cxt->decl) ? cxt->decl->arity
+        //     : (cxt->decl->arity + cxt->decl->locals);
+
+        int ar = arityFor(obj->func, cxt->decl);
         for(int i = obj->func->captureCount; i > 0; i--) {
-            TextBufferObj obj;
-            obj.type = OPT_PARAM;
-            obj.param = ar - i;
-            pushStack(&cxt->out, &obj);
+            TextBufferObj tbo;
+            tbo.type = OPT_PARAM;
+            tbo.param = ar - i;
+            assert(tbo.param >= 0);
+            pushStack(&cxt->out, &tbo);
         }
         pushStack(&cxt->out, obj);
         TextBufferObj cap;

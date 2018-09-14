@@ -24,6 +24,7 @@ static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
 // static Operator* atFunc; //built in sys:__at__
 static Operator atFunc; //built in sys:__at__
+static Operator scope = { .type = FUN_FWD_DECL };
 
 static void push(TextBufferObj* obj) {
 
@@ -256,10 +257,7 @@ bool lv_readFile(char* name) {
     DynBuffer decls;    //of HelperDeclObj
     lv_buf_init(&decls, sizeof(HelperDeclObj));
     bool res = true;
-    Operator scope;
-    memset(&scope, 0, sizeof(Operator));
     scope.name = name;
-    scope.type = FUN_FWD_DECL;
     //parse all function declarations (not the bodies)
     //and gather runtime commands
     while(!feof(importFile) && res) {
@@ -365,9 +363,6 @@ static void readInput(FILE* in, bool repl) {
     }
     if(toks) {
         //it's not going into the list, auto alloc is fine
-        Operator scope;
-        memset(&scope, 0, sizeof(Operator));
-        scope.type = FUN_FWD_DECL;  //because its a "declaration"
         if(toks->value[0] == '@') {
             Token* cmd = toks->next;
             lv_free(toks); //free '@' token because we may not return

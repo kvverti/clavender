@@ -30,6 +30,7 @@ struct Operator {
         Param* params;
         Builtin builtin;
     };
+    Operator* enclosing;
     Operator* next; //used by anonFuncs
     bool varargs;
 };

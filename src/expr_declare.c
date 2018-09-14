@@ -117,6 +117,7 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         funcObj->locals = context.locals;
         funcObj->params = lv_alloc(totalParams * sizeof(Param));
         funcObj->varargs = context.varargs;
+        funcObj->enclosing = nspace;
         memcpy(funcObj->params, args, totalParams * sizeof(Param));
         //copy param names
         for(int i = 0; i < totalParams; i++) {
