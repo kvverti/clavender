@@ -1,0 +1,23 @@
+@import global using _
+@import hof using bindRight
+@import generator
+@import stream using Stream
+@import assert using assert
+@import test
+
+def vect(a) => a map \Vect fold ({}, \++\)
+
+' Natural numbers
+def gen() => generator:of(0, bindRight(\+\, 1))
+def S1() => Stream(gen)
+def S2() => S1 takeWhile bindRight(\<\, 5)
+
+def main(args) => test:format(
+    assert(vect(S2) = { 0, 1, 2, 3, 4 }, "S2 elems"),
+    assert(vect(S1
+        takeWhile bindRight(\<\, 5)
+        map bindRight(\*\, 2)) = { 0, 2, 4, 6, 8 }, "S1 takeWhile map"),
+    assert(vect(S1
+        map bindRight(\*\, 2)
+        takeWhile bindRight(\<\, 5)) = { 0, 2, 4 }, "S1 map takeWhile")
+)
