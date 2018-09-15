@@ -6,47 +6,60 @@
 @import hof using _
 @import generator
 
-(def Stream(gen) =>
-    (def obj(a)
-        => __yes__ ; a = __object__
-        => (def(f) => _MappingStream(f, \obj)) ; a = \map\
-        => (def(f) => _FlatmappingStream(f, \obj)) ; a = \flatmap\
-        => (def(f) => _FilteringStream(f, \obj)) ; a = \filter\
-        => (def(f) => _TakingStream(f, \obj)) ; a = \takeWhile\
-        => gen ; a = \_gen
-        => (def(gen)
-            let val(generator:value(gen))
-            => { generator:next(gen), val } ; sys:defined(val)
-        ) ; a = \_transValue
-        => (def(id, f) => _folder(\obj, f)(gen, id)) ; a = \fold\
-    )
-)
+' Returns a stream that contains the elements of the given generator.
+def Stream(gen) => _StreamWrapper(gen, _ExtractingStream)
 
 (def _BaseStream(transValueImpl) =>
     (def obj(a)
-        let prev(sys:cval(transValueImpl, 1))
-        => __yes__ ; a = __object__
         => (def(f) => _MappingStream(f, \obj)) ; a = \map\
         => (def(f) => _FlatmappingStream(f, \obj)) ; a = \flatmap\
         => (def(f) => _FilteringStream(f, \obj)) ; a = \filter\
         => (def(f) => _TakingStream(f, \obj)) ; a = \takeWhile\
-        => prev(a) ; a = \_gen
+        => (def(b) => _ZippingStream(b, \obj)) ; a = \zip\
         => transValueImpl ; a = \_transValue
-        => (def(id, f) => _folder(\obj, f)(prev(\_gen), id)) ; a = \fold\
+        => \_folder ; a = \fold\
     )
 )
 
 (def _PostFlatBaseStream(transValueImpl) =>
     (def obj(a)
-        let prev(sys:cval(transValueImpl, 1))
-        => __yes__ ; a = __object__
         => (def(f) => _PostFlatMappingStream(f, \obj)) ; a = \map\
         => (def(f) => _PostFlatFlatmappingStream(f, \obj)) ; a = \flatmap\
         => (def(f) => _PostFlatFilteringStream(f, \obj)) ; a = \filter\
         => (def(f) => _PostFlatTakingStream(f, \obj)) ; a = \takeWhile\
-        => prev(a) ; a = \_gen
         => transValueImpl ; a = \_transValue
-        => (def(id, f) => _postFlatFolder(\obj, f)(prev(\_gen), id)) ; a = \fold\
+        => \_postFlatFolder ; a = \fold\
+    )
+)
+
+' Allows easy storage of the source for a stream
+(def _StreamWrapper(gen, stream) =>
+    (def obj(a)
+        => __yes__ ; a = __object__
+        => gen ; a = \_gen
+        => _head(gen, stream) ; a = \head
+        => _tail(gen, stream) ; a = \tail
+        => (def q(id, f) => stream(a)(stream, f)(gen, id)) ; a = \fold\
+        => stream(a) ; a = \_transValue ' temp measure until head/tail for streams
+        => (def r(f) => _StreamWrapper(gen, stream(a)(f))) ; sys:typeof(a) = "function"
+    )
+)
+
+(def _head(gen, stream)
+    let val(stream(\_transValue)(gen)(1))
+    => val ; sys:defined(val)
+)
+
+(def _tail(gen, stream)
+    let val(stream(\_transValue)(gen))
+    => _StreamWrapper(val(0), stream) ; sys:defined(val)
+)
+
+' Extracts a value from the generator.
+(def _ExtractingStream() =>
+    _BaseStream(
+        def(gen) let val(generator:value(gen))
+        => { generator:next(gen), val } ; sys:defined(val)
     )
 )
 
@@ -107,6 +120,30 @@
         def(gen) let val(prev(\_transValue)(gen))
             => { val(0), val(1) takeWhile pred } ; sys:defined(val)
     )
+)
+
+(def _ZippingStream(other, prev) =>
+    _BaseStream(
+        def(gen)
+            => _zipTransInitial(other, prev, gen) ; sys:typeof(gen) = "function"
+            => _zipTransNonInit(other, prev, gen) ; 1
+    )
+)
+
+(def _zipTransInitial(other, prev, gen)
+    let val(prev(\_transValue)(gen)),
+        otherVal(other(\_transValue)(other(\_gen)))
+    => { { val(0), otherVal(0) },
+        { val(1), otherVal(1) }
+    } ; sys:defined(val) && sys:defined(otherVal)
+)
+
+(def _zipTransNonInit(other, prev, gen)
+    let val(prev(\_transValue)(gen(0))),
+        otherVal(other(\_transValue)(gen(1)))
+    => { { val(0), otherVal(0) },
+        { val(1), otherVal(1) }
+    } ; sys:defined(val) && sys:defined(otherVal)
 )
 
 ' Returns the transformed value for the given generator, using the operations

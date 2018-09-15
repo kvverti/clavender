@@ -30,7 +30,9 @@ def Vect(a) => { a }
         => (def(id, f) => id) ; sys:__eq__(a, \fold\)
         => (def(a) => a) ; sys:__eq__(a, \++\)
         => self ; sys:__eq__(a, \limit\)
-        => (def(bgn, end) => \value) ; sys:__eq__(a, \slice\)
+        => (def(bgn, end)
+            => \value ; sys:__eq__(bgn, 0) && sys:__eq__(end, 0)
+        ) ; sys:__eq__(a, \slice\)
         => {} ; sys:__eq__(a, \toVect\)
     )
 )
@@ -175,6 +177,12 @@ def bool(a) => (a onlyIf isObject(a))(\bool) else sys:__bool__(a)
 ' For strings, returns the length. For functions, returns the arity.
 ' For numbers, returns undefined.
 def len(a) => (a onlyIf isObject(a))(\len) else sys:__len__(a)
+
+' Returns the head of the argument. Forwards if possible.
+def head(a) => (a onlyIf isObject(a))(\head) else a(0)
+
+' Returns the tail of the argument. Forwards if possible.
+def tail(a) => (a onlyIf isObject(a))(\tail) else (a slice (1, len(a)))
 
 ' Unary + function. Forwards if defined for its argument.
 ' This is a no-op for numbers, but returns undefined
