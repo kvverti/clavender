@@ -9,6 +9,9 @@
 ' Returns a stream that contains the elements of the given generator.
 def Stream(gen) => _StreamWrapper(gen, _ExtractingStream)
 
+' The infinite stream of natural numbers.
+def Indices() => Stream(generator:of(0, bindRight(\+\, 1)))
+
 (def _BaseStream(transValueImpl) =>
     (def obj(a)
         => (def(f) => _MappingStream(f, \obj)) ; a = \map\
@@ -27,6 +30,7 @@ def Stream(gen) => _StreamWrapper(gen, _ExtractingStream)
         => (def(f) => _PostFlatFlatmappingStream(f, \obj)) ; a = \flatmap\
         => (def(f) => _PostFlatFilteringStream(f, \obj)) ; a = \filter\
         => (def(f) => _PostFlatTakingStream(f, \obj)) ; a = \takeWhile\
+        => (def(f) => _PostFlatZippingStream(f, \obj)) ; a = \zip\
         => transValueImpl ; a = \_transValue
         => \_postFlatFolder ; a = \fold\
     )
@@ -36,11 +40,10 @@ def Stream(gen) => _StreamWrapper(gen, _ExtractingStream)
 (def _StreamWrapper(gen, stream) =>
     (def obj(a)
         => __yes__ ; a = __object__
-        => gen ; a = \_gen
+        ' TODO: fix head/tail for flatmapped streams
         => _head(gen, stream) ; a = \head
         => _tail(gen, stream) ; a = \tail
         => (def q(id, f) => stream(a)(stream, f)(gen, id)) ; a = \fold\
-        => stream(a) ; a = \_transValue ' temp measure until head/tail for streams
         => (def r(f) => _StreamWrapper(gen, stream(a)(f))) ; sys:typeof(a) = "function"
     )
 )
@@ -132,17 +135,44 @@ def Stream(gen) => _StreamWrapper(gen, _ExtractingStream)
 
 (def _zipTransInitial(other, prev, gen)
     let val(prev(\_transValue)(gen)),
-        otherVal(other(\_transValue)(other(\_gen)))
-    => { { val(0), otherVal(0) },
-        { val(1), otherVal(1) }
+        otherVal(head(other))
+    => {
+        { val(0), tail(other) },
+        { val(1), otherVal }
     } ; sys:defined(val) && sys:defined(otherVal)
 )
 
 (def _zipTransNonInit(other, prev, gen)
     let val(prev(\_transValue)(gen(0))),
-        otherVal(other(\_transValue)(gen(1)))
-    => { { val(0), otherVal(0) },
-        { val(1), otherVal(1) }
+        otherVal(head(gen(1)))
+    => {
+        { val(0), tail(gen(1)) },
+        { val(1), otherVal }
+    } ; sys:defined(val) && sys:defined(otherVal)
+)
+
+(def _PostFlatZippingStream(other, prev) =>
+    _PostFlatBaseStream(
+        def(gen)
+            => _postFlatZipInitial(other, prev, gen) ; sys:typeof(gen) = "function"
+            => _postFlatZipNonInit(other, prev, gen) ; 1
+    )
+)
+
+(def _postFlatZipInitial(other, prev, gen)
+    let val(prev(\_transValue)(gen))
+    => {
+        { val(0), "..." }, ' How to determine the tail of other?
+        val(1) zip other
+    } ; sys:defined(val) && sys:defined(other)
+)
+
+(def _postFlatZipNonInit(other, prev, gen)
+    let val(prev(\_transValue)(gen(0))),
+        otherVal(gen(1))
+    => {
+        { val(0), "..." }, ' ???
+        val(1) zip otherVal
     } ; sys:defined(val) && sys:defined(otherVal)
 )
 
@@ -169,5 +199,3 @@ def _transValue(stream, gen) => stream(\_transValue)(gen)
         => ac ; 1
     )
 )
-
-def _gen(a) => sys:undefined
