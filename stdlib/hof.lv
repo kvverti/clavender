@@ -48,6 +48,13 @@ def bindLeft(op, left) => def impl(right) => op(left, right)
 ' Binds the right operand of a binary operator.
 def bindRight(op, right) => def impl(left) => op(left, right)
 
+' Returns a function that calls its argument with the given args.
+def withArgs(...args) => bindRight(\sys:call, args)
+
+' Returns a function that folds any number of values using the given
+' combining function.
+def folding(id, func) => def impl(...vals) => vals fold (id, func)
+
 ' The constant function of true.
 def True() => Constant(1)
 
