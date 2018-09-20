@@ -184,6 +184,11 @@ static bool addFunctionAlias(char* nspace, char* original, char* alias) {
         qualName[alen] = ':';
         memcpy(qualName + alen + 1, original, blen);
         qualName[alen + 1 + blen] = '\0';
+        //fix colons in names
+        char* c = qualName + alen + 1;
+        while((c = strchr(c, ':'))) {
+            *c = '#';
+        }
     }
     Operator* op = NULL;
     for(FuncNamespace ns = 0; (ns < FNS_COUNT) && !op; ns++) {
@@ -199,6 +204,10 @@ static bool addFunctionAlias(char* nspace, char* original, char* alias) {
         size_t len = strlen(alias) + 1;
         simpleName = lv_alloc(len);
         memcpy(simpleName, alias, len);
+        char* c = simpleName;
+        while((c = strchr(c, ':'))) {
+            *c = '#';
+        }
     }
     bool put = lv_tbl_put(&usingNames, simpleName, qualName);
     if(!put) {
