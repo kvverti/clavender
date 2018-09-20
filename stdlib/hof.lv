@@ -55,6 +55,18 @@ def withArgs(...args) => bindRight(\sys:call, args)
 ' combining function.
 def folding(id, func) => def impl(...vals) => vals fold (id, func)
 
+' Returns the curried version of the given poly-arity function. The function
+' must have fixed arity greater than or equal to 1.
+(def curry(f)
+    let ar(len(f) - 1) =>
+    (def impl(args) =>
+        (def(a)
+            => impl(args ++ { a }) ; len(args) < ar
+            => sys:call(f, args ++ { a }) ; 1
+        )
+    )({})
+)
+
 ' The constant function of true.
 def True() => Constant(1)
 
