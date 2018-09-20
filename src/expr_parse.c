@@ -339,7 +339,6 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
         char* n = lv_cmd_getQualNameFor(name);
         if(n) {
             func = lv_op_getOperator(n, ns);
-            assert(func);
         } else {
             char** scopes;
             size_t len;
