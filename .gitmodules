@@ -1,0 +1,3 @@
+[submodule "stdlib"]
+	path = stdlib
+	url = git@github.com:kvverti/lavender-stdlib.git
