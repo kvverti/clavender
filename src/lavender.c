@@ -279,10 +279,12 @@ bool lv_readFile(char* name) {
                 }
             } else {
                 //function definition
-                lv_tb_defineFunctionBody(obj->body, obj->func);
+                Token* err = lv_tb_defineFunctionBody(obj->body, obj->func);
                 if(LV_EXPR_ERROR) {
                     res = false;
-                    printf("Error parsing function body: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+                    printf("Error parsing function body: at token '%s': %s\n",
+                        err ? err->value : "<end>",
+                        lv_expr_getError(LV_EXPR_ERROR));
                     LV_EXPR_ERROR = 0;
                     break;
                 }
@@ -329,10 +331,12 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         return false;
     }
     //declare function
-    Token* body;
+    Token* body = NULL;
     Operator* op = lv_expr_declareFunction(head, scope, &body);
     if(LV_EXPR_ERROR) {
-        printf("Error parsing function signatures: %s\n",
+        assert(body);
+        printf("Error parsing function signatures: at token '%s': %s\n",
+            body->value,
             lv_expr_getError(LV_EXPR_ERROR));
         LV_EXPR_ERROR = 0;
         lv_tkn_free(head);
@@ -375,7 +379,8 @@ static void readInput(FILE* in, bool repl) {
             scope.name = "repl";    //namespace
             Token* end = lv_tb_defineFunction(toks, &scope, &op);
             if(LV_EXPR_ERROR) {
-                printf("Error parsing function: %s\n",
+                printf("Error parsing function: at token '%s': %s\n",
+                    end ? end->value : "<end>",
                     lv_expr_getError(LV_EXPR_ERROR));
                 LV_EXPR_ERROR = 0;
             } else {
@@ -391,7 +396,8 @@ static void readInput(FILE* in, bool repl) {
             size_t startIdx, endIdx;
             Token* end = lv_tb_parseExpr(toks, &scope, &startIdx, &endIdx);
             if(LV_EXPR_ERROR) {
-                printf("Error parsing expression: %s\n",
+                printf("Error parsing expression: at token '%s': %s\n",
+                end ? end->value : "<end>",
                     lv_expr_getError(LV_EXPR_ERROR));
                 LV_EXPR_ERROR = 0;
             } else {

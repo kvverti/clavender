@@ -60,7 +60,7 @@ static bool shuntOps(ExprContext* cxts);
         lv_free(cxt.out.stack); \
         lv_free(cxt.ops.stack); \
         lv_free(cxt.params.stack); \
-        return NULL; \
+        return cxt.head; \
     } else (void)0
 
 Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* len) {

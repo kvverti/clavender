@@ -7,7 +7,7 @@
 
 #define REQUIRE_MORE_TOKENS(x) \
     if(!(x)) { LV_EXPR_ERROR = XPE_UNTERM_EXPR; return RETVAL; } else (void)0
-#define INCR_HEAD(x) { (x) = (x)->next; REQUIRE_MORE_TOKENS(x); }
+#define INCR_HEAD(x) { REQUIRE_MORE_TOKENS((x)->next); (x) = (x)->next; }
 
 /**
  * Context for the declaration helper functions.
@@ -34,8 +34,10 @@ static void buildFuncName(void);
 Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok) {
 
     #define RETVAL NULL
-    if(LV_EXPR_ERROR)
+    if(LV_EXPR_ERROR) {
+        *bodyTok = tok;
         return NULL;
+    }
     assert(tok);
     assert(nspace->type == FUN_FWD_DECL);
     context.head = tok;
@@ -47,35 +49,45 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     if(!context.head || strcmp(context.head->value, "def") != 0) {
         //this is not a function!
         LV_EXPR_ERROR = XPE_NOT_FUNCT;
+        *bodyTok = context.head;
         return NULL;
     }
+    *bodyTok = context.head;
     INCR_HEAD(context.head);
     //is this a named function? If so, get fixing as well
     parseNameAndFixing();
-    if(LV_EXPR_ERROR)
+    if(LV_EXPR_ERROR) {
+        *bodyTok = context.head;
         return NULL;
+    }
     if(context.head->type == TTY_LITERAL && context.head->value[0] != '(') {
         //we require a left paren before the arguments
         LV_EXPR_ERROR = XPE_EXPT_ARGS;
+        *bodyTok = context.head;
         return NULL;
     }
     if(context.head->type == TTY_EMPTY_ARGS) {
         //no formal parameters, but maybe still locals
         context.arity = 0;
+        *bodyTok = context.head;
         INCR_HEAD(context.head);
         parseLocals(context.head);
     } else {
+        *bodyTok = context.head;
         INCR_HEAD(context.head);
         //collect args
         parseArity();
-        if(LV_EXPR_ERROR)
+        if(LV_EXPR_ERROR) {
+            *bodyTok = context.head;
             return NULL;
+        }
     }
     //only prefix functions may have arity 0
     //and right infix functions may not have arity 1
     if((context.arity == 0 && context.fixing != FIX_PRE)
     || (context.arity == 1 && context.fixing == FIX_RIGHT_IN)) {
         LV_EXPR_ERROR = XPE_BAD_FIXING;
+        *bodyTok = context.head;
         return NULL;
     }
     //holds the parameters (formal, captured, and local) and their names
@@ -83,17 +95,20 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     Param args[totalParams];
     //set up the args array
     setupArgsArray(args);
-    if(LV_EXPR_ERROR)
+    if(LV_EXPR_ERROR) {
+        *bodyTok = context.head;
         return NULL;
-    REQUIRE_MORE_TOKENS(context.head);
+    }
     if(strcmp(context.head->value, "=>") != 0) {
         //sorry, a function body is required
         LV_EXPR_ERROR = XPE_MISSING_BODY;
+        *bodyTok = context.head;
         return NULL;
     }
     //the head is now at the arrow token
     //the body starts with the token after the =>
     //it must exist, sorry
+    *bodyTok = context.head;
     INCR_HEAD(context.head);
     //build the function name
     buildFuncName();
@@ -103,6 +118,7 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     if(funcObj) {
         //let's disallow entirely
         LV_EXPR_ERROR = XPE_DUP_DECL;
+        *bodyTok = tok;
         lv_free(context.name);
         return NULL;
     } else {
@@ -167,6 +183,7 @@ static void parseNameAndFixing(void) {
  */
 static void setupArgsArray(Param params[]) {
 
+    #define RETVAL
     //context.arity is the number of formal parameters
     int arity = context.arity;
     //assign formal parameters
@@ -220,10 +237,11 @@ static void setupArgsArray(Param params[]) {
         } while(parenNesting >= 0);
         //consume the comma
         if(currentLocal->value[0] == ',') {
-            currentLocal = currentLocal->next;
+            INCR_HEAD(currentLocal);
         }
         context.head = currentLocal;
     }
+    #undef RETVAL
 }
 
 static bool specifiesFixing(void) {
