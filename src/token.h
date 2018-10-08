@@ -20,6 +20,7 @@ typedef enum TokenType {
 
 typedef struct Token {
     TokenType type;
+    int lineNumber;
     struct Token* next;
     char value[];
 } Token;
@@ -55,5 +56,10 @@ Token* lv_tkn_split(FILE* input);
  * Frees the memory used by the given Token list.
  */
 void lv_tkn_free(Token* head);
+
+/**
+ * Resets the internal line number count to 1.
+ */
+void lv_tkn_resetLine(void);
 
 #endif

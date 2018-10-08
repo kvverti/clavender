@@ -52,6 +52,11 @@ static FILE* input;
 static int bracketNesting; //bracket nesting
 static int parenNesting; //paren nesting
 static int braceNesting; //curly brace nesting
+static int currentLine = 1;
+
+void lv_tkn_resetLine(void) {
+    currentLine = 1;
+}
 
 static bool reallocBuffer(void);
 
@@ -197,6 +202,10 @@ Token* lv_tkn_split(FILE* in) {
             eatComment();
         } else if(isspace(c)) {
             idx++; //eat spaces
+            if(c == '\n') {
+                //incr line number
+                currentLine++;
+            }
         } else if(isidbgn(c)) {
             type = tryGetFuncSymb();
         } else if(issymb(c)) {
@@ -233,6 +242,7 @@ Token* lv_tkn_split(FILE* in) {
             //create token
             Token* tok = lv_alloc(sizeof(Token) + (idx - bgn + 1));
             tok->type = type;
+            tok->lineNumber = currentLine;
             tok->next = NULL;
             memcpy(tok->value, buffer + bgn, idx - bgn);
             tok->value[idx - bgn] = '\0';
