@@ -17,11 +17,19 @@ typedef enum ExprError {
     XPE_BAD_ARITY,      //wrong number of params to function
     XPE_BAD_FIXING,     //arity and fixing not compatible
     XPE_BAD_LOCALS,     //bad function local list
+    XPE_RESERVED_ID,    //identifier is a reserved word
+    XPE_NATIVE_LOCALS,  //native function declares locals
+    XPE_NATIVE_NOT_FOUND, //native impl could not be found
 } ExprError;
 
 ExprError LV_EXPR_ERROR;
 
 char* lv_expr_getError(ExprError error);
+
+/**
+ * Returns whether the given string represents a reserved word.
+ */
+bool lv_expr_isReserved(char* id);
 
 /**
  * Declares a function.

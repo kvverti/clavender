@@ -287,14 +287,14 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             return head;
         }
         if(decl->locals > 0) {
-            LV_EXPR_ERROR = XPE_BAD_LOCALS;
+            LV_EXPR_ERROR = XPE_NATIVE_LOCALS;
             rollback(decl, top);
             return head;
         }
         //only intrinsics supported for now
         Builtin func = lv_blt_getIntrinsic(decl->name);
         if(!func) {
-            LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
+            LV_EXPR_ERROR = XPE_NATIVE_NOT_FOUND;
             rollback(decl, top);
             return head;
         }

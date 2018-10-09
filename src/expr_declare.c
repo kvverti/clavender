@@ -166,6 +166,10 @@ static void parseNameAndFixing(void) {
                 context.fixing = FIX_PRE;
                 context.name = context.head->value;
             }
+            if(lv_expr_isReserved(context.name)) {
+                LV_EXPR_ERROR = XPE_RESERVED_ID;
+                return;
+            }
             INCR_HEAD(context.head);
             break;
         default:
@@ -269,6 +273,9 @@ static void parseArity(void) {
     assert(head);
     if(head->value[0] == ')') {
         INCR_HEAD(head);
+        //important to set before parseLocals
+        //because parseLocals sets context.head if it fails
+        context.head = head;
         parseLocals(head);
         context.arity = 0;
         context.varargs = false;
@@ -294,6 +301,10 @@ static void parseArity(void) {
         }
         //is it a param name
         if(head->type == TTY_IDENT) {
+            if(lv_expr_isReserved(head->value)) {
+                LV_EXPR_ERROR = XPE_RESERVED_ID;
+                return;
+            }
             res++;
             INCR_HEAD(head);
             //must be a comma or a close paren
@@ -345,12 +356,20 @@ static void parseLocals(Token* head) {
             //check that this is a name
             if(head->type != TTY_IDENT) {
                 LV_EXPR_ERROR = XPE_BAD_LOCALS;
+                context.head = head;
+                return;
+            }
+            //that is not reserved
+            if(lv_expr_isReserved(head->value)) {
+                LV_EXPR_ERROR = XPE_RESERVED_ID;
+                context.head = head;
                 return;
             }
             INCR_HEAD(head);
             //check for the opening paren
             if(head->value[0] != '(') {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                context.head = head;
                 return;
             }
             INCR_HEAD(head);
