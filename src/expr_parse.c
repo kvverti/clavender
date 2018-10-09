@@ -129,6 +129,10 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
         shuntOps(&cxt);
         IF_ERROR_CLEANUP;
     }
+    if(cxt.out.top == cxt.out.stack) {
+        LV_EXPR_ERROR = XPE_MISSING_BODY;
+        IF_ERROR_CLEANUP;
+    }
     *res = cxt.out.stack;
     *len = cxt.out.top - cxt.out.stack + 1;
     //calling plain lv_free is ok because ops is empty
