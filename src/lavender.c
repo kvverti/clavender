@@ -391,14 +391,10 @@ static void readInput(FILE* in, bool repl) {
                 LV_EXPR_ERROR = 0;
             } else {
                 puts(op->name);
-                if(end)
-                    printf("First token past body: type=%d, value=%s\n",
-                        end->type,
-                        end->value);
             }
         } else {
             //parse expression
-            scope.name = "repl:$";      //expr requires a named function
+            scope.name = "repl:";      //expr requires an enclosing function
             size_t startIdx, endIdx;
             Token* end = lv_tb_parseExpr(toks, &scope, &startIdx, &endIdx);
             if(LV_EXPR_ERROR) {
@@ -422,10 +418,6 @@ static void readInput(FILE* in, bool repl) {
                 }
                 lv_expr_cleanup(&obj, 1);
                 lv_tb_clearExpr();
-                if(end)
-                    printf("First token past body: type=%d, value=%s\n",
-                        end->type,
-                        end->value);
             }
         }
     }
