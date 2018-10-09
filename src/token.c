@@ -6,6 +6,9 @@
 #include <ctype.h>
 #include <assert.h>
 
+// guess for typical line length in chars
+#define INIT_LINE_LENGTH 128
+
 static TokenType tryGetFuncSymb(void);
 static TokenType tryGetQualName(void);
 static TokenType tryGetEllipsis(void);
@@ -43,9 +46,16 @@ void lv_tkn_free(Token* head) {
     }
 }
 
+typedef struct SourceFileLine {
+    FILE* file;
+    int line;
+    struct SourceFileLine* next;
+    char data[];
+} SourceFileLine;
+
 static bool inputEnd = false;
 static size_t BUFFER_LEN;
-static char* buffer;
+static char* buffer; //alias for currentFileLine->data
 static int bgn; //start pos of the current token
 static int idx; //current index in the buffer
 static FILE* input;
@@ -53,20 +63,43 @@ static int bracketNesting; //bracket nesting
 static int parenNesting; //paren nesting
 static int braceNesting; //curly brace nesting
 static int currentLine = 1;
+static SourceFileLine* currentFileLine = NULL;
+
+void lv_tkn_releaseFile(FILE* file) {
+
+    SourceFileLine** line = &currentFileLine;
+    while(*line) {
+        SourceFileLine** next = &(*line)->next;
+        if((*line)->file == file) {
+            lv_free(*line);
+            *line = *next;
+        }
+        line = next;
+    }
+}
+
+void lv_tkn_onStartup(void) { }
+
+void lv_tkn_onShutdown(void) {
+
+    SourceFileLine* line = currentFileLine;
+    while(line) {
+        SourceFileLine* next = line->next;
+        lv_free(line);
+        line = next;
+    }
+}
 
 void lv_tkn_resetLine(void) {
     currentLine = 1;
 }
-
-static bool reallocBuffer(void);
 
 static void setInputEnd(void) {
     //set inputEnd for the global buffer
     bool endOfLine = (parenNesting == 0
         && bracketNesting == 0
         && braceNesting == 0
-        && buffer[0]
-        && buffer[strlen(buffer) - 1] == '\n');
+        && buffer[0]);
     inputEnd = (feof(input) || endOfLine);
 }
 
@@ -101,80 +134,57 @@ static void getInputWhile(int (*pred)(int)) {
 
     do {
         idx++;
-        if(!buffer[idx] && !reallocBuffer()) {
+        if(!buffer[idx]) {
             //no more input
             break;
         }
     } while(pred(buffer[idx]));
 }
 
-//eats comment without saving the input
-//so we don't have to reallocate the buffer
-static void eatComment(void) {
+// TODO free the previous line if it contained no tokens
+static void nextLine(void) {
 
+    if(inputEnd) {
+        return;
+    }
+    size_t lineLength = 0;
+    SourceFileLine* line = NULL;
+    size_t len = 0;
+    char* buf; //beginning of substring
+    char* nul; //end of substring
     do {
-        bgn++;
-        idx++;
-        if(!buffer[idx] && !reallocBuffer()) {
-            //no more input
-            break;
+        //reallocate buffer to get the rest of the line
+        lineLength += INIT_LINE_LENGTH;
+        line = lv_realloc(line, sizeof(SourceFileLine) + lineLength);
+        buf = line->data + len;
+        assert(len < lineLength);
+        memset(buf, 0, lineLength - len);
+        fgets(buf, lineLength - len, input);
+        //if there was a NUL character in the text stream that got added into
+        //the buffer, the lexing code will get confused about the amount of
+        //text read. To remedy this, we find NUL characters that are not at
+        //the end of the buffer and replace them with spaces.
+        //A valid NUL character in the buffer is occurs when
+        //  a) the input reaches end of file
+        //  b) the NUL occurs at the end of the buffer
+        //  c) the NUL occurs after a newline character
+        //Any other occurrences of NUL are invalid and must be purged.
+        nul = strchr(buf, '\0');
+        while(!feof(input) && nul != (buf + lineLength - len - 1) && (nul == buf || nul[-1] != '\n')) {
+            if(lv_debug)
+                printf("TOKEN: Stray NUL at position %lu of %lu (%s)\n", nul - buf, lineLength - len, buf);
+            *nul = ' ';
+            nul = strchr(nul, '\0');
         }
-    } while(buffer[idx] != '\n');
-}
-
-static void fgetsWrapper(char* buf, int n, FILE* stream) {
-
-    fgets(buf, n, stream);
-    //if there was a NUL character in the text stream that got added into
-    //the buffer, the lexing code will get confused about the amount of
-    //text read. To remedy this, we find NUL characters that are not at
-    //the end of the buffer and replace them with spaces.
-    //A valid NUL character in the buffer is occurs when
-    //  a) the input reaches end of file
-    //  b) the NUL occurs at the end of the buffer
-    //  c) the NUL occurs after a newline character
-    //Any other occurrences of NUL are invalid and must be purged.
-    char* nul = strchr(buf, '\0');
-    while(!feof(stream) && nul != (buf + n - 1) && (nul == buf || nul[-1] != '\n')) {
-        if(lv_debug)
-            printf("TOKEN: Stray NUL at position %lu of %d (%s)\n", nul - buf, n, buf);
-        *nul = ' ';
-        nul = strchr(nul, '\0');
-    }
+        len = nul - line->data;
+    } while(nul != buf && nul[-1] != '\n');
+    line->file = input;
+    line->line = currentLine++;
+    line->next = currentFileLine;
+    currentFileLine = line;
+    buffer = line->data;
+    bgn = idx = 0;
     setInputEnd();
-}
-
-//reallocates the buffer with the start of the buffer
-//at 'bgn'. If bgn == 0, also increases the buffer size.
-//returns whether the buffer was reallocated.
-static bool reallocBuffer(void) {
-
-    assert(bgn >= 0 && bgn < BUFFER_LEN);
-    if(inputEnd)
-        return false;
-    if(bgn) {
-        //copy elements down
-        assert(idx >= bgn);
-        for(int i = bgn; i < idx; i++)
-            buffer[i - bgn] = buffer[i];
-        fgetsWrapper(buffer + (idx - bgn), BUFFER_LEN - (idx - bgn), input);
-    } else {
-        //reallocate the whole buffer
-        buffer = lv_realloc(buffer, BUFFER_LEN * 2);
-        size_t oldLen = BUFFER_LEN;
-        BUFFER_LEN *= 2;
-        memset(buffer + oldLen, 0, oldLen); //initialize new memory
-        //subtract 1 for the NUL terminator
-        fgetsWrapper(buffer + oldLen - 1, oldLen + 1, input);
-        if(lv_debug)
-            printf("TOKEN: buffer resize, old=%lu new=%lu\n",
-                oldLen,
-                BUFFER_LEN);
-    }
-    //inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
-    idx -= bgn;
-    bgn = 0;
-    return true;
 }
 
 Token* lv_tkn_split(FILE* in) {
@@ -185,27 +195,23 @@ Token* lv_tkn_split(FILE* in) {
     input = in;
     inputEnd = false;
     BUFFER_LEN = 64;
-    buffer = lv_alloc(BUFFER_LEN);
-    memset(buffer, 0, BUFFER_LEN); //initialize buffer
     bgn = idx = parenNesting = bracketNesting = braceNesting = 0;
 
     Token* head = NULL;
     Token* tail = head;
-    fgetsWrapper(buffer, BUFFER_LEN, input);
-    //inputEnd = (feof(input) || (buffer[0] && (buffer[strlen(buffer) - 1] == '\n')));
+    nextLine();
     while(buffer[bgn]) {
         char c = buffer[bgn];
         TokenType type = -1;
         //check for comment
         if(c == '\'') {
-            //increment until next newline
-            eatComment();
+            //skip the rest of the line
+            idx = strlen(buffer + bgn) + bgn;
+        } else if(c == '\n') {
+            idx++;
+            nextLine();
         } else if(isspace(c)) {
             idx++; //eat spaces
-            if(c == '\n') {
-                //incr line number
-                currentLine++;
-            }
         } else if(isidbgn(c)) {
             type = tryGetFuncSymb();
         } else if(issymb(c)) {
@@ -235,14 +241,16 @@ Token* lv_tkn_split(FILE* in) {
             memcpy(lv_tkn_errcxt, buffer + idx + 1 - len, len);
             lv_tkn_errcxt[len] = '\0';
             lv_tkn_free(head);
-            lv_free(buffer);
             return NULL;
         }
         if(type != -1) {
             //create token
             Token* tok = lv_alloc(sizeof(Token) + (idx - bgn + 1));
             tok->type = type;
-            tok->lineNumber = currentLine;
+            tok->lineNumber = currentFileLine->line;
+            tok->line = currentFileLine->data;
+            tok->start = buffer + bgn;
+            tok->len = idx - bgn;
             tok->next = NULL;
             memcpy(tok->value, buffer + bgn, idx - bgn);
             tok->value[idx - bgn] = '\0';
@@ -256,10 +264,9 @@ Token* lv_tkn_split(FILE* in) {
         //move to next token
         bgn = idx;
         if(!buffer[bgn]) {
-            reallocBuffer();
+            nextLine();
         }
     }
-    lv_free(buffer);
     return head;
 }
 
@@ -300,14 +307,14 @@ static TokenType tryGetFuncSymb(void) {
     //possibly a TTY_FUNC_SYMBOL
     if((c == 'u' || c == 'i' || c == 'r')) {
         idx++;
-        if(!buffer[idx] && !reallocBuffer()){
+        if(!buffer[idx]){
             //can't be TTY_FUNC_SYMBOL
             idx = bgn;
             return tryGetQualName();
         }
         if(buffer[idx] == '_') {
             idx++;
-            if(!buffer[idx] && !reallocBuffer()){
+            if(!buffer[idx]){
                 //can't be TTY_FUNC_SYMBOL
                 idx = bgn;
                 return tryGetQualName();
@@ -339,7 +346,7 @@ static TokenType tryGetQualName(void) {
     if(buffer[idx] == ':') {
         //qualified name
         idx++;
-        if(!buffer[idx] && !reallocBuffer()) {
+        if(!buffer[idx]) {
             //invalid. set error and return
             LV_TKN_ERROR = TE_BAD_QUAL;
             return -1;
@@ -376,7 +383,7 @@ static TokenType tryGetEmptyArgs(void) {
 
     assert(buffer[idx] == '(');
     idx++;
-    if((buffer[idx] || reallocBuffer()) && buffer[idx] == ')') {
+    if(buffer[idx] && buffer[idx] == ')') {
         idx++;
         return TTY_EMPTY_ARGS;
     } else {
@@ -400,7 +407,7 @@ static TokenType getNumber(void) {
         //optional decimal
         if(buffer[idx] == '.') {
             idx++;
-            if((!buffer[idx] && !reallocBuffer())
+            if((!buffer[idx])
                 || !isdigit(buffer[idx])) {
                 //the next char is not a digit
                 //can't end a number in a decimal point
@@ -416,7 +423,7 @@ static TokenType getNumber(void) {
         //required decimal
         assert(buffer[idx] == '.');
         idx++;
-        if((!buffer[idx] && !reallocBuffer())
+        if((!buffer[idx])
             || !isdigit(buffer[idx])) {
             //the next char is not a digit
             //can't end a number in a decimal point
@@ -428,7 +435,7 @@ static TokenType getNumber(void) {
     //optional exponent
     if(buffer[idx] == 'e' || buffer[idx] == 'E') {
         idx++;
-        if(!buffer[idx] && !reallocBuffer()) {
+        if(!buffer[idx]) {
             //can't end in 'e'
             LV_TKN_ERROR = TE_BAD_EXP;
             return -1;
@@ -436,7 +443,7 @@ static TokenType getNumber(void) {
         if(buffer[idx] == '+' || buffer[idx] == '-') {
             //signs are ok
             idx++;
-            if(!buffer[idx] && !reallocBuffer()) {
+            if(!buffer[idx]) {
                 //but not at the end of the number
                 LV_TKN_ERROR = TE_BAD_EXP;
                 return -1;
@@ -457,7 +464,7 @@ static TokenType getFuncVal(void) {
     assert(buffer[idx] == '\\');
     idx++;
     TokenType res;
-    if(!buffer[idx] && !reallocBuffer()) {
+    if(!buffer[idx]) {
         //who is inputing these lone backslashes?
         LV_TKN_ERROR = TE_BAD_FUNC_VAL;
         return -1;
@@ -495,9 +502,7 @@ static TokenType getString(void) {
     do {
         if(buffer[idx] == '\\') {
             //check escape sequences
-            idx++;
-            if(!buffer[idx])
-                reallocBuffer(); //success check covered by default case
+            idx++; //NUL check covered by default case
             //note: strchr allows the NUL character; this does not
             switch(buffer[idx]) {
                 case 'n':
@@ -506,7 +511,7 @@ static TokenType getString(void) {
                 case '"':
                 case '\\':
                     idx++;
-                    if(!buffer[idx] && !reallocBuffer()) {
+                    if(!buffer[idx]) {
                         LV_TKN_ERROR = TE_UNTERM_STR;
                         return -1;
                     }
@@ -522,7 +527,7 @@ static TokenType getString(void) {
                 return -1;
             }
             idx++;
-            if(!buffer[idx] && !reallocBuffer()) {
+            if(!buffer[idx]) {
                 //unterminated string
                 LV_TKN_ERROR = TE_UNTERM_STR;
                 return -1;

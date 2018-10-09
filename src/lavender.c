@@ -179,6 +179,7 @@ void lv_startup(void) {
     pc = fp = 0;
     lv_buf_init(&stack, sizeof(TextBufferObj));
     lv_buf_init(&importedFiles, sizeof(char*));
+    lv_tkn_onStartup();
     lv_op_onStartup();
     lv_tb_onStartup();
     lv_blt_onStartup();
@@ -198,6 +199,7 @@ void lv_shutdown(void) {
     lv_blt_onShutdown();
     lv_tb_onShutdown();
     lv_op_onShutdown();
+    lv_tkn_onShutdown();
     lv_expr_cleanup(stack.data, stack.len);
     for(size_t i = 0; i < importedFiles.len; i++) {
         lv_free(*(char**)lv_buf_get(&importedFiles, i));
