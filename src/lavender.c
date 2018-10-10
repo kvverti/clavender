@@ -224,6 +224,21 @@ static bool isFuncDef(Token* head) {
     return head && strcmp(head->value, "def") == 0;
 }
 
+static void printError(Token* err, char* groupMessage) {
+
+    printf("On line %d: %s: %s\n",
+        err ? err->lineNumber : 0,
+        groupMessage,
+        lv_expr_getError(LV_EXPR_ERROR));
+    if(err) {
+        printf("    %s", err->line);
+        char arrows[err->len + 1];
+        memset(arrows, '^', err->len);
+        arrows[err->len] = '\0';
+        printf("    %*s\n", (int)((err->start - err->line) + err->len), arrows);
+    }
+}
+
 /** Helper struct to organize function declaration data. */
 typedef struct HelperDeclObj {
     Operator* func;
@@ -285,10 +300,7 @@ bool lv_readFile(char* name) {
                 Token* err = lv_tb_defineFunctionBody(obj->body, obj->func);
                 if(LV_EXPR_ERROR) {
                     res = false;
-                    printf("On line %d: Error parsing function body at token '%s': %s\n",
-                        err ? err->lineNumber : 0,
-                        err ? err->value : "<end>",
-                        lv_expr_getError(LV_EXPR_ERROR));
+                    printError(err, "Error parsing function body");
                     LV_EXPR_ERROR = 0;
                     break;
                 }
@@ -339,10 +351,11 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     Operator* op = lv_expr_declareFunction(head, scope, &body);
     if(LV_EXPR_ERROR) {
         assert(body);
-        printf("On line %d: Error parsing function signatures at token '%s': %s\n",
-            body->lineNumber,
-            body->value,
-            lv_expr_getError(LV_EXPR_ERROR));
+        // printf("On line %d: Error parsing function signatures at token '%s': %s\n",
+        //     body->lineNumber,
+        //     body->value,
+        //     lv_expr_getError(LV_EXPR_ERROR));
+        printError(body, "Error parsing function signatures");
         LV_EXPR_ERROR = 0;
         lv_tkn_free(head);
         return false;
@@ -350,12 +363,6 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     //push declaration and body pointer
     HelperDeclObj toPush = { op, head, body };
     lv_buf_push(decls, &toPush);
-    //free decl tokens only
-    // Token* tmp = head;
-    // while(tmp->next != body)
-    //     tmp = tmp->next;
-    // tmp->next = NULL;
-    // lv_tkn_free(head);
     return true;
 }
 
@@ -386,10 +393,11 @@ static void readInput(FILE* in, bool repl) {
             scope.name = "repl";    //namespace
             Token* end = lv_tb_defineFunction(toks, &scope, &op);
             if(LV_EXPR_ERROR) {
-                printf("On line %d: Error parsing function at token '%s': %s\n",
-                    end ? end->lineNumber : 0,
-                    end ? end->value : "<end>",
-                    lv_expr_getError(LV_EXPR_ERROR));
+                // printf("On line %d: Error parsing function at token '%s': %s\n",
+                //     end ? end->lineNumber : 0,
+                //     end ? end->value : "<end>",
+                //     lv_expr_getError(LV_EXPR_ERROR));
+                printError(end, "Error parsing function");
                 LV_EXPR_ERROR = 0;
             } else {
                 puts(op->name);
@@ -400,10 +408,11 @@ static void readInput(FILE* in, bool repl) {
             size_t startIdx, endIdx;
             Token* end = lv_tb_parseExpr(toks, &scope, &startIdx, &endIdx);
             if(LV_EXPR_ERROR) {
-                printf("On line %d: Error parsing expression at token '%s': %s\n",
-                    end ? end->lineNumber : 0,
-                    end ? end->value : "<end>",
-                    lv_expr_getError(LV_EXPR_ERROR));
+                // printf("On line %d: Error parsing expression at token '%s': %s\n",
+                //     end ? end->lineNumber : 0,
+                //     end ? end->value : "<end>",
+                //     lv_expr_getError(LV_EXPR_ERROR));
+                printError(end, "Error parsing expression");
                 LV_EXPR_ERROR = 0;
             } else {
                 pc = startIdx;
