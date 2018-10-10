@@ -261,6 +261,7 @@ static Token* parseFunctionLocals(Operator* decl);
 
 Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
 
+    Token* beginningToken = head;
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
     //function begin, often the same as top, but
@@ -280,11 +281,10 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
     }
     //test for native impl (note native impls are not allowed locals)
     if(lv_tkn_cmp(head, "native") == 0) {
-        head = head->next;
-        if(!isExprEnd(head)) {
+        if(!isExprEnd(head->next)) {
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
             rollback(decl, top);
-            return head;
+            return head->next ? head->next : head;
         }
         if(decl->locals > 0) {
             LV_EXPR_ERROR = XPE_NATIVE_LOCALS;
@@ -319,10 +319,11 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
     while(!isExprEnd(head)) {
         TextBufferObj* text;
         size_t len;
+        Token* old = head;
         head = lv_expr_parseExpr(head, decl, &text, &len);
         if(LV_EXPR_ERROR) {
             rollback(decl, top);
-            return head;
+            return head ? head : old;
         }
         TextBufferObj end;
         if(head) {
@@ -344,11 +345,12 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                 //it's a conditional
                 TextBufferObj* cond;
                 size_t clen;
+                Token* old = head;
                 head = lv_expr_parseExpr(head, decl, &cond, &clen);
                 if(LV_EXPR_ERROR) {
                     rollback(decl, top);
                     lv_expr_free(text, len);
-                    return head;
+                    return head ? head : old;
                 }
                 if(prevCondBranch) {
                     //set the previous beanch statement's relative address.
@@ -372,14 +374,14 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                 //another function body?
                 if(head) {
                     if(lv_tkn_cmp(head, "=>") == 0) {
-                        head = head->next;
-                        if(isExprEnd(head)) {
+                        if(isExprEnd(head->next)) {
                             LV_EXPR_ERROR = XPE_MISSING_BODY;
                             rollback(decl, top);
                             lv_expr_free(text, len);
                             lv_expr_free(cond, clen);
                             return head;
                         }
+                        head = head->next;
                     } else if(head->start[0] == ';') {
                         LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                         rollback(decl, top);
@@ -398,7 +400,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             LV_EXPR_ERROR = XPE_MISSING_BODY;
             rollback(decl, top);
             lv_expr_free(text, len);
-            return NULL;
+            return beginningToken;
         } else if(prevCondBranch) {
             //set locals jump to the first instruction of the body
             TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;

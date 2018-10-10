@@ -75,6 +75,7 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
     *bodyTok = context.head;
     INCR_HEAD(context.head);
     //is this a named function? If so, get fixing as well
+    Token* functionName = context.head; //save for later
     parseNameAndFixing();
     if(LV_EXPR_ERROR) {
         *bodyTok = context.head;
@@ -107,7 +108,7 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
     if((context.arity == 0 && context.fixing != FIX_PRE)
     || (context.arity == 1 && context.fixing == FIX_RIGHT_IN)) {
         LV_EXPR_ERROR = XPE_BAD_FIXING;
-        *bodyTok = context.head;
+        *bodyTok = functionName;
         return NULL;
     }
     //holds the parameters (formal, captured, and local) and their names

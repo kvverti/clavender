@@ -16,6 +16,16 @@ typedef struct TextStack {
 
 static void pushStack(TextStack* stack, TextBufferObj* obj);
 
+// kept in sync with cxt.ops. It's hacky, but requires minimal
+// changes. This whole stack thing should be refactored anyway.
+typedef struct TokenStack {
+    size_t len;
+    Token** top;
+    Token** stack;
+} TokenStack;
+
+static void pushToken(TokenStack* stack, Token* tok);
+
 typedef struct IntStack {
     size_t len;
     int* top;
@@ -33,6 +43,7 @@ typedef struct ExprContext {
     int nesting;            //how nested in brackets we are
     TextStack ops;          //the temporary operator stack
     TextStack out;          //the output stack
+    TokenStack tok;         //the stack for ops' tokens, used for error
     IntStack params;        //the parameter stack
 } ExprContext;
 
@@ -59,6 +70,7 @@ static bool shuntOps(ExprContext* cxts);
         lv_expr_cleanup(cxt.ops.stack, cxt.ops.top - cxt.ops.stack + 1); \
         lv_free(cxt.out.stack); \
         lv_free(cxt.ops.stack); \
+        lv_free(cxt.tok.stack); \
         lv_free(cxt.params.stack); \
         return cxt.head; \
     } else (void)0
@@ -85,6 +97,10 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.ops.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     cxt.ops.top = cxt.ops.stack;
     cxt.ops.stack[0].type = OPT_LITERAL;
+    cxt.tok.len = INIT_STACK_LEN;
+    cxt.tok.stack = lv_alloc(INIT_STACK_LEN * sizeof(Token*));
+    cxt.tok.top = cxt.tok.stack;
+    cxt.tok.stack[0] = NULL;
     cxt.params.len = INIT_STACK_LEN;
     cxt.params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
     cxt.params.top = cxt.params.stack;
@@ -137,6 +153,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     *len = cxt.out.top - cxt.out.stack + 1;
     //calling plain lv_free is ok because ops is empty
     lv_free(cxt.ops.stack);
+    lv_free(cxt.tok.stack);
     lv_free(cxt.params.stack);
     return cxt.head;
 }
@@ -586,6 +603,18 @@ static void pushStack(TextStack* stack, TextBufferObj* obj) {
     *++stack->top = *obj;
 }
 
+static void pushToken(TokenStack* stack, Token* tok) {
+
+    if(stack->top + 1 == stack->stack + stack->len) {
+        stack->len *= 2;
+        size_t sz = stack->top - stack->stack;
+        stack->stack = lv_realloc(stack->stack,
+            stack->len * sizeof(Token*));
+        stack->top = stack->stack + sz;
+    }
+    *++stack->top = tok;
+}
+
 static void pushParam(IntStack* stack, int num) {
 
     if(stack->top + 1 == stack->stack + stack->len) {
@@ -645,10 +674,11 @@ static int arityFor(Operator* func, Operator* scope) {
 //Returns whether an error occurred.
 static bool shuntOps(ExprContext* cxt) {
 
-    if(isLiteral(cxt->ops.top, ']'))
+    if(isLiteral(cxt->ops.top, ']')) {
         handleRightBracket(cxt);
-    else {
-        TextBufferObj* tmp = cxt->ops.top--;
+        return LV_EXPR_ERROR == 0;
+    } else {
+        TextBufferObj* tmp = cxt->ops.top;
         //if we need to push capture params onto the out stack,
         //we do so now, because we don't know the enclosing
         //function's arity at runtime.
@@ -664,8 +694,7 @@ static bool shuntOps(ExprContext* cxt) {
                 obj.callArity = ar - (tmp->func->arity - 1);
                 if(obj.callArity < 0) {
                     LV_EXPR_ERROR = XPE_BAD_ARITY;
-                    //repush tmp so it gets cleaned up
-                    pushStack(&cxt->ops, tmp);
+                    cxt->head = *cxt->tok.top;
                     return false;
                 }
                 //adjust arity to match fixed function arity
@@ -685,6 +714,7 @@ static bool shuntOps(ExprContext* cxt) {
             pushStack(&cxt->out, tmp);
             if((tmp->func->arity - tmp->func->captureCount) != ar) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
+                cxt->head = *cxt->tok.top;
                 return false;
             }
         } else if(tmp->type == OPT_FUNC_CALL2) {
@@ -692,6 +722,8 @@ static bool shuntOps(ExprContext* cxt) {
             int ar = *cxt->params.top--;
             if(ar < 0) {
                 LV_EXPR_ERROR = XPE_BAD_ARITY;
+                cxt->head = *cxt->tok.top;
+                return false;
             } else {
                 tmp->callArity = ar;
                 pushStack(&cxt->out, tmp);
@@ -699,8 +731,10 @@ static bool shuntOps(ExprContext* cxt) {
         } else {
             pushStack(&cxt->out, tmp);
         }
+        cxt->ops.top--;
+        cxt->tok.top--;
+        return true;
     }
-    return LV_EXPR_ERROR == 0;
 }
 
 /**
@@ -763,16 +797,19 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             case '(':
                 //push left paren and push new param count
                 pushStack(&cxt->ops, obj);
+                pushToken(&cxt->tok, cxt->head);
                 break;
             case '[':
                 //push to op stack and add to out
                 pushStack(&cxt->ops, obj);
+                pushToken(&cxt->tok, cxt->head);
                 pushStack(&cxt->out, obj);
                 break;
             case '{':
                 //push '{' to ops and push -1 to params
                 fixArityFirstArg(cxt);
                 pushStack(&cxt->ops, obj);
+                pushToken(&cxt->tok, cxt->head);
                 pushParam(&cxt->params, -1);
                 break;
             case '}': {
@@ -785,6 +822,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                     REQUIRE_NONEMPTY(cxt->ops);
                 }
                 cxt->ops.top--;
+                cxt->tok.top--;
                 assert(cxt->params.top != cxt->params.stack);
                 int arity = *cxt->params.top--;
                 if(arity < 0) //{} construct
@@ -824,6 +862,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                     REQUIRE_NONEMPTY(cxt->ops);
                 }
                 cxt->ops.top--;
+                cxt->tok.top--;
                 break;
             case ',':
                 //shunt ops until a left paren or left brace
@@ -877,6 +916,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
             pushStack(&cxt->ops, obj);
             pushStack(&cxt->ops, &lparen);
+            pushToken(&cxt->tok, cxt->head);
+            pushToken(&cxt->tok, cxt->head);
             //func call 2 is an 'infix' operator
             pushParam(&cxt->params, -2);
         } else {
@@ -901,6 +942,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         }
         //push the actual operator on ops
         pushStack(&cxt->ops, obj);
+        pushToken(&cxt->tok, cxt->head);
         //negative numbers are fix for when the first params aren't there.
         //We cannot detect the initial params with commas, so we must rely
         //on the params themselves to detect this negative value and set
