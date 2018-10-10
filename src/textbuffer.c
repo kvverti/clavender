@@ -240,7 +240,7 @@ static void rollback(Operator* decl, size_t top) {
 static bool isExprEnd(Token* head) {
 
     //')' and ']' and '}' mark the end of the expression, ';' delimits conditionals
-    return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == '}' || head->value[0] == ';';
+    return !head || head->start[0] == ')' || head->start[0] == ']' || head->start[0] == '}' || head->start[0] == ';';
 }
 
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
@@ -279,7 +279,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         return head;
     }
     //test for native impl (note native impls are not allowed locals)
-    if(strcmp(head->value, "native") == 0) {
+    if(lv_tkn_cmp(head, "native") == 0) {
         head = head->next;
         if(!isExprEnd(head)) {
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
@@ -326,13 +326,13 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         }
         TextBufferObj end;
         if(head) {
-            if(strcmp(head->value, "=>") == 0) {
+            if(lv_tkn_cmp(head, "=>") == 0) {
                 //can't have two bodies
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 rollback(decl, top);
                 lv_expr_free(text, len);
                 return head;
-            } else if(head->value[0] == ';') {
+            } else if(head->start[0] == ';') {
                 conditional = true;
                 if(!head->next) { //a body is required
                     LV_EXPR_ERROR = XPE_MISSING_BODY;
@@ -371,7 +371,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                 prevCondBranch = textBufferTop - 1;
                 //another function body?
                 if(head) {
-                    if(strcmp(head->value, "=>") == 0) {
+                    if(lv_tkn_cmp(head, "=>") == 0) {
                         head = head->next;
                         if(isExprEnd(head)) {
                             LV_EXPR_ERROR = XPE_MISSING_BODY;
@@ -380,7 +380,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                             lv_expr_free(cond, clen);
                             return head;
                         }
-                    } else if(head->value[0] == ';') {
+                    } else if(head->start[0] == ';') {
                         LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                         rollback(decl, top);
                         lv_expr_free(text, len);

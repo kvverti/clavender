@@ -31,7 +31,6 @@ static void parseArity(void);
 static void parseLocals(Token* head); //called by parseArity
 static void parseNameAndFixing(void);
 static void setupArgsArray(Param params[]);
-static void buildFuncName(void);
 
 static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyTok);
 

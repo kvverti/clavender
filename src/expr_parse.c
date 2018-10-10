@@ -94,7 +94,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     do {
         //is this a def?
         TextBufferObj obj;
-        if(strcmp(cxt.head->value, "def") == 0) {
+        if(lv_tkn_cmp(cxt.head, "def") == 0) {
             //must be expecting an operand
             if(!cxt.expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_INF;
@@ -109,7 +109,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
             obj.func = op;
             shuntingYard(&obj, &cxt);
             IF_ERROR_CLEANUP;
-        } else if(strcmp(cxt.head->value, "=>") == 0) {
+        } else if(lv_tkn_cmp(cxt.head, "=>") == 0) {
             //end of conditional
             break;
         } else {
@@ -117,7 +117,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
             parseTextObj(&obj, &cxt);
             IF_ERROR_CLEANUP;
             //detect end of expr before we parse
-            if(cxt.nesting < 0 || cxt.head->value[0] == ';')
+            if(cxt.nesting < 0 || cxt.head->start[0] == ';')
                 break;
             shuntingYard(&obj, &cxt);
             IF_ERROR_CLEANUP;
@@ -252,7 +252,7 @@ static char* concat(char* a, int alen, char* b, int blen) {
 static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
 
     obj->type = OPT_LITERAL;
-    obj->literal = cxt->head->value[0];
+    obj->literal = cxt->head->start[0];
     switch(obj->literal) {
         case '(':
             if(!cxt->expectOperand) {
@@ -308,7 +308,7 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
         cxt->expectOperand = true;
 }
 
-static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
+static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* _name, size_t nameLen, ExprContext* cxt) {
 
     //we find the function with the simple name
     //in the innermost scope possible by going
@@ -316,9 +316,11 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
     //a function definition. Only if there is
     //no function name in the scope ladder do
     //we go for imported function names.
-    size_t valueLen = strlen(name);
     char* nsbegin = cxt->decl->name;
     Operator* func = NULL;
+    char name[nameLen + 1];
+    memcpy(name, _name, nameLen);
+    name[nameLen] = '\0';
     //change ':' to '#' in names
     {
         char* c = name;
@@ -331,7 +333,7 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
         char* fname = concat(cxt->decl->name,   //beginning of scope
             nsbegin - cxt->decl->name,          //length of scope name
             name,                               //name to check
-            valueLen);                          //length of name
+            nameLen);                          //length of name
         Operator* test = lv_op_getOperator(fname, ns);
         lv_free(fname);
         if(test)
@@ -367,12 +369,15 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* name, Ex
 static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
 
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseSymbolImpl(obj, ns, cxt->head->value, cxt);
+    parseSymbolImpl(obj, ns, cxt->head->start, cxt->head->len, cxt);
 }
 
-static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, ExprContext* cxt) {
+static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* _name, size_t nameLen, ExprContext* cxt) {
 
     //change ':' to '#' in names, but only after the namespace separator
+    char name[nameLen + 1];
+    memcpy(name, _name, nameLen);
+    name[nameLen] = '\0';
     {
         char* c = strchr(name, ':') + 1;
         while((c = strchr(c, ':')))
@@ -396,7 +401,7 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* name, 
 static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
 
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseQualNameImpl(obj, ns, cxt->head->value, cxt);
+    parseQualNameImpl(obj, ns, cxt->head->start, cxt->head->len, cxt);
 }
 
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
@@ -405,24 +410,24 @@ static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
     }
-    size_t len = strlen(cxt->head->value);
+    size_t len = cxt->head->len;
     FuncNamespace ns;
     //values ending in '\' are infix functions
     //subtract 1 from length so we can skip the initial '\'
-    if(cxt->head->value[len - 1] == '\\') {
+    if(cxt->head->start[len - 1] == '\\') {
         ns = FNS_INFIX;
         //substringing
-        cxt->head->value[len - 1] = '\0';
+        cxt->head->start[len - 1] = '\0';
     } else {
         ns = FNS_PREFIX;
     }
     if(cxt->head->type == TTY_QUAL_FUNC_VAL)
-        parseQualNameImpl(obj, ns, cxt->head->value + 1, cxt);
+        parseQualNameImpl(obj, ns, cxt->head->start + 1, cxt->head->len - 1, cxt);
     else
-        parseSymbolImpl(obj, ns, cxt->head->value + 1, cxt);
+        parseSymbolImpl(obj, ns, cxt->head->start + 1, cxt->head->len - 1, cxt);
     //undo substringing
     if(ns == FNS_INFIX)
-        cxt->head->value[len - 1] = '\\';
+        cxt->head->start[len - 1] = '\\';
     obj->type = OPT_FUNCTION_VAL;
     cxt->expectOperand = false;
 }
@@ -433,7 +438,7 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
         //try parameter names first
         int numParams = cxt->decl->arity + cxt->decl->locals;
         for(int i = 0; i < numParams; i++) {
-            if(strcmp(cxt->head->value, cxt->decl->params[i].name) == 0) {
+            if(lv_tkn_cmp(cxt->head, cxt->decl->params[i].name) == 0) {
                 //save param name
                 obj->type = OPT_PARAM;
                 obj->param = i;
@@ -452,7 +457,7 @@ static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
     }
-    double num = strtod(cxt->head->value, NULL);
+    double num = strtod(cxt->head->start, NULL);
     obj->type = OPT_NUMBER;
     obj->number = num;
     cxt->expectOperand = false;
@@ -464,7 +469,7 @@ static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
     }
-    uint64_t num = (uint64_t) strtoumax(cxt->head->value, NULL, 10);
+    uint64_t num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
     obj->type = OPT_INTEGER;
     obj->integer = num;
     cxt->expectOperand = false;
@@ -476,8 +481,8 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
     }
-    char* c = cxt->head->value + 1; //skip open quote
-    LvString* newStr = lv_alloc(sizeof(LvString) + strlen(c) + 1);
+    char* c = cxt->head->start + 1; //skip open quote
+    LvString* newStr = lv_alloc(sizeof(LvString) + cxt->head->len);
     newStr->refCount = 1; //it will be added to the text buffer
     size_t len = 0;
     while(*c != '"') {
