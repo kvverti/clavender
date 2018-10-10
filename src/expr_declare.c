@@ -28,7 +28,7 @@ static struct DeclContext {
 
 static bool specifiesFixing(void);
 static void parseArity(void);
-static void parseLocals(Token* head); //called by parseArity
+static void parseLocals(void); //called by parseArity
 static void parseNameAndFixing(void);
 static void setupArgsArray(Param params[]);
 
@@ -91,7 +91,7 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
         context.arity = 0;
         *bodyTok = context.head;
         INCR_HEAD(context.head);
-        parseLocals(context.head);
+        parseLocals();
     } else {
         *bodyTok = context.head;
         INCR_HEAD(context.head);
@@ -316,16 +316,16 @@ static bool specifiesFixing(void) {
 static void parseArity(void) {
 
     #define RETVAL
-    Token* head = context.head;
-    assert(head);
-    if(head->start[0] == ')') {
-        INCR_HEAD(head);
-        //important to set before parseLocals
-        //because parseLocals sets context.head if it fails
-        context.head = head;
-        parseLocals(head);
+    Token* oldHead = context.head;
+    assert(context.head);
+    if(context.head->start[0] == ')') {
+        INCR_HEAD(context.head);
+        parseLocals();
         context.arity = 0;
         context.varargs = false;
+        if(!LV_EXPR_ERROR) {
+            context.head = oldHead;
+        }
         return;
     }
     int res = 0;
@@ -337,35 +337,35 @@ static void parseArity(void) {
             return;
         }
         //by name symbol?
-        if(lv_tkn_cmp(head, "=>") == 0) {
+        if(lv_tkn_cmp(context.head, "=>") == 0) {
             //by name symbol
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
         }
-        if(head->type == TTY_ELLIPSIS) {
+        if(context.head->type == TTY_ELLIPSIS) {
             //varargs modifier
             varargs = true;
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
         }
         //is it a param name
-        if(head->type == TTY_IDENT) {
-            if(lv_expr_isReserved(head->start, head->len)) {
+        if(context.head->type == TTY_IDENT) {
+            if(lv_expr_isReserved(context.head->start, context.head->len)) {
                 LV_EXPR_ERROR = XPE_RESERVED_ID;
                 return;
             }
             res++;
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
             //must be a comma or a close paren
-            if(head->start[0] == ')') {
+            if(context.head->start[0] == ')') {
                 //incr past close paren
-                INCR_HEAD(head);
+                INCR_HEAD(context.head);
                 break; //we're done
-            } else if(head->start[0] != ',') {
+            } else if(context.head->start[0] != ',') {
                 //must separate params with commas!
                 LV_EXPR_ERROR = XPE_BAD_ARGS;
                 return;
             } else {
                 //it's a comma, increment
-                INCR_HEAD(head);
+                INCR_HEAD(context.head);
             }
         } else {
             //malformed argument list
@@ -373,9 +373,12 @@ static void parseArity(void) {
             return;
         }
     }
-    parseLocals(head);
+    parseLocals();
     context.arity = res;
     context.varargs = varargs;
+    if(!LV_EXPR_ERROR) {
+        context.head = oldHead; //reset to the beginning og arg list
+    }
     #undef RETVAL
 }
 
@@ -388,57 +391,56 @@ static void parseArity(void) {
  * (this file handles declaring functions). Note that we duplicate the walking
  * (minus the validation) later in setupArgsArray().
  */
-static void parseLocals(Token* head) {
+static void parseLocals(void) {
 
     #define RETVAL
-    if(lv_tkn_cmp(head, "let") == 0) {
+    Token* oldHead = context.head;
+    if(lv_tkn_cmp(context.head, "let") == 0) {
         //this function has defines function locals
         //the locals are of the form <id>(<expr>) , ...
         //and end when we reach the arrow token
         int locals = 0;
-        context.localStart = head->next;
+        context.localStart = context.head->next;
         do {
             locals++;
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
             //check that this is a name
-            if(head->type != TTY_IDENT) {
+            if(context.head->type != TTY_IDENT) {
                 LV_EXPR_ERROR = XPE_BAD_LOCALS;
-                context.head = head;
                 return;
             }
             //that is not reserved
-            if(lv_expr_isReserved(head->start, head->len)) {
+            if(lv_expr_isReserved(context.head->start, context.head->len)) {
                 LV_EXPR_ERROR = XPE_RESERVED_ID;
-                context.head = head;
                 return;
             }
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
             //check for the opening paren
-            if(head->start[0] != '(') {
+            if(context.head->start[0] != '(') {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
-                context.head = head;
                 return;
             }
-            INCR_HEAD(head);
+            INCR_HEAD(context.head);
             //we must remember the number of parens inside the expression
             int numParens = 0;
             do {
                 //check type because empty args exists
-                if(head->type == TTY_LITERAL) {
-                    switch(head->start[0]) {
+                if(context.head->type == TTY_LITERAL) {
+                    switch(context.head->start[0]) {
                         case '(': numParens++; break;
                         case ')': numParens--; break;
                     }
                 }
-                INCR_HEAD(head);
+                INCR_HEAD(context.head);
             } while(numParens >= 0);
             //head should point at a comma or arrow
-        } while(head->start[0] == ',');
+        } while(context.head->start[0] == ',');
         context.locals = locals;
     } else {
         context.localStart = NULL;
         context.locals = 0;
     }
+    context.head = oldHead;
     #undef RETVAL
 }
 
