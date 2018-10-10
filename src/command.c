@@ -160,7 +160,7 @@ static bool wildcardImport(Token* nspace, Token* head, Token** end) {
         //nothing else specified
         *end = head;
         return true;
-    } else if(head->value[0] != ',') {
+    } else if(head->start[0] != ',') {
         lv_cmd_message = "Error: unexpected token";
         return false;
     }

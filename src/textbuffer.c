@@ -495,7 +495,7 @@ static Token* parseFunctionLocals(Operator* decl) {
                 return startOfInit;
             }
         }
-        assert(startOfInit->value[0] == ')');
+        assert(startOfInit->start[0] == ')');
     }
     //push initializer and put operation
     for(size_t i = 0; i < decl->locals; i++) {

@@ -253,15 +253,13 @@ Token* lv_tkn_split(FILE* in) {
         }
         if(type != -1) {
             //create token
-            Token* tok = lv_alloc(sizeof(Token) + (idx - bgn + 1));
+            Token* tok = lv_alloc(sizeof(Token));
             tok->type = type;
             tok->lineNumber = currentFileLine->line;
             tok->line = currentFileLine->data;
             tok->start = buffer + bgn;
             tok->len = idx - bgn;
             tok->next = NULL;
-            memcpy(tok->value, buffer + bgn, idx - bgn);
-            tok->value[idx - bgn] = '\0';
             //append to list
             if(tail)
                 tail->next = tok;

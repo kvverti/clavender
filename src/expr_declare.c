@@ -270,7 +270,7 @@ static void setupArgsArray(Param params[]) {
         params[i].name[currentLocal->len] = '\0';
         currentLocal = currentLocal->next;
         //consume open paren
-        assert(currentLocal->value[0] == '(');
+        assert(currentLocal->start[0] == '(');
         currentLocal = currentLocal->next;
         //keep track of nesting so we know when to stop
         int parenNesting = 0;

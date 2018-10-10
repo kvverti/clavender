@@ -218,10 +218,10 @@ static bool isFuncDef(Token* head) {
 
     //functions may have one level of parens
     assert(head);
-    if(head->type == TTY_LITERAL && head->value[0] == '(') {
+    if(head->type == TTY_LITERAL && head->start[0] == '(') {
         head = head->next;
     }
-    return head && strcmp(head->value, "def") == 0;
+    return head && lv_tkn_cmp(head, "def") == 0;
 }
 
 static void printError(Token* err, char* groupMessage) {
@@ -331,7 +331,7 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         //empty line
         return true;
     }
-    if(head->value[0] == '@') {
+    if(head->start[0] == '@') {
         //runtime command
         //push next and free '@' token
         HelperDeclObj toPush = { NULL, head, head->next };
@@ -381,7 +381,7 @@ static void readInput(FILE* in, bool repl) {
     }
     if(toks) {
         //it's not going into the list, auto alloc is fine
-        if(toks->value[0] == '@') {
+        if(toks->start[0] == '@') {
             Token* cmd = toks->next;
             lv_free(toks); //free '@' token because we may not return
             lv_cmd_run(cmd);

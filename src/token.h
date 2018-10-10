@@ -25,7 +25,6 @@ typedef struct Token {
     size_t len;     //length of token text in source
     int lineNumber;
     struct Token* next;
-    char value[];
 } Token;
 
 typedef enum TokenError {
