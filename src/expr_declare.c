@@ -21,6 +21,8 @@ static struct DeclContext {
     int locals;           //number of function locals
     Token* localStart;    //start of function local list
     Fixing fixing;        //function fixing
+    Param* args;
+    size_t numArgs;
     bool varargs;
 } context;
 
@@ -31,7 +33,26 @@ static void parseNameAndFixing(void);
 static void setupArgsArray(Param params[]);
 static void buildFuncName(void);
 
+static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyTok);
+
 Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok) {
+
+    context.name = NULL;
+    context.args = NULL;
+    context.numArgs = 0;
+    Operator* res = declareFunctionImpl(tok, nspace, bodyTok);
+    if(!res) {
+        //cleanup
+        for(size_t i = 0; i < context.numArgs; i++) {
+            lv_free(context.args[i].name);
+        }
+        lv_free(context.args);
+        lv_free(context.name);
+    }
+    return res;
+}
+
+static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyTok) {
 
     #define RETVAL NULL
     if(LV_EXPR_ERROR) {
@@ -43,10 +64,10 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     context.head = tok;
     context.nspace = nspace;
     //skip opening paren if one is present
-    if(context.head->type == TTY_LITERAL && context.head->value[0] == '(') {
+    if(context.head->type == TTY_LITERAL && context.head->start[0] == '(') {
         context.head = context.head->next;
     }
-    if(!context.head || strcmp(context.head->value, "def") != 0) {
+    if(!context.head || lv_tkn_cmp(context.head, "def") != 0) {
         //this is not a function!
         LV_EXPR_ERROR = XPE_NOT_FUNCT;
         *bodyTok = context.head;
@@ -60,7 +81,7 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         *bodyTok = context.head;
         return NULL;
     }
-    if(context.head->type == TTY_LITERAL && context.head->value[0] != '(') {
+    if(context.head->type == TTY_LITERAL && context.head->start[0] != '(') {
         //we require a left paren before the arguments
         LV_EXPR_ERROR = XPE_EXPT_ARGS;
         *bodyTok = context.head;
@@ -91,15 +112,16 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         return NULL;
     }
     //holds the parameters (formal, captured, and local) and their names
-    int totalParams = context.arity + nspace->arity + nspace->locals + context.locals;
-    Param args[totalParams];
+    int totalParams = context.numArgs = context.arity + nspace->arity + nspace->locals + context.locals;
+    Param* args = context.args = lv_alloc(totalParams * sizeof(Param));
+    memset(args, 0, totalParams * sizeof(Param));
     //set up the args array
     setupArgsArray(args);
     if(LV_EXPR_ERROR) {
         *bodyTok = context.head;
         return NULL;
     }
-    if(strcmp(context.head->value, "=>") != 0) {
+    if(lv_tkn_cmp(context.head, "=>") != 0) {
         //sorry, a function body is required
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         *bodyTok = context.head;
@@ -111,7 +133,7 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
     *bodyTok = context.head;
     INCR_HEAD(context.head);
     //build the function name
-    buildFuncName();
+    // buildFuncName();
     FuncNamespace ns = context.fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
     //check to see if this function was defined twice
     Operator* funcObj = lv_op_getOperator(context.name, ns);
@@ -119,7 +141,6 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         //let's disallow entirely
         LV_EXPR_ERROR = XPE_DUP_DECL;
         *bodyTok = tok;
-        lv_free(context.name);
         return NULL;
     } else {
         //add a new one
@@ -131,16 +152,9 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
         funcObj->fixing = context.fixing;
         funcObj->captureCount = nspace->arity + nspace->locals;
         funcObj->locals = context.locals;
-        funcObj->params = lv_alloc(totalParams * sizeof(Param));
+        funcObj->params = args;
         funcObj->varargs = context.varargs;
         funcObj->enclosing = nspace;
-        memcpy(funcObj->params, args, totalParams * sizeof(Param));
-        //copy param names
-        for(int i = 0; i < totalParams; i++) {
-            char* name = lv_alloc(strlen(args[i].name) + 1);
-            strcpy(name, args[i].name);
-            funcObj->params[i].name = name;
-        }
         lv_op_addOperator(funcObj, ns);
         *bodyTok = context.head;
         return funcObj;
@@ -153,6 +167,9 @@ Operator* lv_expr_declareFunction(Token* tok, Operator* nspace, Token** bodyTok)
 static void parseNameAndFixing(void) {
 
     #define RETVAL
+    char nul = '\0';
+    char* name;
+    size_t nameLen;
     switch(context.head->type) {
         case TTY_IDENT:
         case TTY_FUNC_SYMBOL:
@@ -160,13 +177,15 @@ static void parseNameAndFixing(void) {
             //save the name
             //check fixing
             if(specifiesFixing()) {
-                context.fixing = context.head->value[0];
-                context.name = context.head->value + 2;
+                context.fixing = context.head->start[0];
+                name = context.head->start + 2;
+                nameLen = context.head->len - 2;
             } else {
                 context.fixing = FIX_PRE;
-                context.name = context.head->value;
+                name = context.head->start;
+                nameLen = context.head->len;
             }
-            if(lv_expr_isReserved(context.name)) {
+            if(lv_expr_isReserved(name, nameLen)) {
                 LV_EXPR_ERROR = XPE_RESERVED_ID;
                 return;
             }
@@ -174,8 +193,25 @@ static void parseNameAndFixing(void) {
             break;
         default:
             context.fixing = FIX_PRE;
-            context.name = "";
+            name = &nul;
+            nameLen = 0;
     }
+    //slap the namespace name on it
+    //plus 1 for the colon
+    int nsOffset = strlen(context.nspace->name) + 1;
+    //plus 1 for the colon, plus 1 for the NUL terminator
+    char* fqn = lv_alloc(strlen(context.nspace->name) + nameLen + 2);
+    strncpy(fqn + nsOffset, name, nameLen);
+    fqn[nsOffset + nameLen] = '\0';
+    //change ':' in symbolic name to '#'
+    //because namespaces use ':' as a separator
+    char* colon = fqn + nsOffset;
+    while((colon = strchr(colon, ':')))
+        *colon = '#';
+    //add namespace
+    strcpy(fqn, context.nspace->name);
+    fqn[nsOffset - 1] = ':';
+    context.name = fqn;
     #undef RETVAL
 }
 
@@ -205,7 +241,9 @@ static void setupArgsArray(Param params[]) {
             context.head = context.head->next;
         }
         assert(context.head->type == TTY_IDENT);
-        params[i].name = context.head->value;
+        params[i].name = lv_alloc(context.head->len + 1);
+        memcpy(params[i].name, context.head->start, context.head->len);
+        params[i].name[context.head->len] = '\0';
         assert(context.head->next->type == TTY_LITERAL);
         context.head = context.head->next->next; //skip comma or close paren
     }
@@ -213,6 +251,14 @@ static void setupArgsArray(Param params[]) {
     memcpy(params + arity, context.nspace->params,
         (context.nspace->arity + context.nspace->locals) * sizeof(Param));
     int offset = arity + context.nspace->arity + context.nspace->locals;
+    for(size_t i = arity; i < offset; i++) {
+        //copy param names
+        Param* param = &context.nspace->params[i - arity];
+        size_t len = strlen(param->name);
+        params[i].name = lv_alloc(len + 1);
+        memcpy(params[i].name, param->name, len);
+        params[i].name[len] = '\0';
+    }
     //assign function locals
     Token* currentLocal = context.localStart;
     for(int i = offset; i < (offset + context.locals); i++) {
@@ -220,7 +266,9 @@ static void setupArgsArray(Param params[]) {
         params[i].byName = false;
         //get local name from currentLocal
         assert(currentLocal->type == TTY_IDENT);
-        params[i].name = currentLocal->value;
+        params[i].name = lv_alloc(currentLocal->len + 1);
+        memcpy(params[i].name, currentLocal->start, currentLocal->len);
+        params[i].name[currentLocal->len] = '\0';
         currentLocal = currentLocal->next;
         //consume open paren
         assert(currentLocal->value[0] == '(');
@@ -232,7 +280,7 @@ static void setupArgsArray(Param params[]) {
         do {
             //check type because empty args exists
             if(currentLocal->type == TTY_LITERAL) {
-                switch(currentLocal->value[0]) {
+                switch(currentLocal->start[0]) {
                     case '(': parenNesting++; break;
                     case ')': parenNesting--; break;
                 }
@@ -240,7 +288,7 @@ static void setupArgsArray(Param params[]) {
             currentLocal = currentLocal->next;
         } while(parenNesting >= 0);
         //consume the comma
-        if(currentLocal->value[0] == ',') {
+        if(currentLocal->start[0] == ',') {
             INCR_HEAD(currentLocal);
         }
         context.head = currentLocal;
@@ -254,10 +302,10 @@ static bool specifiesFixing(void) {
         case TTY_FUNC_SYMBOL:
             return true;
         case TTY_IDENT: {
-            char c = context.head->value[0];
+            char c = context.head->start[0];
             return (c == 'i' || c == 'r' || c == 'u')
-                && context.head->value[1] == '_'
-                && context.head->value[2] != '\0';
+                && context.head->len > 2
+                && context.head->start[1] == '_';
         }
         default:
             return false;
@@ -271,7 +319,7 @@ static void parseArity(void) {
     #define RETVAL
     Token* head = context.head;
     assert(head);
-    if(head->value[0] == ')') {
+    if(head->start[0] == ')') {
         INCR_HEAD(head);
         //important to set before parseLocals
         //because parseLocals sets context.head if it fails
@@ -290,7 +338,7 @@ static void parseArity(void) {
             return;
         }
         //by name symbol?
-        if(strcmp(head->value, "=>") == 0) {
+        if(lv_tkn_cmp(head, "=>") == 0) {
             //by name symbol
             INCR_HEAD(head);
         }
@@ -301,18 +349,18 @@ static void parseArity(void) {
         }
         //is it a param name
         if(head->type == TTY_IDENT) {
-            if(lv_expr_isReserved(head->value)) {
+            if(lv_expr_isReserved(head->start, head->len)) {
                 LV_EXPR_ERROR = XPE_RESERVED_ID;
                 return;
             }
             res++;
             INCR_HEAD(head);
             //must be a comma or a close paren
-            if(head->value[0] == ')') {
+            if(head->start[0] == ')') {
                 //incr past close paren
                 INCR_HEAD(head);
                 break; //we're done
-            } else if(head->value[0] != ',') {
+            } else if(head->start[0] != ',') {
                 //must separate params with commas!
                 LV_EXPR_ERROR = XPE_BAD_ARGS;
                 return;
@@ -344,7 +392,7 @@ static void parseArity(void) {
 static void parseLocals(Token* head) {
 
     #define RETVAL
-    if(strcmp(head->value, "let") == 0) {
+    if(lv_tkn_cmp(head, "let") == 0) {
         //this function has defines function locals
         //the locals are of the form <id>(<expr>) , ...
         //and end when we reach the arrow token
@@ -360,14 +408,14 @@ static void parseLocals(Token* head) {
                 return;
             }
             //that is not reserved
-            if(lv_expr_isReserved(head->value)) {
+            if(lv_expr_isReserved(head->start, head->len)) {
                 LV_EXPR_ERROR = XPE_RESERVED_ID;
                 context.head = head;
                 return;
             }
             INCR_HEAD(head);
             //check for the opening paren
-            if(head->value[0] != '(') {
+            if(head->start[0] != '(') {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 context.head = head;
                 return;
@@ -378,7 +426,7 @@ static void parseLocals(Token* head) {
             do {
                 //check type because empty args exists
                 if(head->type == TTY_LITERAL) {
-                    switch(head->value[0]) {
+                    switch(head->start[0]) {
                         case '(': numParens++; break;
                         case ')': numParens--; break;
                     }
@@ -386,7 +434,7 @@ static void parseLocals(Token* head) {
                 INCR_HEAD(head);
             } while(numParens >= 0);
             //head should point at a comma or arrow
-        } while(head->value[0] == ',');
+        } while(head->start[0] == ',');
         context.locals = locals;
     } else {
         context.localStart = NULL;
@@ -395,23 +443,23 @@ static void parseLocals(Token* head) {
     #undef RETVAL
 }
 
-static void buildFuncName(void) {
-
-    //plus 1 for the colon
-    int nsOffset = strlen(context.nspace->name) + 1;
-    //plus 1 for the colon, plus 1 for the NUL terminator
-    char* fqn = lv_alloc(strlen(context.nspace->name) + strlen(context.name) + 2);
-    strcpy(fqn + nsOffset, context.name);
-    //change ':' in symbolic name to '#'
-    //because namespaces use ':' as a separator
-    char* colon = fqn + nsOffset;
-    while((colon = strchr(colon, ':')))
-        *colon = '#';
-    //add namespace
-    strcpy(fqn, context.nspace->name);
-    fqn[nsOffset - 1] = ':';
-    context.name = fqn;
-}
+// static void buildFuncName(void) {
+//
+//     //plus 1 for the colon
+//     int nsOffset = strlen(context.nspace->name) + 1;
+//     //plus 1 for the colon, plus 1 for the NUL terminator
+//     char* fqn = lv_alloc(strlen(context.nspace->name) + strlen(context.name) + 2);
+//     strcpy(fqn + nsOffset, context.name);
+//     //change ':' in symbolic name to '#'
+//     //because namespaces use ':' as a separator
+//     char* colon = fqn + nsOffset;
+//     while((colon = strchr(colon, ':')))
+//         *colon = '#';
+//     //add namespace
+//     strcpy(fqn, context.nspace->name);
+//     fqn[nsOffset - 1] = ':';
+//     context.name = fqn;
+// }
 
 #undef INCR_HEAD
 #undef REQUIRE_MORE_TOKENS

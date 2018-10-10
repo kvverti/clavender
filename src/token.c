@@ -19,6 +19,14 @@ static TokenType getFuncVal(void);
 static TokenType getNumber(void);
 static TokenType getLiteral(void);
 
+int lv_tkn_cmp(Token* tok, char* val) {
+    size_t len = strlen(val);
+    if(len == tok->len) {
+        return strncmp(tok->start, val, len);
+    }
+    return tok->len < len ? -1 : 1;
+}
+
 char* lv_tkn_getError(TokenError err) {
 
     #define LEN 8

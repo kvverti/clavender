@@ -61,6 +61,11 @@ Token* lv_tkn_split(FILE* input);
 void lv_tkn_free(Token* head);
 
 /**
+ * Wrapper for strcmp with token names.
+ */
+int lv_tkn_cmp(Token* tok, char* val);
+
+/**
  * Resets the internal line number count to 1.
  */
 void lv_tkn_resetLine(void);

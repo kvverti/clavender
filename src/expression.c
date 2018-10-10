@@ -5,13 +5,20 @@
 #include <assert.h>
 #include <string.h>
 
-bool lv_expr_isReserved(char* id) {
-    return strcmp(id, "def") == 0
-        || strcmp(id, "let") == 0
-        || strcmp(id, "do") == 0
-        || strcmp(id, "native") == 0
-        || strcmp(id, "=>") == 0
-        || strcmp(id, "<-") == 0;
+bool lv_expr_isReserved(char* id, size_t len) {
+    switch(len) {
+        case 3:
+            return strncmp(id, "def", len) == 0
+                || strncmp(id, "let", len) == 0;
+        case 2:
+            return strncmp(id, "do", len) == 0
+                || strncmp(id, "=>", len) == 0
+                || strncmp(id, "<-", len) == 0;
+        case 6:
+            return strncmp(id, "native", len) == 0;
+        default:
+            return false;
+    }
 }
 
 char* lv_expr_getError(ExprError error) {

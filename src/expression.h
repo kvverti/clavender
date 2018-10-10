@@ -29,7 +29,7 @@ char* lv_expr_getError(ExprError error);
 /**
  * Returns whether the given string represents a reserved word.
  */
-bool lv_expr_isReserved(char* id);
+bool lv_expr_isReserved(char* id, size_t len);
 
 /**
  * Declares a function.
