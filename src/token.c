@@ -77,12 +77,13 @@ void lv_tkn_releaseFile(FILE* file) {
 
     SourceFileLine** line = &currentFileLine;
     while(*line) {
-        SourceFileLine** next = &(*line)->next;
         if((*line)->file == file) {
+            SourceFileLine* next = (*line)->next;
             lv_free(*line);
-            *line = *next;
+            *line = next;
+        } else {
+            line = &(*line)->next;
         }
-        line = next;
     }
 }
 

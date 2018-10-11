@@ -310,6 +310,7 @@ bool lv_readFile(char* name) {
         lv_tkn_free(obj->exprStart);
     }
     lv_free(decls.data);
+    lv_tkn_releaseFile(importFile);
     fclose(importFile);
     lv_free(file);
     return res;
@@ -416,6 +417,7 @@ static void readInput(FILE* in, bool repl) {
             }
         }
     }
+    lv_tkn_releaseFile(in);
     lv_tkn_free(toks);
 }
 
