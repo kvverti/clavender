@@ -237,6 +237,20 @@ static void printError(Token* err, char* groupMessage) {
     }
 }
 
+static void printTokenError(char* groupMessage) {
+
+    printf("On line %d: %s: %s\n",
+        lv_tkn_errContext.lineNumber,
+        groupMessage,
+        lv_tkn_getError(LV_TKN_ERROR));
+    printf("    %s", lv_tkn_errContext.line);
+    size_t len = lv_tkn_errContext.endIdx - lv_tkn_errContext.startIdx;
+    char arrows[len + 1];
+    memset(arrows, '^', len);
+    arrows[len] = '\0';
+    printf("    %*s\n", (int)lv_tkn_errContext.endIdx, arrows);
+}
+
 /** Helper struct to organize function declaration data. */
 typedef struct HelperDeclObj {
     Operator* func;
@@ -321,8 +335,7 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
 
     Token* head = lv_tkn_split(file);
     if(LV_TKN_ERROR) {
-        printf("Error parsing input: %s\nHere: '%s'\n",
-            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
+        printTokenError("Error parsing input");
         LV_TKN_ERROR = 0;
         return false;
     }
@@ -367,8 +380,7 @@ static void readInput(FILE* in, bool repl) {
     }
     Token* toks = lv_tkn_split(in);
     if(LV_TKN_ERROR) {
-        printf("Error parsing input: %s\nHere: '%s'\n",
-            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
+        printTokenError("Error parsing input");
         LV_TKN_ERROR = 0;
         return;
     }

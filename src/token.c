@@ -241,15 +241,11 @@ Token* lv_tkn_split(FILE* in) {
         }
         //check error
         if(LV_TKN_ERROR) {
-            //get the last few chars before the error in the cxt buffer
-            int len;
-            {
-                int a = idx + 1, b = TKN_ERRCXT_LEN - 1;
-                len = a < b ? a : b;
-            }
-            memcpy(lv_tkn_errcxt, buffer + idx + 1 - len, len);
-            lv_tkn_errcxt[len] = '\0';
             lv_tkn_free(head);
+            lv_tkn_errContext.line = currentFileLine->data;
+            lv_tkn_errContext.lineNumber = currentFileLine->line;
+            lv_tkn_errContext.startIdx = bgn;
+            lv_tkn_errContext.endIdx = idx;
             return NULL;
         }
         if(type != -1) {
