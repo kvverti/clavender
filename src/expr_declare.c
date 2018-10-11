@@ -133,7 +133,6 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
     *bodyTok = context.head;
     INCR_HEAD(context.head);
     //build the function name
-    // buildFuncName();
     FuncNamespace ns = context.fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
     //check to see if this function was defined twice
     Operator* funcObj = lv_op_getOperator(context.name, ns);
@@ -444,24 +443,6 @@ static void parseLocals(void) {
     context.head = oldHead;
     #undef RETVAL
 }
-
-// static void buildFuncName(void) {
-//
-//     //plus 1 for the colon
-//     int nsOffset = strlen(context.nspace->name) + 1;
-//     //plus 1 for the colon, plus 1 for the NUL terminator
-//     char* fqn = lv_alloc(strlen(context.nspace->name) + strlen(context.name) + 2);
-//     strcpy(fqn + nsOffset, context.name);
-//     //change ':' in symbolic name to '#'
-//     //because namespaces use ':' as a separator
-//     char* colon = fqn + nsOffset;
-//     while((colon = strchr(colon, ':')))
-//         *colon = '#';
-//     //add namespace
-//     strcpy(fqn, context.nspace->name);
-//     fqn[nsOffset - 1] = ':';
-//     context.name = fqn;
-// }
 
 #undef INCR_HEAD
 #undef REQUIRE_MORE_TOKENS

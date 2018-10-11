@@ -22,7 +22,6 @@ static void runCycle(void);
 static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
-// static Operator* atFunc; //built in sys:__at__
 static Operator atFunc; //built in sys:__at__
 static Operator scope = { .type = FUN_FWD_DECL };
 
@@ -184,7 +183,6 @@ void lv_startup(void) {
     lv_tb_onStartup();
     lv_blt_onStartup();
     lv_cmd_onStartup();
-    // atFunc = lv_op_getOperator("sys:__at__", FNS_PREFIX);
     memset(&atFunc, 0, sizeof(atFunc));
     atFunc.type = FUN_BUILTIN;
     atFunc.name = "sys:__at__";
@@ -336,8 +334,6 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         //push next and free '@' token
         HelperDeclObj toPush = { NULL, head, head->next };
         lv_buf_push(decls, &toPush);
-        // head->next = NULL;
-        // lv_tkn_free(head);
         return true;
     }
     if(!isFuncDef(head)) {
@@ -351,10 +347,6 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     Operator* op = lv_expr_declareFunction(head, scope, &body);
     if(LV_EXPR_ERROR) {
         assert(body);
-        // printf("On line %d: Error parsing function signatures at token '%s': %s\n",
-        //     body->lineNumber,
-        //     body->value,
-        //     lv_expr_getError(LV_EXPR_ERROR));
         printError(body, "Error parsing function signatures");
         LV_EXPR_ERROR = 0;
         lv_tkn_free(head);
@@ -393,10 +385,6 @@ static void readInput(FILE* in, bool repl) {
             scope.name = "repl";    //namespace
             Token* end = lv_tb_defineFunction(toks, &scope, &op);
             if(LV_EXPR_ERROR) {
-                // printf("On line %d: Error parsing function at token '%s': %s\n",
-                //     end ? end->lineNumber : 0,
-                //     end ? end->value : "<end>",
-                //     lv_expr_getError(LV_EXPR_ERROR));
                 printError(end, "Error parsing function");
                 LV_EXPR_ERROR = 0;
             } else {
@@ -408,10 +396,6 @@ static void readInput(FILE* in, bool repl) {
             size_t startIdx, endIdx;
             Token* end = lv_tb_parseExpr(toks, &scope, &startIdx, &endIdx);
             if(LV_EXPR_ERROR) {
-                // printf("On line %d: Error parsing expression at token '%s': %s\n",
-                //     end ? end->lineNumber : 0,
-                //     end ? end->value : "<end>",
-                //     lv_expr_getError(LV_EXPR_ERROR));
                 printError(end, "Error parsing expression");
                 LV_EXPR_ERROR = 0;
             } else {

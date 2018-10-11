@@ -503,7 +503,6 @@ static TokenType getFuncVal(void) {
 
 static TokenType getString(void) {
 
-    //idx = bgn;
     assert(buffer[idx] == '"');
     do {
         if(buffer[idx] == '\\') {

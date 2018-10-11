@@ -300,7 +300,6 @@ static bool import(Token* head) {
         lv_cmd_message = "Import successful";
         return true;
     } else {
-        //lv_cmd_message = "Import failed";
         return false;
     }
 }
