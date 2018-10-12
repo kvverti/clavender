@@ -3,10 +3,30 @@
 #include "operator.h"
 #include "lavender.h"
 #include <assert.h>
+#include <string.h>
+
+bool lv_expr_isReserved(char* id, size_t len) {
+    switch(len) {
+        case 3:
+            return strncmp(id, "def", len) == 0
+                || strncmp(id, "let", len) == 0;
+        case 2:
+            return strncmp(id, "do", len) == 0
+                || strncmp(id, "=>", len) == 0
+                || strncmp(id, "<-", len) == 0;
+        case 6:
+            return strncmp(id, "native", len) == 0;
+        case 1:
+            return id[0] == '_'
+                || id[0] == ':';
+        default:
+            return false;
+    }
+}
 
 char* lv_expr_getError(ExprError error) {
-    #define LEN 14
-    static char* msg[LEN] = {
+    #define LEN (sizeof(msg) / sizeof(char*))
+    static char* msg[] = {
         "Expr does not define a function",
         "Reached end of input while parsing",
         "Expected an argument list",
@@ -20,7 +40,10 @@ char* lv_expr_getError(ExprError error) {
         "Unbalanced parens or brackets",
         "Wrong number of parameters to function",
         "Function arity incompatible with fixing",
-        "Malformed function local list"
+        "Malformed function local list",
+        "Identifier is reserved",
+        "Native function declares locals",
+        "Native implementation not found"
     };
     assert(error > 0 && error <= LEN);
     return msg[error - 1];

@@ -240,27 +240,28 @@ static void rollback(Operator* decl, size_t top) {
 static bool isExprEnd(Token* head) {
 
     //')' and ']' and '}' mark the end of the expression, ';' delimits conditionals
-    return !head || head->value[0] == ')' || head->value[0] == ']' || head->value[0] == '}' || head->value[0] == ';';
+    return !head || head->start[0] == ')' || head->start[0] == ']' || head->start[0] == '}' || head->start[0] == ';';
 }
 
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     //get the function declaration
     Operator* decl = lv_expr_declareFunction(head, scope, &head);
     if(LV_EXPR_ERROR) {
-        return NULL;
+        return head;
     }
     head = lv_tb_defineFunctionBody(head, decl);
     if(LV_EXPR_ERROR)
-        return NULL;
+        return head;
     if(res)
         *res = decl;
     return head;
 }
 
-static bool parseFunctionLocals(Operator* decl);
+static Token* parseFunctionLocals(Operator* decl);
 
 Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
 
+    Token* beginningToken = head;
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
     //function begin, often the same as top, but
@@ -276,27 +277,26 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         //no empty bodies allowed
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         rollback(decl, top);
-        return NULL;
+        return head;
     }
     //test for native impl (note native impls are not allowed locals)
-    if(strcmp(head->value, "native") == 0) {
-        head = head->next;
-        if(!isExprEnd(head)) {
+    if(lv_tkn_cmp(head, "native") == 0) {
+        if(!isExprEnd(head->next)) {
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
             rollback(decl, top);
-            return NULL;
+            return head->next ? head->next : head;
         }
         if(decl->locals > 0) {
-            LV_EXPR_ERROR = XPE_BAD_LOCALS;
+            LV_EXPR_ERROR = XPE_NATIVE_LOCALS;
             rollback(decl, top);
-            return NULL;
+            return head;
         }
         //only intrinsics supported for now
         Builtin func = lv_blt_getIntrinsic(decl->name);
         if(!func) {
-            LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
+            LV_EXPR_ERROR = XPE_NATIVE_NOT_FOUND;
             rollback(decl, top);
-            return NULL;
+            return head;
         }
         for(int i = 0; i < (decl->arity + decl->locals); i++)
             lv_free(decl->params[i].name);
@@ -306,48 +306,51 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         return head;
     }
     //parse function local initializers (if any)
-    setbgn = parseFunctionLocals(decl);
+    Token* err = parseFunctionLocals(decl);
     if(LV_EXPR_ERROR) {
         rollback(decl, top);
-        return NULL;
+        return err;
     }
-    if(setbgn) {
+    if(decl->locals > 0) {
         //set the branch addr to the top for local jump
+        setbgn = true;
         prevCondBranch = textBufferTop - 1;
     }
     while(!isExprEnd(head)) {
         TextBufferObj* text;
         size_t len;
+        Token* old = head;
         head = lv_expr_parseExpr(head, decl, &text, &len);
         if(LV_EXPR_ERROR) {
             rollback(decl, top);
-            return NULL;
+            return head ? head : old;
         }
         TextBufferObj end;
         if(head) {
-            if(strcmp(head->value, "=>") == 0) {
+            if(lv_tkn_cmp(head, "=>") == 0) {
                 //can't have two bodies
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 rollback(decl, top);
                 lv_expr_free(text, len);
-                return NULL;
-            } else if(head->value[0] == ';') {
+                return head;
+            } else if(head->start[0] == ';') {
                 conditional = true;
-                head = head->next;
-                if(!head) { //a body is required
+                if(!head->next) { //a body is required
                     LV_EXPR_ERROR = XPE_MISSING_BODY;
                     rollback(decl, top);
                     lv_expr_free(text, len);
-                    return NULL;
+                    return head;
                 }
+                head = head->next;
                 //it's a conditional
                 TextBufferObj* cond;
                 size_t clen;
+                Token* old = head;
                 head = lv_expr_parseExpr(head, decl, &cond, &clen);
                 if(LV_EXPR_ERROR) {
                     rollback(decl, top);
                     lv_expr_free(text, len);
-                    return NULL;
+                    return head ? head : old;
                 }
                 if(prevCondBranch) {
                     //set the previous beanch statement's relative address.
@@ -370,21 +373,21 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
                 prevCondBranch = textBufferTop - 1;
                 //another function body?
                 if(head) {
-                    if(strcmp(head->value, "=>") == 0) {
-                        head = head->next;
-                        if(isExprEnd(head)) {
+                    if(lv_tkn_cmp(head, "=>") == 0) {
+                        if(isExprEnd(head->next)) {
                             LV_EXPR_ERROR = XPE_MISSING_BODY;
                             rollback(decl, top);
                             lv_expr_free(text, len);
                             lv_expr_free(cond, clen);
-                            return NULL;
+                            return head;
                         }
-                    } else if(head->value[0] == ';') {
+                        head = head->next;
+                    } else if(head->start[0] == ';') {
                         LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                         rollback(decl, top);
                         lv_expr_free(text, len);
                         lv_expr_free(cond, clen);
-                        return NULL;
+                        return head;
                     }
                 }
                 lv_free(cond);
@@ -397,7 +400,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             LV_EXPR_ERROR = XPE_MISSING_BODY;
             rollback(decl, top);
             lv_expr_free(text, len);
-            return NULL;
+            return beginningToken;
         } else if(prevCondBranch) {
             //set locals jump to the first instruction of the body
             TEXT_BUFFER[prevCondBranch].branchAddr = textBufferTop - prevCondBranch;
@@ -456,13 +459,14 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
  * Parses each function local initializer and places the code in sequence
  * before the function proper. The value of the initializer expression
  * is placed into the function local positions using the PUT operation.
- * Returns whether locals were parsed.
+ * Returns NULL if locals were successfully parsed, the erroring token
+ * otherwise.
  */
-static bool parseFunctionLocals(Operator* decl) {
+static Token* parseFunctionLocals(Operator* decl) {
 
     assert(decl->type == FUN_FWD_DECL);
     if(decl->locals == 0) {
-        return false;
+        return NULL;
     }
     //array to store the local initializers
     struct Initializer {
@@ -476,9 +480,9 @@ static bool parseFunctionLocals(Operator* decl) {
         assert(startOfInit);
         struct Initializer* init = &initializers[i - decl->arity];
         startOfInit = lv_expr_parseExpr(startOfInit, decl, &init->code, &init->len);
-        if(!startOfInit) {
+        if(LV_EXPR_ERROR) {
             //there was an error parsing the initializer
-            return false;
+            return startOfInit;
         }
         //startOfInit should now point to the closing paren
         //check that no params >= i are being accessed
@@ -490,10 +494,10 @@ static bool parseFunctionLocals(Operator* decl) {
                 for(size_t k = 0; k < decl->locals; k++) {
                     lv_expr_free(initializers[k].code, initializers[k].len);
                 }
-                return false;
+                return startOfInit;
             }
         }
-        assert(startOfInit->value[0] == ')');
+        assert(startOfInit->start[0] == ')');
     }
     //push initializer and put operation
     for(size_t i = 0; i < decl->locals; i++) {
@@ -507,7 +511,7 @@ static bool parseFunctionLocals(Operator* decl) {
         { .type = OPT_BEQZ, .branchAddr = 0 }
     };
     pushText(jump, 2);
-    return true;
+    return NULL;
 }
 
 static size_t startOfTmpExpr;
@@ -518,7 +522,7 @@ Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* en
     size_t tlen;
     Token* ret = lv_expr_parseExpr(tokens, scope, &tmp, &tlen);
     if(LV_EXPR_ERROR) {
-        return NULL;
+        return ret;
     }
     //add expr to buffer and set start of expr
     startOfTmpExpr = textBufferTop;

@@ -22,7 +22,6 @@ static void runCycle(void);
 static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
-// static Operator* atFunc; //built in sys:__at__
 static Operator atFunc; //built in sys:__at__
 static Operator scope = { .type = FUN_FWD_DECL };
 
@@ -179,11 +178,11 @@ void lv_startup(void) {
     pc = fp = 0;
     lv_buf_init(&stack, sizeof(TextBufferObj));
     lv_buf_init(&importedFiles, sizeof(char*));
+    lv_tkn_onStartup();
     lv_op_onStartup();
     lv_tb_onStartup();
     lv_blt_onStartup();
     lv_cmd_onStartup();
-    // atFunc = lv_op_getOperator("sys:__at__", FNS_PREFIX);
     memset(&atFunc, 0, sizeof(atFunc));
     atFunc.type = FUN_BUILTIN;
     atFunc.name = "sys:__at__";
@@ -198,6 +197,7 @@ void lv_shutdown(void) {
     lv_blt_onShutdown();
     lv_tb_onShutdown();
     lv_op_onShutdown();
+    lv_tkn_onShutdown();
     lv_expr_cleanup(stack.data, stack.len);
     for(size_t i = 0; i < importedFiles.len; i++) {
         lv_free(*(char**)lv_buf_get(&importedFiles, i));
@@ -216,10 +216,39 @@ static bool isFuncDef(Token* head) {
 
     //functions may have one level of parens
     assert(head);
-    if(head->type == TTY_LITERAL && head->value[0] == '(') {
+    if(head->type == TTY_LITERAL && head->start[0] == '(') {
         head = head->next;
     }
-    return head && strcmp(head->value, "def") == 0;
+    return head && lv_tkn_cmp(head, "def") == 0;
+}
+
+static void printError(Token* err, char* groupMessage) {
+
+    printf("On line %d: %s: %s\n",
+        err ? err->lineNumber : 0,
+        groupMessage,
+        lv_expr_getError(LV_EXPR_ERROR));
+    if(err) {
+        printf("    %s", err->line);
+        char arrows[err->len + 1];
+        memset(arrows, '^', err->len);
+        arrows[err->len] = '\0';
+        printf("    %*s\n", (int)((err->start - err->line) + err->len), arrows);
+    }
+}
+
+static void printTokenError(char* groupMessage) {
+
+    printf("On line %d: %s: %s\n",
+        lv_tkn_errContext.lineNumber,
+        groupMessage,
+        lv_tkn_getError(LV_TKN_ERROR));
+    printf("    %s", lv_tkn_errContext.line);
+    size_t len = lv_tkn_errContext.endIdx - lv_tkn_errContext.startIdx;
+    char arrows[len + 1];
+    memset(arrows, '^', len);
+    arrows[len] = '\0';
+    printf("    %*s\n", (int)lv_tkn_errContext.endIdx, arrows);
 }
 
 /** Helper struct to organize function declaration data. */
@@ -258,6 +287,7 @@ bool lv_readFile(char* name) {
     lv_buf_init(&decls, sizeof(HelperDeclObj));
     bool res = true;
     scope.name = name;
+    lv_tkn_resetLine();
     //parse all function declarations (not the bodies)
     //and gather runtime commands
     while(!feof(importFile) && res) {
@@ -279,10 +309,10 @@ bool lv_readFile(char* name) {
                 }
             } else {
                 //function definition
-                lv_tb_defineFunctionBody(obj->body, obj->func);
+                Token* err = lv_tb_defineFunctionBody(obj->body, obj->func);
                 if(LV_EXPR_ERROR) {
                     res = false;
-                    printf("Error parsing function body: %s\n", lv_expr_getError(LV_EXPR_ERROR));
+                    printError(err, "Error parsing function body");
                     LV_EXPR_ERROR = 0;
                     break;
                 }
@@ -294,6 +324,7 @@ bool lv_readFile(char* name) {
         lv_tkn_free(obj->exprStart);
     }
     lv_free(decls.data);
+    lv_tkn_releaseFile(importFile);
     fclose(importFile);
     lv_free(file);
     return res;
@@ -304,8 +335,7 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
 
     Token* head = lv_tkn_split(file);
     if(LV_TKN_ERROR) {
-        printf("Error parsing input: %s\nHere: '%s'\n",
-            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
+        printTokenError("Error parsing input");
         LV_TKN_ERROR = 0;
         return false;
     }
@@ -313,13 +343,11 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         //empty line
         return true;
     }
-    if(head->value[0] == '@') {
+    if(head->start[0] == '@') {
         //runtime command
         //push next and free '@' token
         HelperDeclObj toPush = { NULL, head, head->next };
         lv_buf_push(decls, &toPush);
-        // head->next = NULL;
-        // lv_tkn_free(head);
         return true;
     }
     if(!isFuncDef(head)) {
@@ -329,11 +357,11 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
         return false;
     }
     //declare function
-    Token* body;
+    Token* body = NULL;
     Operator* op = lv_expr_declareFunction(head, scope, &body);
     if(LV_EXPR_ERROR) {
-        printf("Error parsing function signatures: %s\n",
-            lv_expr_getError(LV_EXPR_ERROR));
+        assert(body);
+        printError(body, "Error parsing function signatures");
         LV_EXPR_ERROR = 0;
         lv_tkn_free(head);
         return false;
@@ -341,29 +369,24 @@ static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls) {
     //push declaration and body pointer
     HelperDeclObj toPush = { op, head, body };
     lv_buf_push(decls, &toPush);
-    //free decl tokens only
-    // Token* tmp = head;
-    // while(tmp->next != body)
-    //     tmp = tmp->next;
-    // tmp->next = NULL;
-    // lv_tkn_free(head);
     return true;
 }
 
 static void readInput(FILE* in, bool repl) {
 
-    if(repl)
+    if(repl) {
         printf("> ");
+        lv_tkn_resetLine();
+    }
     Token* toks = lv_tkn_split(in);
     if(LV_TKN_ERROR) {
-        printf("Error parsing input: %s\nHere: '%s'\n",
-            lv_tkn_getError(LV_TKN_ERROR), lv_tkn_errcxt);
+        printTokenError("Error parsing input");
         LV_TKN_ERROR = 0;
         return;
     }
     if(toks) {
         //it's not going into the list, auto alloc is fine
-        if(toks->value[0] == '@') {
+        if(toks->start[0] == '@') {
             Token* cmd = toks->next;
             lv_free(toks); //free '@' token because we may not return
             lv_cmd_run(cmd);
@@ -375,24 +398,18 @@ static void readInput(FILE* in, bool repl) {
             scope.name = "repl";    //namespace
             Token* end = lv_tb_defineFunction(toks, &scope, &op);
             if(LV_EXPR_ERROR) {
-                printf("Error parsing function: %s\n",
-                    lv_expr_getError(LV_EXPR_ERROR));
+                printError(end, "Error parsing function");
                 LV_EXPR_ERROR = 0;
             } else {
                 puts(op->name);
-                if(end)
-                    printf("First token past body: type=%d, value=%s\n",
-                        end->type,
-                        end->value);
             }
         } else {
             //parse expression
-            scope.name = "repl:$";      //expr requires a named function
+            scope.name = "repl:";      //expr requires an enclosing function
             size_t startIdx, endIdx;
             Token* end = lv_tb_parseExpr(toks, &scope, &startIdx, &endIdx);
             if(LV_EXPR_ERROR) {
-                printf("Error parsing expression: %s\n",
-                    lv_expr_getError(LV_EXPR_ERROR));
+                printError(end, "Error parsing expression");
                 LV_EXPR_ERROR = 0;
             } else {
                 pc = startIdx;
@@ -409,13 +426,10 @@ static void readInput(FILE* in, bool repl) {
                 }
                 lv_expr_cleanup(&obj, 1);
                 lv_tb_clearExpr();
-                if(end)
-                    printf("First token past body: type=%d, value=%s\n",
-                        end->type,
-                        end->value);
             }
         }
     }
+    lv_tkn_releaseFile(in);
     lv_tkn_free(toks);
 }
 

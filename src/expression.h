@@ -17,11 +17,19 @@ typedef enum ExprError {
     XPE_BAD_ARITY,      //wrong number of params to function
     XPE_BAD_FIXING,     //arity and fixing not compatible
     XPE_BAD_LOCALS,     //bad function local list
+    XPE_RESERVED_ID,    //identifier is a reserved word
+    XPE_NATIVE_LOCALS,  //native function declares locals
+    XPE_NATIVE_NOT_FOUND, //native impl could not be found
 } ExprError;
 
 ExprError LV_EXPR_ERROR;
 
 char* lv_expr_getError(ExprError error);
+
+/**
+ * Returns whether the given string represents a reserved word.
+ */
+bool lv_expr_isReserved(char* id, size_t len);
 
 /**
  * Declares a function.
@@ -30,7 +38,8 @@ char* lv_expr_getError(ExprError error);
  * first token in the body of the function and returns
  * the declaration object created.
  * If an error occurs, sets LV_EXPR_ERROR
- * and returns NULL.
+ * and returns NULL, and sets bodyTok to point to the token
+ * that caused the error.
  */
 Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyTok);
 
@@ -40,7 +49,8 @@ Operator* lv_expr_declareFunction(Token* tokens, Operator* nspace, Token** bodyT
  * Stores a dynamically allocated list of components in
  * the parameter res and returns the first token after the
  * expression, or NULL if all tokens were consumed.
- * If an error occurs, sets LV_EXPR_ERROR and returns NULL.
+ * If an error occurs, sets LV_EXPR_ERROR and returns the token
+ * that caused the error.
  */
 Token* lv_expr_parseExpr(Token* tokens, Operator* decl, TextBufferObj** res, size_t* len);
 

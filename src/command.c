@@ -26,7 +26,7 @@ bool lv_cmd_run(Token* head) {
         return false;
     }
     for(size_t i = 0; i < NUM_COMMANDS; i++) {
-        if(strcmp(head->value, COMMANDS[i].name) == 0) {
+        if(lv_tkn_cmp(head, COMMANDS[i].name) == 0) {
             return COMMANDS[i].run(head);
         }
     }
@@ -116,17 +116,17 @@ static inline bool isIdent(TokenType type) {
  * Gets the alias from head, returning it, and storing the next
  * unread token in end. Returns false if a problem occurred.
  */
-static bool getAlias(Token* head, char** original, char** alias, Token** end) {
+static bool getAlias(Token* head, Token** original, Token** alias, Token** end) {
 
     //pieces in the form of <id> [as <alias>]
     assert(end);
     if(isIdent(head->type)) {
         //declared id is the default alias
-        *original = head->value;
-        *alias = head->value;
+        *original = head;
+        *alias = head;
         head = head->next;
         if(head) {
-            if(strcmp(head->value, "as") == 0) {
+            if(lv_tkn_cmp(head, "as") == 0) {
                 head = head->next;
                 //this token had better be an alias
                 if(!head || !isIdent(head->type)) {
@@ -134,7 +134,7 @@ static bool getAlias(Token* head, char** original, char** alias, Token** end) {
                     return false;
                 }
                 //new alias specified
-                *alias = head->value;
+                *alias = head;
                 head = head->next;
             }
         }
@@ -146,20 +146,21 @@ static bool getAlias(Token* head, char** original, char** alias, Token** end) {
     }
 }
 
-static bool wildcardImport(char* nspace, Token* head, Token** end) {
+static bool wildcardImport(Token* nspace, Token* head, Token** end) {
     //using everything!
     char* scope;
     {
-        size_t len = strlen(nspace) + 1;
-        scope = lv_alloc(len);
-        memcpy(scope, nspace, len);
+        size_t len = nspace->len;
+        scope = lv_alloc(len + 1);
+        memcpy(scope, nspace->start, len);
+        scope[len] = '\0';
     }
     addScope(scope);
     if(!head) {
         //nothing else specified
         *end = head;
         return true;
-    } else if(head->value[0] != ',') {
+    } else if(head->start[0] != ',') {
         lv_cmd_message = "Error: unexpected token";
         return false;
     }
@@ -173,16 +174,16 @@ static bool wildcardImport(char* nspace, Token* head, Token** end) {
 }
 
 /** Adds an alias `alias` for the function `<nspace>:<original>` */
-static bool addFunctionAlias(char* nspace, char* original, char* alias) {
+static bool addFunctionAlias(Token* nspace, Token* original, Token* alias) {
 
     char* qualName;
     {
-        size_t alen = strlen(nspace);
-        size_t blen = strlen(original);
+        size_t alen = nspace->len;
+        size_t blen = original->len;
         qualName = lv_alloc(alen + 1 + blen + 1);
-        memcpy(qualName, nspace, alen);
+        memcpy(qualName, nspace->start, alen);
         qualName[alen] = ':';
-        memcpy(qualName + alen + 1, original, blen);
+        memcpy(qualName + alen + 1, original->start, blen);
         qualName[alen + 1 + blen] = '\0';
         //fix colons in names
         char* c = qualName + alen + 1;
@@ -201,9 +202,10 @@ static bool addFunctionAlias(char* nspace, char* original, char* alias) {
     }
     char* simpleName;
     {
-        size_t len = strlen(alias) + 1;
-        simpleName = lv_alloc(len);
-        memcpy(simpleName, alias, len);
+        size_t len = alias->len;
+        simpleName = lv_alloc(len + 1);
+        memcpy(simpleName, alias->start, len);
+        simpleName[len] = '\0';
         char* c = simpleName;
         while((c = strchr(c, ':'))) {
             *c = '#';
@@ -220,9 +222,9 @@ static bool addFunctionAlias(char* nspace, char* original, char* alias) {
 }
 
 /** Adds aliases specified in the @import command */
-static bool collectUsingNames(char* nspace, Token* head) {
+static bool collectUsingNames(Token* nspace, Token* head) {
 
-    if(!head || strcmp(head->value, "using") != 0) {
+    if(!head || lv_tkn_cmp(head, "using") != 0) {
         //using not specified
         return true;
     }
@@ -232,15 +234,15 @@ static bool collectUsingNames(char* nspace, Token* head) {
         lv_cmd_message = "Error: no aliases given";
         return false;
     }
-    if(strcmp(head->value, "_") == 0) {
+    if(lv_tkn_cmp(head, "_") == 0) {
         bool success = wildcardImport(nspace, head->next, &head);
         if(!success) {
             return false;
         }
     }
     while(head) {
-        char* original;
-        char* alias;
+        Token* original;
+        Token* alias;
         bool success = getAlias(head, &original, &alias, &head);
         if(!success) {
             return false;
@@ -251,7 +253,7 @@ static bool collectUsingNames(char* nspace, Token* head) {
         }
         if(head) {
             //more aliases!
-            if(head->value[0] != ',') {
+            if(head->start[0] != ',') {
                 lv_cmd_message = "Error: unexpected token";
                 return false;
             }
@@ -278,7 +280,10 @@ static bool import(Token* head) {
     initNameScopes();
     lv_tbl_init(&usingNames);
     //import the file
-    bool res = lv_readFile(head->value);
+    char filename[head->len + 1];
+    memcpy(filename, head->start, head->len);
+    filename[head->len] = '\0';
+    bool res = lv_readFile(filename);
     //restore using names
     lv_tbl_clear(&usingNames, freeUsingNames);
     lv_free(usingNames.table);
@@ -290,12 +295,11 @@ static bool import(Token* head) {
         return false;
     }
     //collect the using names specified after the file
-    res = collectUsingNames(head->value, head->next);
+    res = collectUsingNames(head, head->next);
     if(res) {
         lv_cmd_message = "Import successful";
         return true;
     } else {
-        //lv_cmd_message = "Import failed";
         return false;
     }
 }

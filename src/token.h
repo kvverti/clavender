@@ -20,8 +20,11 @@ typedef enum TokenType {
 
 typedef struct Token {
     TokenType type;
+    char* line;
+    char* start;    //beginning of token text in source
+    size_t len;     //length of token text in source
+    int lineNumber;
     struct Token* next;
-    char value[];
 } Token;
 
 typedef enum TokenError {
@@ -35,9 +38,13 @@ typedef enum TokenError {
     TE_UNBAL_PAREN      //unbalanced parens
 } TokenError;
 
-#define TKN_ERRCXT_LEN 8
 TokenError LV_TKN_ERROR;
-char lv_tkn_errcxt[TKN_ERRCXT_LEN];
+struct {
+    char* line;
+    int lineNumber;
+    size_t startIdx;
+    size_t endIdx;
+} lv_tkn_errContext;
 
 /**
  * Retrieves an error message for the specified error.
@@ -55,5 +62,24 @@ Token* lv_tkn_split(FILE* input);
  * Frees the memory used by the given Token list.
  */
 void lv_tkn_free(Token* head);
+
+/**
+ * Wrapper for strcmp with token names.
+ */
+int lv_tkn_cmp(Token* tok, char* val);
+
+/**
+ * Resets the internal line number count to 1.
+ */
+void lv_tkn_resetLine(void);
+
+/**
+ * Releases the memory allocated for the given source file.
+ * Invalidates all tokens generated from the file.
+ */
+void lv_tkn_releaseFile(FILE* file);
+
+void lv_tkn_onStartup(void);
+void lv_tkn_onShutdown(void);
 
 #endif
