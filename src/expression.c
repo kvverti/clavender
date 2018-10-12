@@ -43,7 +43,8 @@ char* lv_expr_getError(ExprError error) {
         "Malformed function local list",
         "Identifier is reserved",
         "Native function declares locals",
-        "Native implementation not found"
+        "Native implementation not found",
+        "Cannot take value of zero arity function"
     };
     assert(error > 0 && error <= LEN);
     return msg[error - 1];

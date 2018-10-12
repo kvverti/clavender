@@ -20,6 +20,7 @@ typedef enum ExprError {
     XPE_RESERVED_ID,    //identifier is a reserved word
     XPE_NATIVE_LOCALS,  //native function declares locals
     XPE_NATIVE_NOT_FOUND, //native impl could not be found
+    XPE_ZERO_ARITY_ALIAS, //cannot have zero arity function value
 } ExprError;
 
 ExprError LV_EXPR_ERROR;

@@ -445,6 +445,11 @@ static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
     //undo substringing
     if(ns == FNS_INFIX)
         cxt->head->start[len - 1] = '\\';
+    //check that this isn't a zero arity function
+    if(!LV_EXPR_ERROR && obj->func->arity == obj->func->captureCount) {
+        LV_EXPR_ERROR = XPE_ZERO_ARITY_ALIAS;
+        return;
+    }
     obj->type = OPT_FUNCTION_VAL;
     cxt->expectOperand = false;
 }
