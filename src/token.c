@@ -525,7 +525,7 @@ static TokenType getString(void) {
         } else {
             if(buffer[idx] == '\n') {
                 //these characters not allowed in strings
-                LV_TKN_ERROR = TE_BAD_STR_CHR;
+                LV_TKN_ERROR = TE_UNTERM_STR;
                 return -1;
             }
             idx++;

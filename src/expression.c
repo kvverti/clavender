@@ -17,7 +17,8 @@ bool lv_expr_isReserved(char* id, size_t len) {
         case 6:
             return strncmp(id, "native", len) == 0;
         case 1:
-            return id[0] == '_';
+            return id[0] == '_'
+                || id[0] == ':';
         default:
             return false;
     }
