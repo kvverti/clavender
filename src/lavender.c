@@ -538,6 +538,15 @@ static size_t jumpAndLink(Operator* func) {
             if(res.type & LV_DYNAMIC)
                 ++*res.refCount;
             popAll(func->arity);
+            //check for zero-arity function and evaluate if it is
+            //(evaluate by-name expression on output)
+            if((res.type == OPT_CAPTURE && res.capfunc->arity == res.capfunc->captureCount)
+            || (res.type == OPT_FUNCTION_VAL && res.func->arity == 0)) {
+                TextBufferObj tmp;
+                lv_callFunction(&res, 0, NULL, &tmp);
+                lv_expr_cleanup(&res, 1);
+                res = tmp;
+            }
             if(stack.len > 0) {
                 TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
                 if(top->type == OPT_FUNC_CALL2) {
@@ -616,10 +625,21 @@ static void runCycle(void) {
             //push it on the stack
             push(value);
             break;
-        case OPT_PARAM:
+        case OPT_PARAM: {
             //push i'th param
-            push(lv_buf_get(&stack, fp + value->param));
+            TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
+            //check for zero-arity function and evaluate if it is
+            //(evaluate by-name expression on input)
+            if((param->type == OPT_CAPTURE && param->capfunc->arity == param->capfunc->captureCount)
+            || (param->type == OPT_FUNCTION_VAL && param->func->arity == 0)) {
+                TextBufferObj res;
+                lv_callFunction(param, 0, NULL, &res);
+                push(&res);
+            } else {
+                push(param);
+            }
             break;
+        }
         case OPT_PUT_PARAM: {
             //pop top and place in i'th param
             TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
@@ -686,6 +706,15 @@ static void runCycle(void) {
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
+            //check for zero-arity function and evaluate if it is
+            //(evaluate by-name expression on output)
+            if((retVal.type == OPT_CAPTURE && retVal.capfunc->arity == retVal.capfunc->captureCount)
+            || (retVal.type == OPT_FUNCTION_VAL && retVal.func->arity == 0)) {
+                TextBufferObj tmp;
+                lv_callFunction(&retVal, 0, NULL, &tmp);
+                lv_expr_cleanup(&retVal, 1);
+                retVal = tmp;
+            }
             if(stack.len > 0) {
                 TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
                 if(top->type == OPT_FUNC_CALL2) {
