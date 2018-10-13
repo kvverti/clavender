@@ -77,6 +77,7 @@ static bool shuntOps(ExprContext* cxts);
 
 Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_t* len) {
 
+    puts("Begin");
     if(LV_EXPR_ERROR)
         return head;
     //set up required environment
@@ -131,10 +132,15 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);
+            printf("Token %c\n", cxt.head->start[0]);
             IF_ERROR_CLEANUP;
             //detect end of expr before we parse
-            if(cxt.nesting < 0 || cxt.head->start[0] == ';')
+            if(cxt.nesting < 0            //closing grouper without opening grouper
+            || cxt.head->start[0] == ';'  //conditional separator
+            || (cxt.nesting == 0 && cxt.head->start[0] == ',') //comma at top level
+            ) {
                 break;
+            }
             shuntingYard(&obj, &cxt);
             IF_ERROR_CLEANUP;
             cxt.head = cxt.head->next;
@@ -306,7 +312,7 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
             //fallthrough
         case ',':
             //close groupings are "operators"
-            if(cxt->expectOperand) {
+            if(cxt->nesting > 0 && cxt->expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_INF;
             }
             break;

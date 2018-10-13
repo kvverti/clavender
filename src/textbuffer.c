@@ -239,8 +239,21 @@ static void rollback(Operator* decl, size_t top) {
 
 static bool isExprEnd(Token* head) {
 
+    if(!head) {
+        return true;
+    }
     //')' and ']' and '}' mark the end of the expression, ';' delimits conditionals
-    return !head || head->start[0] == ')' || head->start[0] == ']' || head->start[0] == '}' || head->start[0] == ';';
+    //',' can delimit expressions in vects and argument lists
+    switch(head->start[0]) {
+        case ')':
+        case ']':
+        case '}':
+        case ';':
+        case ',':
+            return true;
+        default:
+            return false;
+    }
 }
 
 Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
