@@ -162,6 +162,17 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
             return res;
         }
+        case OPT_FWD_PARAM: {
+            static char str[] = "forward ";
+            size_t len = length(obj->param);
+            len += sizeof(str) - 1;
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
+            res->len = len;
+            strcpy(res->value, str);
+            sprintf(res->value + sizeof(str) - 1, "%d", obj->param);
+            return res;
+        }
         case OPT_PUT_PARAM: {
             static char str[] = "put ";
             size_t len = length(obj->param);

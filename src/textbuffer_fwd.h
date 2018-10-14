@@ -12,6 +12,7 @@ typedef enum OpType {
     OPT_NUMBER,         //Lavender number
     OPT_INTEGER,        //signed 64bit int
     OPT_PARAM,          //function parameter
+    OPT_FWD_PARAM,      //forward function parameter
     OPT_PUT_PARAM,      //store top in param
     OPT_FUNCTION,       //function definition
     OPT_FUNCTION_VAL,   //function value

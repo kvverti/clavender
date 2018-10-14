@@ -907,7 +907,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         int ar = arityFor(obj->func, cxt->decl);
         for(int i = obj->func->captureCount; i > 0; i--) {
             TextBufferObj tbo;
-            tbo.type = OPT_PARAM;
+            tbo.type = OPT_FWD_PARAM;
             tbo.param = ar - i;
             assert(tbo.param >= 0);
             pushStack(&cxt->out, &tbo);

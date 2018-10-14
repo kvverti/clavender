@@ -514,6 +514,21 @@ static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underl
 }
 
 /**
+ * Evaluates the given object iff it is a zero-arity function and
+ * returns the result through ret. Returns true if obj was a zero
+ * arity function and false if it was not.
+ */
+static bool evalByName(TextBufferObj* obj, TextBufferObj* ret) {
+
+    if((obj->type == OPT_CAPTURE && obj->capfunc->arity == obj->capfunc->captureCount)
+    || (obj->type == OPT_FUNCTION_VAL && obj->func->arity == 0)) {
+        lv_callFunction(obj, 0, NULL, ret);
+        return true;
+    }
+    return false;
+}
+
+/**
  * Calls the given function by saving the current stack frame
  * and jumping to the first instruction of the given function.
  * Returns the value of the current (old) frame.
@@ -538,12 +553,8 @@ static size_t jumpAndLink(Operator* func) {
             if(res.type & LV_DYNAMIC)
                 ++*res.refCount;
             popAll(func->arity);
-            //check for zero-arity function and evaluate if it is
-            //(evaluate by-name expression on output)
-            if((res.type == OPT_CAPTURE && res.capfunc->arity == res.capfunc->captureCount)
-            || (res.type == OPT_FUNCTION_VAL && res.func->arity == 0)) {
-                TextBufferObj tmp;
-                lv_callFunction(&res, 0, NULL, &tmp);
+            TextBufferObj tmp;
+            if(evalByName(&res, &tmp)) {
                 lv_expr_cleanup(&res, 1);
                 res = tmp;
             }
@@ -625,15 +636,16 @@ static void runCycle(void) {
             //push it on the stack
             push(value);
             break;
+        case OPT_FWD_PARAM:
+            //same as regular OPT_PARAM,
+            //but does not evaluate zero-arity functions
+            push(lv_buf_get(&stack, fp + value->param));
+            break;
         case OPT_PARAM: {
             //push i'th param
             TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
-            //check for zero-arity function and evaluate if it is
-            //(evaluate by-name expression on input)
-            if((param->type == OPT_CAPTURE && param->capfunc->arity == param->capfunc->captureCount)
-            || (param->type == OPT_FUNCTION_VAL && param->func->arity == 0)) {
-                TextBufferObj res;
-                lv_callFunction(param, 0, NULL, &res);
+            TextBufferObj res;
+            if(evalByName(param, &res)) {
                 push(&res);
             } else {
                 push(param);
@@ -706,12 +718,8 @@ static void runCycle(void) {
             //pop args
             popAll(stack.len - fp);
             fp = tmpFp;
-            //check for zero-arity function and evaluate if it is
-            //(evaluate by-name expression on output)
-            if((retVal.type == OPT_CAPTURE && retVal.capfunc->arity == retVal.capfunc->captureCount)
-            || (retVal.type == OPT_FUNCTION_VAL && retVal.func->arity == 0)) {
-                TextBufferObj tmp;
-                lv_callFunction(&retVal, 0, NULL, &tmp);
+            TextBufferObj tmp;
+            if(evalByName(&retVal, &tmp)) {
                 lv_expr_cleanup(&retVal, 1);
                 retVal = tmp;
             }
