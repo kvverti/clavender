@@ -557,6 +557,8 @@ static size_t jumpAndLink(Operator* func) {
             if(evalByName(&res, &tmp)) {
                 lv_expr_cleanup(&res, 1);
                 res = tmp;
+                if(res.type & LV_DYNAMIC)
+                    ++*res.refCount;
             }
             if(stack.len > 0) {
                 TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);

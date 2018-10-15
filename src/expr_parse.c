@@ -92,11 +92,11 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.out.len = INIT_STACK_LEN;
     cxt.out.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     cxt.out.top = cxt.out.stack;
-    cxt.out.stack[0].type = OPT_LITERAL;
+    cxt.out.stack[0].type = OPT_UNDEFINED;
     cxt.ops.len = INIT_STACK_LEN;
     cxt.ops.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
     cxt.ops.top = cxt.ops.stack;
-    cxt.ops.stack[0].type = OPT_LITERAL;
+    cxt.ops.stack[0].type = OPT_UNDEFINED;
     cxt.tok.len = INIT_STACK_LEN;
     cxt.tok.stack = lv_alloc(INIT_STACK_LEN * sizeof(Token*));
     cxt.tok.top = cxt.tok.stack;
@@ -126,13 +126,64 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
             shuntingYard(&obj, &cxt);
             IF_ERROR_CLEANUP;
         } else if(lv_tkn_cmp(cxt.head, "=>") == 0) {
-            if(cxt.nesting > 0) {
-                //implement call by name selection here
+            if(cxt.nesting == 0) {
+                //end of conditonal, should be
+                break;
+            } else if(!cxt.expectOperand || cxt.ops.top->type != OPT_LITERAL) {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 IF_ERROR_CLEANUP;
+            } else {
+                switch(cxt.ops.top->literal) {
+                    case '(':
+                    case '[':
+                    case '{': {
+                        //implement call by name selection here
+                        puts("Call-by-name expr");
+                        TextBufferObj* byNameExprBody;
+                        size_t byNameExprLen;
+                        cxt.head = lv_expr_parseExpr(cxt.head->next, decl, &byNameExprBody, &byNameExprLen);
+                        IF_ERROR_CLEANUP;
+                        assert(byNameExprBody[0].type == OPT_UNDEFINED);
+                        if(byNameExprLen == 2 && byNameExprBody[1].type != OPT_FUNCTION) {
+                            //trivial call-by-name expr, no need to wrap
+                            if(byNameExprBody[1].type == OPT_PARAM) {
+                                byNameExprBody[1].type = OPT_FWD_PARAM;
+                            }
+                            shuntingYard(&byNameExprBody[1], &cxt);
+                            lv_expr_free(byNameExprBody, byNameExprLen);
+                            IF_ERROR_CLEANUP;
+                        } else {
+                            Operator* op = lv_alloc(sizeof(Operator));
+                            op->type = FUN_FUNCTION;
+                            size_t nlen = strlen(decl->name) + 1;
+                            op->name = lv_alloc(nlen + 1);
+                            memcpy(op->name, decl->name, nlen);
+                            op->name[nlen - 1] = ':';
+                            op->name[nlen] = '\0';
+                            op->captureCount = decl->arity + decl->locals;
+                            op->arity = op->captureCount;
+                            op->locals = 0;
+                            op->fixing = FIX_PRE;
+                            op->enclosing = decl;
+                            op->next = NULL;
+                            op->varargs = false;
+                            op->textOffset = (int) lv_tb_addExpr(byNameExprLen - 1, byNameExprBody + 1);
+                            lv_op_addOperator(op, FNS_PREFIX);
+                            lv_expr_free(byNameExprBody, byNameExprLen);
+                            //add capture to expr body
+                            obj.type = OPT_FUNCTION_VAL;
+                            obj.func = op;
+                            shuntingYard(&obj, &cxt);
+                            IF_ERROR_CLEANUP;
+                        }
+                        break;
+                    }
+                    default:
+                        LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                        IF_ERROR_CLEANUP;
+                }
+                cxt.expectOperand = false;
             }
-            //end of conditional
-            break;
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);

@@ -70,6 +70,11 @@ Token* lv_tb_defineFunctionBody(Token* tokens, Operator* decl);
 Token* lv_tb_parseExpr(Token* tokens, Operator* scope, size_t* start, size_t* end);
 
 /**
+ * Adds the given function body to the text buffer, and returns its index.
+ */
+size_t lv_tb_addExpr(size_t len, TextBufferObj* body);
+
+/**
  * Clears the text buffer of any data associated with the previous parsed expression.
  */
 void lv_tb_clearExpr(void);

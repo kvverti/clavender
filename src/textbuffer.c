@@ -30,6 +30,15 @@ static void pushText(TextBufferObj* text, size_t len) {
     textBufferTop += len;
 }
 
+size_t lv_tb_addExpr(size_t len, TextBufferObj* expr) {
+
+    size_t save = textBufferTop;
+    TextBufferObj ret = { .type = OPT_RETURN };
+    pushText(expr, len);
+    pushText(&ret, 1);
+    return save;
+}
+
 //calculate the number of decimal digits
 //in practice the index is usually < 10
 static size_t length(int number) {
