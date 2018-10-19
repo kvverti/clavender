@@ -518,7 +518,7 @@ static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underl
  * returns the result through ret. Returns true if obj was a zero
  * arity function and false if it was not.
  */
-static bool evalByName(TextBufferObj* obj, TextBufferObj* ret) {
+bool lv_evalByName(TextBufferObj* obj, TextBufferObj* ret) {
 
     if((obj->type == OPT_CAPTURE && obj->capfunc->arity == obj->capfunc->captureCount)
     || (obj->type == OPT_FUNCTION_VAL && obj->func->arity == 0)) {
@@ -554,7 +554,7 @@ static size_t jumpAndLink(Operator* func) {
                 ++*res.refCount;
             popAll(func->arity);
             TextBufferObj tmp;
-            if(evalByName(&res, &tmp)) {
+            if(lv_evalByName(&res, &tmp)) {
                 lv_expr_cleanup(&res, 1);
                 res = tmp;
                 if(res.type & LV_DYNAMIC)
@@ -647,7 +647,7 @@ static void runCycle(void) {
             //push i'th param
             TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
             TextBufferObj res;
-            if(evalByName(param, &res)) {
+            if(lv_evalByName(param, &res)) {
                 push(&res);
             } else {
                 push(param);
@@ -721,7 +721,7 @@ static void runCycle(void) {
             popAll(stack.len - fp);
             fp = tmpFp;
             TextBufferObj tmp;
-            if(evalByName(&retVal, &tmp)) {
+            if(lv_evalByName(&retVal, &tmp)) {
                 lv_expr_cleanup(&retVal, 1);
                 retVal = tmp;
             }
