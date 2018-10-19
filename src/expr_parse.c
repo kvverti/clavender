@@ -63,6 +63,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
 static void handleRightBracket(ExprContext* cxt);
 static bool isLiteral(TextBufferObj* obj, char c);
 static bool shuntOps(ExprContext* cxts);
+static void makeByName(ExprContext* cxt);
 
 #define IF_ERROR_CLEANUP \
     if(LV_EXPR_ERROR) { \
@@ -144,13 +145,15 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                         cxt.head = lv_expr_parseExpr(cxt.head->next, decl, &byNameExprBody, &byNameExprLen);
                         IF_ERROR_CLEANUP;
                         assert(byNameExprBody[0].type == OPT_UNDEFINED);
-                        if(byNameExprLen == 2 && byNameExprBody[1].type != OPT_FUNCTION) {
+                        if(byNameExprLen == 2) {
                             //trivial call-by-name expr, no need to wrap
                             if(byNameExprBody[1].type == OPT_PARAM) {
                                 byNameExprBody[1].type = OPT_FWD_PARAM;
+                            } else if(byNameExprBody[1].type == OPT_FUNCTION) {
+                                byNameExprBody[1].type = OPT_FUNCTION_VAL;
                             }
                             shuntingYard(&byNameExprBody[1], &cxt);
-                            lv_expr_free(byNameExprBody, byNameExprLen);
+                            lv_free(byNameExprBody);
                             IF_ERROR_CLEANUP;
                         } else {
                             Operator* op = lv_alloc(sizeof(Operator));
@@ -169,7 +172,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                             op->varargs = false;
                             op->textOffset = (int) lv_tb_addExpr(byNameExprLen - 1, byNameExprBody + 1);
                             lv_op_addOperator(op, FNS_PREFIX);
-                            lv_expr_free(byNameExprBody, byNameExprLen);
+                            lv_free(byNameExprBody);
                             //add capture to expr body
                             obj.type = OPT_FUNCTION_VAL;
                             obj.func = op;
@@ -522,7 +525,7 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
         for(int i = 0; i < numParams; i++) {
             if(lv_tkn_cmp(cxt->head, cxt->decl->params[i].name) == 0) {
                 //save param name
-                obj->type = OPT_PARAM;
+                obj->type = OPT_FWD_PARAM;
                 obj->param = i;
                 cxt->expectOperand = false;
                 return;
