@@ -147,9 +147,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                         assert(byNameExprBody[0].type == OPT_UNDEFINED);
                         if(byNameExprLen == 2) {
                             //trivial call-by-name expr, no need to wrap
-                            if(byNameExprBody[1].type == OPT_PARAM) {
-                                byNameExprBody[1].type = OPT_FWD_PARAM;
-                            } else if(byNameExprBody[1].type == OPT_FUNCTION) {
+                            if(byNameExprBody[1].type == OPT_FUNCTION) {
                                 byNameExprBody[1].type = OPT_FUNCTION_VAL;
                             }
                             shuntingYard(&byNameExprBody[1], &cxt);
@@ -525,7 +523,7 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
         for(int i = 0; i < numParams; i++) {
             if(lv_tkn_cmp(cxt->head, cxt->decl->params[i].name) == 0) {
                 //save param name
-                obj->type = OPT_FWD_PARAM;
+                obj->type = OPT_PARAM;
                 obj->param = i;
                 cxt->expectOperand = false;
                 return;
@@ -961,7 +959,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
         int ar = arityFor(obj->func, cxt->decl);
         for(int i = obj->func->captureCount; i > 0; i--) {
             TextBufferObj tbo;
-            tbo.type = OPT_FWD_PARAM;
+            tbo.type = OPT_PARAM;
             tbo.param = ar - i;
             assert(tbo.param >= 0);
             pushStack(&cxt->out, &tbo);

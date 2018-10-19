@@ -454,12 +454,20 @@ static void makeVect(int length) {
  * or a vector, and one argument is passed, the underlying operator is
  * set to the built in __at__ function.
  */
-static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underlying) {
+static bool setUpFuncCall(TextBufferObj* _func, size_t numArgs, Operator** underlying) {
 
-    assert(func);
+    assert(_func);
     assert(underlying);
     bool success = false;
     Operator* op = NULL;
+    TextBufferObj realFunc = { .type = OPT_UNDEFINED };
+    TextBufferObj* func = _func;
+    if(numArgs != 0 && lv_evalByName(_func, &realFunc)) {
+        if(realFunc.type & LV_DYNAMIC) {
+            ++*realFunc.refCount;
+        }
+        func = &realFunc;
+    }
     switch(func->type) {
         case OPT_FUNCTION_VAL: {
             op = func->func;
@@ -510,6 +518,10 @@ static bool setUpFuncCall(TextBufferObj* func, size_t numArgs, Operator** underl
     if(!success)
         popAll(numArgs);
     *underlying = op;
+    if(realFunc.type != OPT_UNDEFINED) {
+        //cleanup by-name expression result
+        lv_expr_cleanup(&realFunc, 1);
+    }
     return success;
 }
 
@@ -638,22 +650,10 @@ static void runCycle(void) {
             //push it on the stack
             push(value);
             break;
-        case OPT_FWD_PARAM:
-            //same as regular OPT_PARAM,
-            //but does not evaluate zero-arity functions
+        case OPT_PARAM:
+            //does not evaluate zero-arity functions
             push(lv_buf_get(&stack, fp + value->param));
             break;
-        case OPT_PARAM: {
-            //push i'th param
-            TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
-            TextBufferObj res;
-            if(lv_evalByName(param, &res)) {
-                push(&res);
-            } else {
-                push(param);
-            }
-            break;
-        }
         case OPT_PUT_PARAM: {
             //pop top and place in i'th param
             TextBufferObj* param = lv_buf_get(&stack, fp + value->param);
@@ -723,6 +723,10 @@ static void runCycle(void) {
             TextBufferObj tmp;
             if(lv_evalByName(&retVal, &tmp)) {
                 lv_expr_cleanup(&retVal, 1);
+                //evalByName does not refCount the return value
+                if(tmp.type & LV_DYNAMIC) {
+                    ++*tmp.refCount;
+                }
                 retVal = tmp;
             }
             if(stack.len > 0) {
