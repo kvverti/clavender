@@ -115,6 +115,7 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
     int totalParams = context.numArgs = context.arity + nspace->arity + nspace->locals + context.locals;
     if(totalParams > MAX_PARAMS) {
         LV_EXPR_ERROR = XPE_TOO_MANY_ARGS;
+        context.numArgs = 0;
         return NULL;
     }
     Param* args = context.args = lv_alloc(totalParams * sizeof(Param));
