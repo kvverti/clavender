@@ -777,7 +777,6 @@ static TextBufferObj* getExprBounds(TextBufferObj* end) {
             }
             break;
         default:
-            printf("%d\n", end->type);
             assert(false);
     }
     return bgn;
