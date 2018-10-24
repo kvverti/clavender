@@ -138,8 +138,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                     case '(':
                     case '[':
                     case '{': {
-                        //implement call by name selection here
-                        puts("Call-by-name expr");
+                        //explicit by-name expression
                         TextBufferObj* byNameExprBody;
                         size_t byNameExprLen;
                         cxt.head = lv_expr_parseExpr(cxt.head->next, decl, &byNameExprBody, &byNameExprLen);
@@ -220,6 +219,7 @@ static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cx
         op->next = NULL;
         op->varargs = false;
         op->textOffset = (int) lv_tb_addExpr(len, expr);
+        memset(op->byName, 0, sizeof(op->byName));
         lv_op_addOperator(op, FNS_PREFIX);
         //add capture to expr body
         res.type = OPT_FUNCTION_VAL;
