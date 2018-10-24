@@ -62,8 +62,8 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above fu
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
 static void handleRightBracket(ExprContext* cxt);
 static bool isLiteral(TextBufferObj* obj, char c);
-static bool shuntOps(ExprContext* cxts);
-static void makeByName(ExprContext* cxt);
+static bool shuntOps(ExprContext* cxt);
+static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cxt);
 
 #define IF_ERROR_CLEANUP \
     if(LV_EXPR_ERROR) { \
@@ -145,38 +145,10 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                         cxt.head = lv_expr_parseExpr(cxt.head->next, decl, &byNameExprBody, &byNameExprLen);
                         IF_ERROR_CLEANUP;
                         assert(byNameExprBody[0].type == OPT_UNDEFINED);
-                        if(byNameExprLen == 2) {
-                            //trivial call-by-name expr, no need to wrap
-                            if(byNameExprBody[1].type == OPT_FUNCTION) {
-                                byNameExprBody[1].type = OPT_FUNCTION_VAL;
-                            }
-                            shuntingYard(&byNameExprBody[1], &cxt);
-                            lv_free(byNameExprBody);
-                            IF_ERROR_CLEANUP;
-                        } else {
-                            Operator* op = lv_alloc(sizeof(Operator));
-                            op->type = FUN_FUNCTION;
-                            size_t nlen = strlen(decl->name) + 1;
-                            op->name = lv_alloc(nlen + 1);
-                            memcpy(op->name, decl->name, nlen);
-                            op->name[nlen - 1] = ':';
-                            op->name[nlen] = '\0';
-                            op->captureCount = decl->arity + decl->locals;
-                            op->arity = op->captureCount;
-                            op->locals = 0;
-                            op->fixing = FIX_PRE;
-                            op->enclosing = decl;
-                            op->next = NULL;
-                            op->varargs = false;
-                            op->textOffset = (int) lv_tb_addExpr(byNameExprLen - 1, byNameExprBody + 1);
-                            lv_op_addOperator(op, FNS_PREFIX);
-                            lv_free(byNameExprBody);
-                            //add capture to expr body
-                            obj.type = OPT_FUNCTION_VAL;
-                            obj.func = op;
-                            shuntingYard(&obj, &cxt);
-                            IF_ERROR_CLEANUP;
-                        }
+                        obj = makeByName(byNameExprBody + 1, byNameExprLen - 1, &cxt);
+                        lv_free(byNameExprBody);
+                        shuntingYard(&obj, &cxt);
+                        IF_ERROR_CLEANUP;
                         break;
                     }
                     default:
@@ -222,6 +194,39 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
 #undef IF_ERROR_CLEANUP
 
 //static helpers for lv_expr_parseExpr
+
+static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cxt) {
+
+    TextBufferObj res;
+    if(len == 1) {
+        //trivial call-by-name expr, no need to wrap
+        res = *expr;
+        if(res.type == OPT_FUNCTION) {
+            res.type = OPT_FUNCTION_VAL;
+        }
+    } else {
+        Operator* op = lv_alloc(sizeof(Operator));
+        op->type = FUN_FUNCTION;
+        size_t nlen = strlen(cxt->decl->name) + 1;
+        op->name = lv_alloc(nlen + 1);
+        memcpy(op->name, cxt->decl->name, nlen);
+        op->name[nlen - 1] = ':';
+        op->name[nlen] = '\0';
+        op->captureCount = cxt->decl->arity + cxt->decl->locals;
+        op->arity = op->captureCount;
+        op->locals = 0;
+        op->fixing = FIX_PRE;
+        op->enclosing = cxt->decl;
+        op->next = NULL;
+        op->varargs = false;
+        op->textOffset = (int) lv_tb_addExpr(len, expr);
+        lv_op_addOperator(op, FNS_PREFIX);
+        //add capture to expr body
+        res.type = OPT_FUNCTION_VAL;
+        res.func = op;
+    }
+    return res;
+}
 
 static int getLexicographicPrecedence(char c) {
 
@@ -734,6 +739,103 @@ static int arityFor(Operator* func, Operator* scope) {
     return ar;
 }
 
+/**
+ * Given the last operation of an expression, returns a pointer to the beginning.
+ */
+static TextBufferObj* getExprBounds(TextBufferObj* end) {
+
+    TextBufferObj* bgn = end;
+    switch(end->type) {
+        case OPT_UNDEFINED:
+        case OPT_NUMBER:
+        case OPT_INTEGER:
+        case OPT_PARAM:
+        case OPT_FUNCTION_VAL:
+        case OPT_STRING:
+            break;
+        case OPT_FUNCTION:
+            // get the beginning of the argument list
+            for(int i = 0; i < (end->func->arity - end->func->captureCount); i++) {
+                bgn = getExprBounds(bgn - 1);
+            }
+            break;
+        case OPT_FUNC_CAP: {
+            // get the beginning of the capture list
+            // capture list is (1 + captureCount)
+            TextBufferObj* func = end - 1;
+            assert(func->type == OPT_FUNCTION_VAL);
+            for(int i = 0; i <= func->func->captureCount; i++) {
+                bgn = getExprBounds(bgn - 1);
+            }
+            break;
+        }
+        case OPT_MAKE_VECT:
+        case OPT_FUNC_CALL2:
+            // get the beginning of the parameter list
+            for(int i = 0; i < end->callArity; i++) {
+                bgn = getExprBounds(bgn - 1);
+            }
+            break;
+        default:
+            printf("%d\n", end->type);
+            assert(false);
+    }
+    return bgn;
+}
+
+static void collectByNameArgs(TextBufferObj* func, int ar, ExprContext* cxt) {
+
+    //stack to hold by-name expressions for the current function
+    //the stack holds the by-name expressions in reverse operation order
+    static uint8_t arr[MAX_PARAMS / 8]; //zeroed
+    if(memcmp(func->func->byName, arr, sizeof(arr)) == 0) {
+        //no by-names, no need to process
+        return;
+    }
+    TextStack tmpByNames;
+    tmpByNames.len = INIT_STACK_LEN;
+    tmpByNames.stack = lv_alloc(INIT_STACK_LEN * sizeof(TextBufferObj));
+    tmpByNames.top = tmpByNames.stack;
+    tmpByNames.stack[0].type = OPT_UNDEFINED;
+    int lastParam = func->func->arity - func->func->captureCount - 1;
+    assert(lastParam >= 0);
+    for(int i = ar - 1; i >= 0; i--) {
+        int p = i > lastParam ? lastParam : i;
+        TextBufferObj* bgn = getExprBounds(cxt->out.top);
+        if(LV_GET_BYNAME(func->func, p)) {
+            //wrap in a by-name expression
+            size_t len = cxt->out.top + 1 - bgn;
+            TextBufferObj val = makeByName(bgn, len, cxt);
+            if(val.type == OPT_FUNCTION_VAL
+                && val.func->arity > 0
+                && val.func->arity == val.func->captureCount) {
+                //must capture
+                TextBufferObj tmp = { .type = OPT_FUNC_CAP };
+                pushStack(&tmpByNames, &tmp);
+                pushStack(&tmpByNames, &val);
+                tmp.type = OPT_PARAM;
+                for(int i = cxt->decl->arity + cxt->decl->locals - 1; i >= 0; i--) {
+                    tmp.param = i;
+                    pushStack(&tmpByNames, &tmp);
+                }
+            } else {
+                //no capture
+                pushStack(&tmpByNames, &val);
+            }
+            cxt->out.top = bgn - 1;
+        } else {
+            //push to tmp stack unmodified
+            while(cxt->out.top >= bgn) {
+                pushStack(&tmpByNames, cxt->out.top--);
+            }
+        }
+    }
+    while(tmpByNames.top != tmpByNames.stack) {
+        pushStack(&cxt->out, tmpByNames.top--);
+    }
+    lv_free(tmpByNames.stack);
+}
+
 //shunts over one op (or handles right bracket)
 //optionally removing the top operator
 //and checks function arity if applicable.
@@ -751,20 +853,23 @@ static bool shuntOps(ExprContext* cxt) {
         if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
             //ar holds the number of args passed in Lavender source
             int ar = *cxt->params.top--;
+            collectByNameArgs(tmp, ar, cxt);
             //handle varargs
             if(tmp->func->varargs) {
                 //make last arg + extra args on the end into a vector
                 //zero vector args is allowed
                 TextBufferObj obj;
+                int lastParam = tmp->func->arity - tmp->func->captureCount - 1;
+                assert(lastParam >= 0);
                 obj.type = OPT_MAKE_VECT;
-                obj.callArity = ar - (tmp->func->arity - 1);
+                obj.callArity = ar - lastParam;
                 if(obj.callArity < 0) {
                     LV_EXPR_ERROR = XPE_BAD_ARITY;
                     cxt->head = *cxt->tok.top;
                     return false;
                 }
                 //adjust arity to match fixed function arity
-                ar = tmp->func->arity;
+                ar = tmp->func->arity - tmp->func->captureCount;
                 pushStack(&cxt->out, &obj);
             }
             //push any extra implicit capture args

@@ -4,7 +4,11 @@
 #include "textbuffer_fwd.h"
 #include "token.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <stdbool.h>
+
+// the maximum number of params a Lavender function may have
+#define MAX_PARAMS 256
 
 struct Param {
     char* name;
@@ -32,8 +36,14 @@ struct Operator {
     };
     Operator* enclosing;
     Operator* next; //used by anonFuncs
+    uint8_t byName[MAX_PARAMS / 8]; //bitfield for by-name parameters
     bool varargs;
 };
+
+#define LV_SET_BYNAME(op, idx) \
+    ((op)->byName[(idx) / 8] |= (1 << ((idx) % 8)))
+#define LV_GET_BYNAME(op, idx) \
+    (((op)->byName[(idx) / 8] >> ((idx) % 8)) & 1)
 
 /**
  * Retrieves the operator with the given name.

@@ -7,6 +7,7 @@ typedef enum ExprError {
     XPE_UNTERM_EXPR,    //unterminated expression
     XPE_EXPT_ARGS,      //expected an argument list
     XPE_BAD_ARGS,       //bad argument list
+    XPE_TOO_MANY_ARGS,  //too many parameters
     XPE_MISSING_BODY,   //missing function body
     XPE_DUP_DECL,       //duplicate function definitions
     XPE_NAME_NOT_FOUND, //simple name not found

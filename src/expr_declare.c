@@ -113,6 +113,10 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
     }
     //holds the parameters (formal, captured, and local) and their names
     int totalParams = context.numArgs = context.arity + nspace->arity + nspace->locals + context.locals;
+    if(totalParams > MAX_PARAMS) {
+        LV_EXPR_ERROR = XPE_TOO_MANY_ARGS;
+        return NULL;
+    }
     Param* args = context.args = lv_alloc(totalParams * sizeof(Param));
     memset(args, 0, totalParams * sizeof(Param));
     //set up the args array
@@ -154,6 +158,12 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
         funcObj->params = args;
         funcObj->varargs = context.varargs;
         funcObj->enclosing = nspace;
+        memset(funcObj->byName, 0, sizeof(funcObj->byName));
+        for(size_t i = 0; i < totalParams; i++) {
+            if(args[i].byName) {
+                LV_SET_BYNAME(funcObj, i);
+            }
+        }
         lv_op_addOperator(funcObj, ns);
         *bodyTok = context.head;
         return funcObj;

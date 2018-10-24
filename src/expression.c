@@ -31,6 +31,7 @@ char* lv_expr_getError(ExprError error) {
         "Reached end of input while parsing",
         "Expected an argument list",
         "Malformed argument list",
+        "Exceeded maximum parameter count",
         "Missing function body",
         "Duplicate function definition",
         "Function name not found",
