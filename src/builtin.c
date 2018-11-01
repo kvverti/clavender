@@ -28,6 +28,22 @@ static void clearArgs(TextBufferObj* args, size_t len) {
 }
 
 /**
+ * Converts a string to a symbol.
+ */
+static TextBufferObj symb(TextBufferObj* args) {
+
+    TextBufferObj arg, res;
+    getArgs(&arg, args, 1);
+    if(arg.type == OPT_STRING) {
+        res = lv_tb_getSymb(arg.str->value);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    clearArgs(&arg, 1);
+    return res;
+}
+
+/**
  * Returns whether the argument is defined (i.e. not undefined).
  */
 static TextBufferObj defined(TextBufferObj* args) {
@@ -66,6 +82,7 @@ static void mkTypes(void) {
     INIT(3, "vect");
     INIT(4, "function");
     INIT(5, "int");
+    INIT(6, "symb");
     #undef INIT
 }
 
@@ -87,6 +104,9 @@ static TextBufferObj typeof_(TextBufferObj* args) {
             break;
         case OPT_INTEGER:
             res.str = types[5];
+            break;
+        case OPT_SYMB:
+            res.str = types[6];
             break;
         case OPT_STRING:
             res.str = types[2];
@@ -439,6 +459,8 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             return a->number == b->number;
         case OPT_INTEGER:
             return a->integer == b->integer;
+        case OPT_SYMB:
+            return a->symbIdx == b->symbIdx;
         case OPT_STRING:
             //strings use value equality
             return (a->str->len == b->str->len)
@@ -497,6 +519,8 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_INTEGER:
             return intCmp(a->integer, b->integer) < 0;
             break;
+        case OPT_SYMB:
+            return (a->symbIdx < b->symbIdx);
         case OPT_STRING:
             return (strcmp(a->str->value, b->str->value) < 0);
             break;
@@ -1211,6 +1235,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCT(SYS, defined);
     MK_FUNCT(SYS, undefined);
     MK_FUNCR(SYS, typeof);
+    MK_FUNCT(SYS, symb);
     MK_FUNCN(SYS, str);
     MK_FUNCN(SYS, num);
     MK_FUNNR(SYS, int);
