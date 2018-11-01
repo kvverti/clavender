@@ -11,6 +11,7 @@ typedef enum OpType {
     OPT_UNDEFINED,      //undefined value
     OPT_NUMBER,         //Lavender number
     OPT_INTEGER,        //signed 64bit int
+    OPT_SYMB,           //dot symbol
     OPT_PARAM,          //function parameter
     OPT_PUT_PARAM,      //store top in param
     OPT_FUNCTION,       //function definition
@@ -42,6 +43,11 @@ TextBufferObj* TEXT_BUFFER;
  * given object.
  */
 LvString* lv_tb_getString(TextBufferObj* obj);
+
+/**
+ * Returns the Symb associated with the given string.
+ */
+TextBufferObj lv_tb_getSymb(char* name);
 
 /**
  * Defines the function described by the given token

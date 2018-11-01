@@ -55,6 +55,7 @@ static void parseQualName(TextBufferObj* obj, ExprContext* cxt);
 static void parseNumber(TextBufferObj* obj, ExprContext* cxt);
 static void parseInteger(TextBufferObj* obj, ExprContext* cxt);
 static void parseString(TextBufferObj* obj, ExprContext* cxt);
+static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt);
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt);
 static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt);
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above functions
@@ -616,6 +617,19 @@ static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
     }
 }
 
+static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt) {
+
+    if(!cxt->expectOperand) {
+        LV_EXPR_ERROR = XPE_EXPECT_INF;
+    } else {
+        char name[cxt->head->len];
+        memcpy(name, cxt->head->start + 1, cxt->head->len - 1);
+        name[cxt->head->len - 1] = '\0';
+        *obj = lv_tb_getSymb(name);
+        cxt->expectOperand = false;
+    }
+}
+
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
 
     switch(cxt->head->type) {
@@ -640,6 +654,9 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
             break;
         case TTY_STRING:
             parseString(obj, cxt);
+            break;
+        case TTY_DOT_SYMB:
+            parseDotSymb(obj, cxt);
             break;
         case TTY_FUNC_VAL:
         case TTY_QUAL_FUNC_VAL:

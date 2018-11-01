@@ -3,6 +3,7 @@
 #include "expression.h"
 #include "operator.h"
 #include "builtin.h"
+#include "dynbuffer.h"
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
@@ -37,6 +38,28 @@ size_t lv_tb_addExpr(size_t len, TextBufferObj* expr) {
     pushText(expr, len);
     pushText(&ret, 1);
     return save;
+}
+
+static DynBuffer symbols; //of char*
+
+TextBufferObj lv_tb_getSymb(char* name) {
+    size_t idx = 0;
+    char** arr = symbols.data;
+    while(idx < symbols.len) {
+        if(strcmp(name, arr[idx]) == 0) {
+            break;
+        }
+        idx++;
+    }
+    if(idx == symbols.len) {
+        //make a new symbol for this name
+        size_t len = strlen(name) + 1;
+        char* str = lv_alloc(len);
+        memcpy(str, name, len);
+        lv_buf_push(&symbols, &str);
+    }
+    TextBufferObj res = { .type = OPT_SYMB, .symbIdx = idx };
+    return res;
 }
 
 //calculate the number of decimal digits
@@ -92,6 +115,16 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
                 res->value[0] = '-';
             }
             snprintf(res->value + negative, len + 1, "%"PRIu64, value);
+            return res;
+        }
+        case OPT_SYMB: {
+            char* val = *(char**)lv_buf_get(&symbols, obj->symbIdx);
+            size_t len = strlen(val);
+            res = lv_alloc(sizeof(LvString) + len + 2);
+            res->refCount = 0;
+            res->len = len + 1;
+            res->value[0] = '.';
+            memcpy(res->value + 1, val, len + 1);
             return res;
         }
         case OPT_FUNCTION:
@@ -569,9 +602,14 @@ void lv_tb_onStartup(void) {
     textBufferLen = INIT_TEXT_BUFFER_LEN;
     textBufferTop = 0;
     startOfTmpExpr = 0;
+    lv_buf_init(&symbols, sizeof(LvString*));
 }
 
 void lv_tb_onShutdown(void) {
 
+    for(size_t i = 0; i < symbols.len; i++) {
+        lv_free(((char**)symbols.data)[i]);
+    }
+    lv_free(symbols.data);
     lv_expr_free(TEXT_BUFFER, textBufferTop);
 }

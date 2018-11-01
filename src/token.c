@@ -13,6 +13,7 @@ static TokenType tryGetFuncSymb(void);
 static TokenType tryGetQualName(void);
 static TokenType tryGetEllipsis(void);
 static TokenType tryGetEmptyArgs(void);
+static TokenType tryGetDotSymb(void);
 static TokenType getSymbol(void);
 static TokenType getString(void);
 static TokenType getFuncVal(void);
@@ -29,8 +30,8 @@ int lv_tkn_cmp(Token* tok, char* val) {
 
 char* lv_tkn_getError(TokenError err) {
 
-    #define LEN 8
-    static char* msg[LEN] = {
+    #define LEN (sizeof(msg) / sizeof(char*))
+    static char* msg[] = {
         "Namespace without name",
         "Number ends in '.'",
         "Number has missing exponent",
@@ -377,7 +378,20 @@ static TokenType tryGetEllipsis(void) {
     getInputWhile(isdot);
     if((idx - bgn) == 3)
         return TTY_ELLIPSIS;
-    //isn't ellipsis, must be number
+    //isn't ellipsis
+    idx = bgn;
+    return tryGetDotSymb();
+}
+
+static TokenType tryGetDotSymb(void) {
+
+    assert(buffer[idx] == '.');
+    idx++;
+    if(isidbgn(buffer[idx])) {
+        getInputWhile(isident);
+        return TTY_DOT_SYMB;
+    }
+    // not a dot symb, must be a number
     idx = bgn;
     return getNumber();
 }

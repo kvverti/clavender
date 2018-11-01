@@ -647,6 +647,7 @@ static void runCycle(void) {
         case OPT_STRING:
         case OPT_CAPTURE:
         case OPT_VECT:
+        case OPT_SYMB:
             //push it on the stack
             push(value);
             break;

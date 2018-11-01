@@ -27,6 +27,7 @@ struct TextBufferObj {
         LvString* str;
         LvVect* vect;
         int param;
+        size_t symbIdx;
         Operator* func;
         struct {
             CaptureObj* capture;
