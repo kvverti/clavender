@@ -769,6 +769,7 @@ static TextBufferObj* getExprBounds(TextBufferObj* end) {
         case OPT_PARAM:
         case OPT_FUNCTION_VAL:
         case OPT_STRING:
+        case OPT_SYMB:
             break;
         case OPT_FUNCTION:
             // get the beginning of the argument list
