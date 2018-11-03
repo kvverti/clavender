@@ -390,6 +390,9 @@ static TokenType tryGetDotSymb(void) {
     if(isidbgn(buffer[idx])) {
         getInputWhile(isident);
         return TTY_DOT_SYMB;
+    } else if(buffer[idx] == '"') {
+        getString();
+        return TTY_DOT_SYMB;
     }
     // not a dot symb, must be a number
     idx = bgn;

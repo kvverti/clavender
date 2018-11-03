@@ -564,6 +564,35 @@ static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
     cxt->expectOperand = false;
 }
 
+static size_t getStringValue(char* c, char* str) {
+
+    size_t len = 0;
+    while(*c != '"') {
+        if(*c == '\\') {
+            //handle escape sequences
+            switch(*++c) {
+                case 'n': str[len] = '\n';
+                    break;
+                case 't': str[len] = '\t';
+                    break;
+                case '"': str[len] = '"';
+                    break;
+                case '\'': str[len] = '\'';
+                    break;
+                case '\\': str[len] = '\\';
+                    break;
+                default:
+                    assert(false);
+            }
+        } else {
+            str[len] = *c;
+        }
+        c++;
+        len++;
+    }
+    return len;
+}
+
 static void parseString(TextBufferObj* obj, ExprContext* cxt) {
 
     if(!cxt->expectOperand) {
@@ -573,29 +602,7 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     char* c = cxt->head->start + 1; //skip open quote
     LvString* newStr = lv_alloc(sizeof(LvString) + cxt->head->len);
     newStr->refCount = 1; //it will be added to the text buffer
-    size_t len = 0;
-    while(*c != '"') {
-        if(*c == '\\') {
-            //handle escape sequences
-            switch(*++c) {
-                case 'n': newStr->value[len] = '\n';
-                    break;
-                case 't': newStr->value[len] = '\t';
-                    break;
-                case '"': newStr->value[len] = '"';
-                    break;
-                case '\'': newStr->value[len] = '\'';
-                    break;
-                case '\\': newStr->value[len] = '\\';
-                    break;
-                default:
-                    assert(false);
-            }
-        } else
-            newStr->value[len] = *c;
-        c++;
-        len++;
-    }
+    size_t len = getStringValue(c, newStr->value);
     newStr = lv_realloc(newStr, sizeof(LvString) + len + 1);
     newStr->value[len] = '\0';
     newStr->len = len;
@@ -623,8 +630,14 @@ static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_INF;
     } else {
         char name[cxt->head->len];
-        memcpy(name, cxt->head->start + 1, cxt->head->len - 1);
-        name[cxt->head->len - 1] = '\0';
+        if(cxt->head->start[1] == '"') {
+            size_t len = getStringValue(cxt->head->start + 2, name);
+            assert(len < cxt->head->len);
+            name[len] = '\0';
+        } else {
+            memcpy(name, cxt->head->start + 1, cxt->head->len - 1);
+            name[cxt->head->len - 1] = '\0';
+        }
         *obj = lv_tb_getSymb(name);
         cxt->expectOperand = false;
     }
