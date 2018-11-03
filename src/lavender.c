@@ -668,21 +668,6 @@ static void runCycle(void) {
                 pc += value->branchAddr - 1;
             break;
         }
-        case OPT_FUNC_CALL: {
-            Operator* op;
-            lv_buf_pop(&stack, &func);
-            bool setup = setUpFuncCall(&func, value->callArity, &op);
-            //cleanup memory
-            lv_expr_cleanup(&func, 1);
-            if(!setup) {
-                TextBufferObj nan;
-                nan.type = OPT_UNDEFINED;
-                push(&nan);
-            } else {
-                jumpAndLink(op);
-            }
-            break;
-        }
         case OPT_FUNC_CALL2: {
             int arity = value->callArity;
             //in contrast to func call 1, the function is at the bottom

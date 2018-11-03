@@ -61,7 +61,6 @@ static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt);
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above functions
 //runs one cycle of shunting yard
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
-static void handleRightBracket(ExprContext* cxt);
 static bool isLiteral(TextBufferObj* obj, char c);
 static bool shuntOps(ExprContext* cxt);
 static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cxt);
@@ -284,17 +283,17 @@ static int compare(TextBufferObj* a, TextBufferObj* b) {
             return ar - br;
         }
     }
-    //close groupers '}', ']' and ')' have next highest
+    //close groupers '}' and ')' have next highest
     {
-        int ac = (isLiteral(a, ')') || isLiteral(a, ']') || isLiteral(a, '}'));
-        int bc = (isLiteral(b, ')') || isLiteral(b, ']') || isLiteral(b, '}'));
+        int ac = (isLiteral(a, ')') || isLiteral(a, '}'));
+        int bc = (isLiteral(b, ')') || isLiteral(b, '}'));
         if(ac || bc)
             return ac - bc;
     }
-    //openers '{', '(' and '[' have the lowest
-    if(isLiteral(a, '(') || isLiteral(a, '[') || isLiteral(a, '{'))
+    //openers '{' and '(' have the lowest
+    if(isLiteral(a, '(') || isLiteral(a, '{'))
         return -1;
-    if(isLiteral(b, '(') || isLiteral(b, '[') || isLiteral(b, '{'))
+    if(isLiteral(b, '(') || isLiteral(b, '{'))
         return 1;
     //check fixing
     //prefix > call 2 > infix = postfix
@@ -348,7 +347,6 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
             //increment nesting in either case
             cxt->nesting++;
             break;
-        case '[':
         case '{':
             cxt->nesting++;
             //open groupings are "operands"
@@ -367,7 +365,6 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
             cxt->nesting--;
             cxt->expectOperand = false;
             break;
-        case ']':
         case ')':
             cxt->nesting--;
             //fallthrough
@@ -388,7 +385,7 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
         default:
             LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
     }
-    if(obj->literal == ']' || obj->literal == ',')
+    if(obj->literal == ',')
         cxt->expectOperand = true;
 }
 
@@ -872,103 +869,65 @@ static void collectByNameArgs(TextBufferObj* func, int ar, ExprContext* cxt) {
 //Returns whether an error occurred.
 static bool shuntOps(ExprContext* cxt) {
 
-    if(isLiteral(cxt->ops.top, ']')) {
-        handleRightBracket(cxt);
-        return LV_EXPR_ERROR == 0;
+    TextBufferObj* tmp = cxt->ops.top;
+    //if we need to push capture params onto the out stack,
+    //we do so now, because we don't know the enclosing
+    //function's arity at runtime.
+    if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
+        //ar holds the number of args passed in Lavender source
+        int ar = *cxt->params.top--;
+        collectByNameArgs(tmp, ar, cxt);
+        //handle varargs
+        if(tmp->func->varargs) {
+            //make last arg + extra args on the end into a vector
+            //zero vector args is allowed
+            TextBufferObj obj;
+            int lastParam = tmp->func->arity - tmp->func->captureCount - 1;
+            assert(lastParam >= 0);
+            obj.type = OPT_MAKE_VECT;
+            obj.callArity = ar - lastParam;
+            if(obj.callArity < 0) {
+                LV_EXPR_ERROR = XPE_BAD_ARITY;
+                cxt->head = *cxt->tok.top;
+                return false;
+            }
+            //adjust arity to match fixed function arity
+            ar = tmp->func->arity - tmp->func->captureCount;
+            pushStack(&cxt->out, &obj);
+        }
+        //push any extra implicit capture args
+        int end = arityFor(tmp->func, cxt->decl);
+        for(int i = tmp->func->captureCount; i > 0; i--) {
+            TextBufferObj obj;
+            obj.type = OPT_PARAM;
+            obj.param = end - i;
+            assert(obj.param >= 0);
+            pushStack(&cxt->out, &obj);
+        }
+        fixArityFirstArg(cxt);
+        pushStack(&cxt->out, tmp);
+        if((tmp->func->arity - tmp->func->captureCount) != ar) {
+            LV_EXPR_ERROR = XPE_BAD_ARITY;
+            cxt->head = *cxt->tok.top;
+            return false;
+        }
+    } else if(tmp->type == OPT_FUNC_CALL2) {
+        //get the proper param count
+        int ar = *cxt->params.top--;
+        if(ar < 0) {
+            LV_EXPR_ERROR = XPE_BAD_ARITY;
+            cxt->head = *cxt->tok.top;
+            return false;
+        } else {
+            tmp->callArity = ar;
+            pushStack(&cxt->out, tmp);
+        }
     } else {
-        TextBufferObj* tmp = cxt->ops.top;
-        //if we need to push capture params onto the out stack,
-        //we do so now, because we don't know the enclosing
-        //function's arity at runtime.
-        if(tmp->type == OPT_FUNCTION && tmp->func->arity > 0) {
-            //ar holds the number of args passed in Lavender source
-            int ar = *cxt->params.top--;
-            collectByNameArgs(tmp, ar, cxt);
-            //handle varargs
-            if(tmp->func->varargs) {
-                //make last arg + extra args on the end into a vector
-                //zero vector args is allowed
-                TextBufferObj obj;
-                int lastParam = tmp->func->arity - tmp->func->captureCount - 1;
-                assert(lastParam >= 0);
-                obj.type = OPT_MAKE_VECT;
-                obj.callArity = ar - lastParam;
-                if(obj.callArity < 0) {
-                    LV_EXPR_ERROR = XPE_BAD_ARITY;
-                    cxt->head = *cxt->tok.top;
-                    return false;
-                }
-                //adjust arity to match fixed function arity
-                ar = tmp->func->arity - tmp->func->captureCount;
-                pushStack(&cxt->out, &obj);
-            }
-            //push any extra implicit capture args
-            int end = arityFor(tmp->func, cxt->decl);
-            for(int i = tmp->func->captureCount; i > 0; i--) {
-                TextBufferObj obj;
-                obj.type = OPT_PARAM;
-                obj.param = end - i;
-                assert(obj.param >= 0);
-                pushStack(&cxt->out, &obj);
-            }
-            fixArityFirstArg(cxt);
-            pushStack(&cxt->out, tmp);
-            if((tmp->func->arity - tmp->func->captureCount) != ar) {
-                LV_EXPR_ERROR = XPE_BAD_ARITY;
-                cxt->head = *cxt->tok.top;
-                return false;
-            }
-        } else if(tmp->type == OPT_FUNC_CALL2) {
-            //get the proper param count
-            int ar = *cxt->params.top--;
-            if(ar < 0) {
-                LV_EXPR_ERROR = XPE_BAD_ARITY;
-                cxt->head = *cxt->tok.top;
-                return false;
-            } else {
-                tmp->callArity = ar;
-                pushStack(&cxt->out, tmp);
-            }
-        } else {
-            pushStack(&cxt->out, tmp);
-        }
-        cxt->ops.top--;
-        cxt->tok.top--;
-        return true;
+        pushStack(&cxt->out, tmp);
     }
-}
-
-/**
- * Handles Lavender square bracket notation.
- * Lavender requires that expressions in square brackets
- * be moved verbatim to the right of the next sub-expression.
- */
-static void handleRightBracket(ExprContext* cxt) {
-
-    assert(isLiteral(cxt->ops.top, ']'));
-    assert(cxt->params.top != cxt->params.stack);
-    int arity = *cxt->params.top--;
-    if(arity < 0) {
-        LV_EXPR_ERROR = XPE_BAD_ARITY;
-        return;
-    }
-    cxt->ops.top--; //pop ']'
-    REQUIRE_NONEMPTY(cxt->ops);
-    //shunt over operators
-    do {
-        if(isLiteral(cxt->ops.top, ']')) {
-            handleRightBracket(cxt);
-        } else {
-            pushStack(&cxt->out, cxt->ops.top--);
-            REQUIRE_NONEMPTY(cxt->ops);
-        }
-    } while(!isLiteral(cxt->ops.top, '['));
-    TextBufferObj call;
-    call.type = OPT_FUNC_CALL;
-    call.callArity = arity;
-    fixArityFirstArg(cxt);
-    pushStack(&cxt->out, &call);
-    cxt->ops.top--; //pop '['
+    cxt->ops.top--;
+    cxt->tok.top--;
+    return true;
 }
 
 /**
@@ -1000,12 +959,6 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 pushStack(&cxt->ops, obj);
                 pushToken(&cxt->tok, cxt->head);
                 break;
-            case '[':
-                //push to op stack and add to out
-                pushStack(&cxt->ops, obj);
-                pushToken(&cxt->tok, cxt->head);
-                pushStack(&cxt->out, obj);
-                break;
             case '{':
                 //push '{' to ops and push -1 to params
                 fixArityFirstArg(cxt);
@@ -1032,27 +985,6 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 pushStack(&cxt->out, &vect);
                 break;
             }
-            case ']':
-                //shunt ops onto out until '['
-                //so we can validate remaining ops
-                REQUIRE_NONEMPTY(cxt->ops);
-                while(!isLiteral(cxt->ops.top, '[')) {
-                    if(!shuntOps(cxt))
-                        return;
-                    REQUIRE_NONEMPTY(cxt->ops);
-                }
-                //pop out onto op until '['
-                //then push ']' onto op
-                REQUIRE_NONEMPTY(cxt->out);
-                while(!isLiteral(cxt->out.top, '[')) {
-                    pushStack(&cxt->ops, cxt->out.top--);
-                    REQUIRE_NONEMPTY(cxt->out);
-                }
-                cxt->out.top--;
-                //see below for why this is set to -1
-                pushParam(&cxt->params, -1);
-                pushStack(&cxt->ops, obj);
-                break;
             case ')':
                 //shunt over all operators until we hit left paren
                 //if we underflow, then unbalanced parens

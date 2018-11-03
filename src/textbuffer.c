@@ -216,8 +216,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             return res;
         }
         case OPT_MAKE_VECT:
-        case OPT_FUNC_CALL2:
-        case OPT_FUNC_CALL: {
+        case OPT_FUNC_CALL2: {
             #define LEN sizeof(" CALL")
             size_t len = length(obj->callArity);
             len += LEN - 1;
@@ -225,8 +224,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             res->refCount = 0;
             res->len = len;
             sprintf(res->value, "%d", obj->callArity);
-            strcat(res->value, obj->type == OPT_MAKE_VECT ? " VECT"
-                : obj->type == OPT_FUNC_CALL2 ? " CAL2" : " CALL");
+            strcat(res->value, obj->type == OPT_MAKE_VECT ? " VECT" : " CAL2");
             return res;
             #undef LEN
         }

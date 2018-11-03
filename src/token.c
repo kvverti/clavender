@@ -68,7 +68,6 @@ static char* buffer; //alias for currentFileLine->data
 static int bgn; //start pos of the current token
 static int idx; //current index in the buffer
 static FILE* input;
-static int bracketNesting; //bracket nesting
 static int parenNesting; //paren nesting
 static int braceNesting; //curly brace nesting
 static int currentLine = 1;
@@ -107,7 +106,6 @@ void lv_tkn_resetLine(void) {
 static void setInputEnd(void) {
     //set inputEnd for the global buffer
     bool endOfLine = (parenNesting == 0
-        && bracketNesting == 0
         && braceNesting == 0
         && buffer[0]);
     inputEnd = (feof(input) || endOfLine);
@@ -205,7 +203,7 @@ Token* lv_tkn_split(FILE* in) {
     input = in;
     inputEnd = false;
     BUFFER_LEN = 64;
-    bgn = idx = parenNesting = bracketNesting = braceNesting = 0;
+    bgn = idx = parenNesting = braceNesting = 0;
 
     Token* head = NULL;
     Token* tail = head;
@@ -281,16 +279,12 @@ static TokenType getLiteral(void) {
             break;
         case ')': parenNesting--;
             break;
-        case '[': bracketNesting++;
-            break;
-        case ']': bracketNesting--;
-            break;
         case '{': braceNesting++;
             break;
         case '}': braceNesting--;
             break;
     }
-    if(parenNesting < 0 || bracketNesting < 0 || braceNesting < 0) {
+    if(parenNesting < 0 || braceNesting < 0) {
         LV_TKN_ERROR = TE_UNBAL_PAREN;
         return -1;
     }
