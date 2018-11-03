@@ -445,6 +445,62 @@ static TextBufferObj len(TextBufferObj* _args) {
     return res;
 }
 
+static size_t hashOf(void* mem, size_t len) {
+    //djb2 hash
+    size_t res = 5381;
+    unsigned char* str = mem;
+    while(len-- > 0)
+        res = ((res << 5) + res) + *str++;
+    return res;
+}
+
+static TextBufferObj hash(TextBufferObj* args) {
+
+    TextBufferObj arg, res;
+    getArgs(&arg, args, 1);
+    res.type = OPT_INTEGER;
+    switch(arg.type) {
+        case OPT_UNDEFINED:
+            res.integer = 0;
+            break;
+        case OPT_NUMBER:
+            res.integer = hashOf(&arg.number, sizeof(arg.number));
+            break;
+        case OPT_INTEGER:
+            res.integer = arg.integer;
+            break;
+        case OPT_SYMB:
+            res.integer = arg.symbIdx;
+            break;
+        case OPT_STRING:
+            res.integer = hashOf(arg.str->value, arg.str->len);
+            break;
+        case OPT_FUNCTION_VAL:
+            res.integer = (uint64_t)arg.func;
+            break;
+        case OPT_CAPTURE: {
+            uint64_t h = 5381;
+            for(size_t i = 0; i < arg.capfunc->captureCount; i++) {
+                h = ((h << 5) + h) + hash(&arg.capture->value[i]).integer;
+            }
+            res.integer = h;
+            break;
+        }
+        case OPT_VECT: {
+            uint64_t h = 5381;
+            for(size_t i = 0; i < arg.vect->len; i++) {
+                h = ((h << 5) + h) + hash(&arg.vect->data[i]).integer;
+            }
+            res.integer = h;
+            break;
+        }
+        default:
+            assert(false);
+    }
+    clearArgs(&arg, 1);
+    return res;
+}
+
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
 
     if(a->type != b->type) {
@@ -1243,6 +1299,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCT(SYS, cat);
     MK_FUNCT(SYS, call);
     MK_FUNCN(SYS, at);
+    MK_FUNCN(SYS, hash);
     MK_FUNNR(SYS, bool);
     MK_FUNCN(SYS, eq);
     MK_FUNCN(SYS, lt);
