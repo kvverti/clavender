@@ -19,6 +19,7 @@ typedef enum OpType {
     OPT_FUNC_CAP,       //capture function with params
     OPT_FUNC_CALL2,     //call value as function (paren notation)
     OPT_MAKE_VECT,      //make vector from args
+    OPT_MAKE_MAP,       //make map from args
     OPT_RETURN,         //return from function
     OPT_BEQZ,           //relative branch if zero
     OPT_ADDR,           //internal address (not present in text buffer)

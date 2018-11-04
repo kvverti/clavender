@@ -9,7 +9,8 @@ bool lv_expr_isReserved(char* id, size_t len) {
     switch(len) {
         case 3:
             return strncmp(id, "def", len) == 0
-                || strncmp(id, "let", len) == 0;
+                || strncmp(id, "let", len) == 0
+                || strncmp(id, "mat", len) == 0;
         case 2:
             return strncmp(id, "do", len) == 0
                 || strncmp(id, "=>", len) == 0

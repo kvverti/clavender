@@ -66,12 +66,13 @@ static TextBufferObj undefined(TextBufferObj* args) {
     return res;
 }
 
-#define NUM_TYPES 6
+#define NUM_TYPES 8
 static LvString* types[NUM_TYPES];
 
 static void mkTypes(void) {
 
     #define INIT(i, n) \
+        assert(i < NUM_TYPES); \
         types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
         types[i]->len = sizeof(n) - 1; \
         types[i]->refCount = 1; \
@@ -83,6 +84,7 @@ static void mkTypes(void) {
     INIT(4, "function");
     INIT(5, "int");
     INIT(6, "symb");
+    INIT(7, "mat");
     #undef INIT
 }
 

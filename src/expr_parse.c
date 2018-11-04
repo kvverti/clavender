@@ -45,6 +45,7 @@ typedef struct ExprContext {
     TextStack out;          //the output stack
     TokenStack tok;         //the stack for ops' tokens, used for error
     IntStack params;        //the parameter stack
+    IntStack maps;          //the map stack - which levels of nesting are maps
 } ExprContext;
 
 static int compare(TextBufferObj* a, TextBufferObj* b);
@@ -73,6 +74,7 @@ static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cx
         lv_free(cxt.ops.stack); \
         lv_free(cxt.tok.stack); \
         lv_free(cxt.params.stack); \
+        lv_free(cxt.maps.stack); \
         return cxt.head; \
     } else (void)0
 
@@ -106,6 +108,10 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     cxt.params.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
     cxt.params.top = cxt.params.stack;
     cxt.params.stack[0] = 0;
+    cxt.maps.len = INIT_STACK_LEN;
+    cxt.maps.stack = lv_alloc(INIT_STACK_LEN * sizeof(int));
+    cxt.maps.top = cxt.maps.stack;
+    cxt.maps.stack[0] = 0;
     //loop over each token until we reach the end of the expression
     //(end-of-stream, closing grouper ')', or expression split ';')
     do {
@@ -130,6 +136,23 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
             if(cxt.nesting == 0) {
                 //end of conditonal, should be
                 break;
+            } else if(!cxt.expectOperand && *cxt.maps.top == cxt.nesting) {
+                //arrow in a map at operator position
+                //shunt over the key expression
+                if(cxt.ops.top == cxt.ops.stack) {
+                    LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                    IF_ERROR_CLEANUP;
+                }
+                while(!isLiteral(cxt.ops.top, '{')) {
+                    shuntOps(&cxt);
+                    if(cxt.ops.top == cxt.ops.stack) {
+                        LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                    }
+                    IF_ERROR_CLEANUP;
+                }
+                *cxt.maps.top = -*cxt.maps.top;
+                cxt.head = cxt.head->next;
+                cxt.expectOperand = true;
             } else if(!cxt.expectOperand || cxt.ops.top->type != OPT_LITERAL) {
                 LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                 IF_ERROR_CLEANUP;
@@ -156,6 +179,13 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                 }
                 cxt.expectOperand = false;
             }
+        } else if(lv_tkn_cmp(cxt.head, "mat") == 0) {
+            if(!cxt.expectOperand) {
+                LV_EXPR_ERROR = XPE_EXPECT_PRE;
+                IF_ERROR_CLEANUP;
+            }
+            cxt.head = cxt.head->next;
+            pushParam(&cxt.maps, cxt.nesting + 1);
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);
@@ -187,6 +217,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
     lv_free(cxt.ops.stack);
     lv_free(cxt.tok.stack);
     lv_free(cxt.params.stack);
+    lv_free(cxt.maps.stack);
     return cxt.head;
 }
 
@@ -804,6 +835,13 @@ static TextBufferObj* getExprBounds(TextBufferObj* end) {
                 bgn = getExprBounds(bgn - 1);
             }
             break;
+        case OPT_MAKE_MAP:
+            //maps have keys and values
+            for(int i = 0; i < end->callArity; i++) {
+                bgn = getExprBounds(bgn - 1);
+                bgn = getExprBounds(bgn - 1);
+            }
+            break;
         default:
             assert(false);
     }
@@ -968,7 +1006,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 break;
             case '}': {
                 //shunt ops onto out until '{'
-                //then pop '{', get param count, and push VECT to out
+                //then pop '{', get param count, and push VECT or MAP to out
                 REQUIRE_NONEMPTY(cxt->ops);
                 while(!isLiteral(cxt->ops.top, '{')) {
                     if(!shuntOps(cxt))
@@ -981,7 +1019,23 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 int arity = *cxt->params.top--;
                 if(arity < 0) //{} construct
                     arity = 0;
-                TextBufferObj vect = { .type = OPT_MAKE_VECT, .callArity = arity };
+                TextBufferObj vect = { .callArity = arity };
+                if(-*cxt->maps.top - 1 == cxt->nesting) {
+                    vect.type = OPT_MAKE_MAP;
+                    cxt->maps.top--;
+                }else if(*cxt->maps.top - 1 == cxt->nesting) {
+                    if(arity != 0) {
+                        //map did not specify a value!
+                        LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                        return;
+                    } else {
+                        //empty map
+                        vect.type = OPT_MAKE_MAP;
+                        cxt->maps.top--;
+                    }
+                } else {
+                    vect.type = OPT_MAKE_VECT;
+                }
                 pushStack(&cxt->out, &vect);
                 break;
             }
@@ -1010,6 +1064,14 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 //(this is why we shunt ops over first!)
                 if(cxt->out.top->type == OPT_EMPTY_ARGS) {
                     LV_EXPR_ERROR = XPE_EXPECT_INF;
+                    return;
+                }
+                //flip from value to key for maps
+                if(-*cxt->maps.top == cxt->nesting) {
+                    *cxt->maps.top = -*cxt->maps.top;
+                } else if(*cxt->maps.top == cxt->nesting) {
+                    //map did not specify a value!
+                    LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                     return;
                 }
                 REQUIRE_NONEMPTY(cxt->params);
