@@ -9,6 +9,8 @@
 #include <inttypes.h>
 #include <math.h>
 
+static bool equal(TextBufferObj* a, TextBufferObj* b);
+
 // evaluates any by-name expressions in the arguments
 static void getArgs(TextBufferObj* dst, TextBufferObj* src, size_t len) {
 
@@ -242,6 +244,36 @@ static TextBufferObj call(TextBufferObj* _args) {
     return res;
 }
 
+static void bsearchMap(TextBufferObj* map, TextBufferObj* key, TextBufferObj* res) {
+
+    uint64_t h = lv_blt_hash(key);
+    LvMapNode* lo = map->map->data;
+    LvMapNode* hi = lo + map->map->len;
+    while(lo < hi) {
+        LvMapNode* mid = lo + (hi - lo) / 2;
+        if(h == mid->hash) {
+            //find the one of potential hash collisions
+            for(LvMapNode* n = mid; n < hi && h == n->hash; n++) {
+                if(equal(&n->key, key)) {
+                    *res = n->value;
+                    return;
+                }
+            }
+            for(LvMapNode* n = mid; n > lo && h == n[-1].hash; n--) {
+                if(equal(&n[-1].key, key)) {
+                    *res = n[-1].value;
+                    return;
+                }
+            }
+        } else if(h < mid->hash) {
+            hi = mid;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    res->type = OPT_UNDEFINED;
+}
+
 /**
  * Returns the i'th element of the given string or vect.
  */
@@ -249,7 +281,10 @@ static TextBufferObj at(TextBufferObj* _args) {
 
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
-    if(args[0].type == OPT_INTEGER) {
+    if(args[1].type == OPT_MAP) {
+        //binary search the given key in the map
+        bsearchMap(&args[1], &args[0], &res);
+    } else if(args[0].type == OPT_INTEGER) {
         if(args[1].type == OPT_STRING
         && !isNegative(args[0].integer) && args[0].integer < args[1].str->len) {
             res.type = OPT_STRING;

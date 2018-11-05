@@ -545,6 +545,7 @@ static bool setUpFuncCall(TextBufferObj* _func, size_t numArgs, Operator** under
         }
         case OPT_STRING:
         case OPT_VECT:
+        case OPT_MAP:
             if(numArgs == 1) {
                 op = &atFunc;
                 push(func);
