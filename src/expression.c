@@ -56,22 +56,39 @@ char* lv_expr_getError(ExprError error) {
 void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
 
     for(size_t i = 0; i < len; i++) {
-        if(obj[i].type == OPT_STRING) {
-            assert(obj[i].str->refCount);
-            if(--obj[i].str->refCount == 0)
-                lv_free(obj[i].str);
-        } else if(obj[i].type == OPT_CAPTURE) {
-            assert(obj[i].capture->refCount);
-            if(--obj[i].capture->refCount == 0) {
-                lv_expr_cleanup(obj[i].capture->value, obj[i].capfunc->captureCount);
-                lv_free(obj[i].capture);
-            }
-        } else if(obj[i].type == OPT_VECT) {
-            assert(obj[i].vect->refCount);
-            if(--obj[i].vect->refCount == 0) {
-                lv_expr_cleanup(obj[i].vect->data, obj[i].vect->len);
-                lv_free(obj[i].vect);
-            }
+        switch(obj[i].type) {
+            case OPT_STRING:
+                assert(obj[i].str->refCount);
+                if(--obj[i].str->refCount == 0)
+                    lv_free(obj[i].str);
+                break;
+            case OPT_CAPTURE:
+                assert(obj[i].capture->refCount);
+                if(--obj[i].capture->refCount == 0) {
+                    lv_expr_cleanup(obj[i].capture->value, obj[i].capfunc->captureCount);
+                    lv_free(obj[i].capture);
+                }
+                break;
+            case OPT_VECT:
+                assert(obj[i].vect->refCount);
+                if(--obj[i].vect->refCount == 0) {
+                    lv_expr_cleanup(obj[i].vect->data, obj[i].vect->len);
+                    lv_free(obj[i].vect);
+                }
+                break;
+            case OPT_MAP:
+                assert(obj[i].map->refCount);
+                if(--obj[i].map->refCount == 0) {
+                    size_t s = obj[i].map->len;
+                    for(size_t j = 0; j < s; j++) {
+                        lv_expr_cleanup(&obj[i].map->data[j].key, 1);
+                        lv_expr_cleanup(&obj[i].map->data[j].value, 1);
+                    }
+                    lv_free(obj[i].map);
+                }
+                break;
+            default:
+                ;
         }
     }
 }

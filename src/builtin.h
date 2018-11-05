@@ -1,9 +1,11 @@
 #ifndef BUILTIN_H
 #define BUILTIN_H
+#include <stdint.h>
 #include "textbuffer_fwd.h"
 
 typedef TextBufferObj (*Builtin)(TextBufferObj*);
 
+uint64_t lv_blt_hash(TextBufferObj* obj);
 bool lv_blt_toBool(TextBufferObj* obj);
 Builtin lv_blt_getIntrinsic(char* name);
 

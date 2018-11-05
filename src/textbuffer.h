@@ -26,6 +26,7 @@ struct TextBufferObj {
         uint64_t integer;
         LvString* str;
         LvVect* vect;
+        LvMap* map;
         int param;
         size_t symbIdx;
         Operator* func;
@@ -59,6 +60,22 @@ struct LvVect {
     size_t refCount;
     size_t len;
     TextBufferObj data[];
+};
+
+typedef struct LvMapNode {
+    size_t hash;
+    TextBufferObj key;
+    TextBufferObj value;
+} LvMapNode;
+
+/**
+ * Map object. Maps are implemented using a lookup table sorted
+ * according to the hash value of the key.
+ */
+struct LvMap {
+    size_t refCount;
+    size_t len;
+    LvMapNode data[];
 };
 
 #endif

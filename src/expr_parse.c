@@ -184,8 +184,18 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                 LV_EXPR_ERROR = XPE_EXPECT_PRE;
                 IF_ERROR_CLEANUP;
             }
+            if(!cxt.head->next) {
+                LV_EXPR_ERROR = XPE_UNTERM_EXPR;
+                IF_ERROR_CLEANUP;
+            }
+            if(cxt.head->next->start[0] != '{') {
+                cxt.head = cxt.head->next;
+                LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                IF_ERROR_CLEANUP;
+            }
             cxt.head = cxt.head->next;
             pushParam(&cxt.maps, cxt.nesting + 1);
+            pushToken(&cxt.tok, cxt.head);
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);
@@ -1023,6 +1033,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 if(-*cxt->maps.top - 1 == cxt->nesting) {
                     vect.type = OPT_MAKE_MAP;
                     cxt->maps.top--;
+                    cxt->tok.top--; //pop `mat`
                 }else if(*cxt->maps.top - 1 == cxt->nesting) {
                     if(arity != 0) {
                         //map did not specify a value!

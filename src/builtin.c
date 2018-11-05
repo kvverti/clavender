@@ -116,6 +116,9 @@ static TextBufferObj typeof_(TextBufferObj* args) {
         case OPT_VECT:
             res.str = types[3];
             break;
+        case OPT_MAP:
+            res.str = types[7];
+            break;
         case OPT_CAPTURE:
         case OPT_FUNCTION_VAL:
             res.str = types[4];
@@ -447,59 +450,56 @@ static TextBufferObj len(TextBufferObj* _args) {
     return res;
 }
 
-static size_t hashOf(void* mem, size_t len) {
+static uint64_t hashOf(void* mem, size_t len) {
     //djb2 hash
-    size_t res = 5381;
+    uint64_t res = 5381;
     unsigned char* str = mem;
     while(len-- > 0)
         res = ((res << 5) + res) + *str++;
     return res;
 }
 
-static TextBufferObj hash(TextBufferObj* args) {
+uint64_t lv_blt_hash(TextBufferObj* arg) {
 
-    TextBufferObj arg, res;
-    getArgs(&arg, args, 1);
-    res.type = OPT_INTEGER;
-    switch(arg.type) {
+    uint64_t res;
+    switch(arg->type) {
         case OPT_UNDEFINED:
-            res.integer = 0;
+            res = 0;
             break;
         case OPT_NUMBER:
-            res.integer = hashOf(&arg.number, sizeof(arg.number));
+            res = hashOf(&arg->number, sizeof(arg->number));
             break;
         case OPT_INTEGER:
-            res.integer = arg.integer;
+            res = arg->integer;
             break;
         case OPT_SYMB:
-            res.integer = arg.symbIdx;
+            res = arg->symbIdx;
             break;
         case OPT_STRING:
-            res.integer = hashOf(arg.str->value, arg.str->len);
+            res = hashOf(arg->str->value, arg->str->len);
             break;
         case OPT_FUNCTION_VAL:
-            res.integer = (uint64_t)arg.func;
+            res = (uint64_t)arg->func;
             break;
         case OPT_CAPTURE: {
             uint64_t h = 5381;
-            for(size_t i = 0; i < arg.capfunc->captureCount; i++) {
-                h = ((h << 5) + h) + hash(&arg.capture->value[i]).integer;
+            for(size_t i = 0; i < arg->capfunc->captureCount; i++) {
+                h = ((h << 5) + h) + lv_blt_hash(&arg->capture->value[i]);
             }
-            res.integer = h;
+            res = h;
             break;
         }
         case OPT_VECT: {
             uint64_t h = 5381;
-            for(size_t i = 0; i < arg.vect->len; i++) {
-                h = ((h << 5) + h) + hash(&arg.vect->data[i]).integer;
+            for(size_t i = 0; i < arg->vect->len; i++) {
+                h = ((h << 5) + h) + lv_blt_hash(&arg->vect->data[i]);
             }
-            res.integer = h;
+            res = h;
             break;
         }
         default:
             assert(false);
     }
-    clearArgs(&arg, 1);
     return res;
 }
 
@@ -1301,7 +1301,6 @@ void lv_blt_onStartup(void) {
     MK_FUNCT(SYS, cat);
     MK_FUNCT(SYS, call);
     MK_FUNCN(SYS, at);
-    MK_FUNCN(SYS, hash);
     MK_FUNNR(SYS, bool);
     MK_FUNCN(SYS, eq);
     MK_FUNCN(SYS, lt);

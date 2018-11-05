@@ -447,6 +447,46 @@ static void makeVect(int length) {
     push(&vect);
 }
 
+static int mapKeyCmp(const void* p1, const void* p2) {
+
+    const LvMapNode* a = p1;
+    const LvMapNode* b = p2;
+    if(a->hash < b->hash) {
+        return -1;
+    } else if(a->hash > b->hash) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static void makeMap(int size) {
+
+    TextBufferObj map;
+    map.type = OPT_MAP;
+    map.map = lv_alloc(sizeof(LvMap) + size * sizeof(LvMapNode));
+    map.map->refCount = 0;
+    map.map->len = size;
+    for(int i = size; i > 0; i--) {
+        LvMapNode* n = &map.map->data[i - 1];
+        TextBufferObj key;
+        lv_buf_pop(&stack, &n->value);
+        lv_buf_pop(&stack, &n->key);
+        //keys must be eagerly evaluated, unfortunately
+        if(lv_evalByName(&n->key, &key)) {
+            lv_expr_cleanup(&n->key, 1);
+            if(key.type & LV_DYNAMIC) {
+                ++*key.refCount;
+            }
+            n->key = key;
+        }
+        n->hash = lv_blt_hash(&n->key);
+    }
+    //now we sort keys, yay!
+    qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
+    push(&map);
+}
+
 /**
  * Prepares the stack for calling the given function with the
  * given number of arguments. Returns whether the setup is successful
@@ -640,6 +680,9 @@ static void runCycle(void) {
             makeVect(value->callArity);
             break;
         }
+        case OPT_MAKE_MAP:
+            makeMap(value->callArity);
+            break;
         case OPT_FUNCTION_VAL:
         case OPT_UNDEFINED:
         case OPT_NUMBER:
@@ -647,6 +690,7 @@ static void runCycle(void) {
         case OPT_STRING:
         case OPT_CAPTURE:
         case OPT_VECT:
+        case OPT_MAP:
         case OPT_SYMB:
             //push it on the stack
             push(value);

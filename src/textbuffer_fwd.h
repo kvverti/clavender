@@ -28,6 +28,7 @@ typedef enum OpType {
     OPT_STRING =        //dynamic objects start here
         LV_DYNAMIC,     //Lavender string
     OPT_VECT,           //Lavender vector
+    OPT_MAP,            //Lavender map
     OPT_CAPTURE,        //function value with captured params
 } OpType;
 
@@ -35,6 +36,7 @@ typedef struct TextBufferObj TextBufferObj;
 typedef struct CaptureObj CaptureObj;
 typedef struct LvString LvString;
 typedef struct LvVect LvVect;
+typedef struct LvMap LvMap;
 
 TextBufferObj* TEXT_BUFFER;
 
