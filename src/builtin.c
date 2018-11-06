@@ -314,6 +314,7 @@ bool lv_blt_toBool(TextBufferObj* obj) {
         case OPT_INTEGER: return obj->integer != 0;
         case OPT_STRING: return obj->str->len != 0;
         case OPT_VECT: return obj->vect->len != 0;
+        case OPT_MAP: return obj->map->len != 0;
         default: return true;
     }
 }
@@ -478,6 +479,10 @@ static TextBufferObj len(TextBufferObj* _args) {
             res.type = OPT_INTEGER;
             res.integer = args[0].vect->len;
             break;
+        case OPT_MAP:
+            res.type = OPT_INTEGER;
+            res.integer = args[0].map->len;
+            break;
         default:
             res.type = OPT_UNDEFINED;
     }
@@ -532,6 +537,15 @@ uint64_t lv_blt_hash(TextBufferObj* arg) {
             res = h;
             break;
         }
+        case OPT_MAP: {
+            uint64_t h = 5381;
+            for(size_t i = 0; i < arg->map->len; i++) {
+                h = ((h << 5) + h) + arg->map->data[i].hash;
+                h = ((h << 5) + h) + lv_blt_hash(&arg->map->data[i].value);
+            }
+            res = h;
+            break;
+        }
         default:
             assert(false);
     }
@@ -574,6 +588,19 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             for(size_t i = 0; i < a->vect->len; i++) {
                 if(!equal(&a->vect->data[i], &b->vect->data[i]))
                     return false;
+            }
+            return true;
+        case OPT_MAP:
+            //currently maps are stored in sorted order, so pairwise
+            //comparison is fine
+            if(a->map->len != b->map->len)
+                return false;
+            for(size_t i = 0; i < a->map->len; i++) {
+                LvMapNode* na = &a->map->data[i];
+                LvMapNode* nb = &b->map->data[i];
+                if(!equal(&na->key, &nb->key) || !equal(&na->value, &nb->value)) {
+                    return false;
+                }
             }
             return true;
         default:
@@ -639,6 +666,20 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
                 return false;
             }
             return a->vect->len < b->vect->len;
+        case OPT_MAP:
+            if(a->map->len == b->map->len) {
+                for(size_t i = 0; i < a->map->len; i++) {
+                    LvMapNode* na = &a->map->data[i];
+                    LvMapNode* nb = &b->map->data[i];
+                    if(!equal(&na->key, &nb->key)) {
+                        return ltImpl(&na->key, &nb->key);
+                    } else if(!equal(&na->value, &nb->value)) {
+                        return ltImpl(&na->value, &nb->value);
+                    }
+                }
+                return false;
+            }
+            return a->map->len < b->map->len;
         default:
             assert(false);
     }
