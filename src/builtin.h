@@ -5,6 +5,7 @@
 
 typedef TextBufferObj (*Builtin)(TextBufferObj*);
 
+bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b);
 uint64_t lv_blt_hash(TextBufferObj* obj);
 bool lv_blt_toBool(TextBufferObj* obj);
 Builtin lv_blt_getIntrinsic(char* name);

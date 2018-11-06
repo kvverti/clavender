@@ -466,9 +466,9 @@ static void makeMap(int size) {
     map.type = OPT_MAP;
     map.map = lv_alloc(sizeof(LvMap) + size * sizeof(LvMapNode));
     map.map->refCount = 0;
-    map.map->len = size;
-    for(int i = size; i > 0; i--) {
-        LvMapNode* n = &map.map->data[i - 1];
+    size_t len = 0;
+    for(int i = 0; i < size; i++) {
+        LvMapNode* n = &map.map->data[len];
         TextBufferObj key;
         lv_buf_pop(&stack, &n->value);
         lv_buf_pop(&stack, &n->key);
@@ -481,9 +481,28 @@ static void makeMap(int size) {
             n->key = key;
         }
         n->hash = lv_blt_hash(&n->key);
+        bool dup = false;
+        for(size_t j = len; j > 0; j--) {
+            if(n->hash == map.map->data[j - 1].hash
+            && lv_blt_equal(&n->key, &map.map->data[j - 1].key)) {
+                dup = true;
+                break;
+            }
+        }
+        //only increment if the key was not a duplicate
+        if(!dup) {
+            len++;
+        } else {
+            lv_expr_cleanup(&n->key, 1);
+            lv_expr_cleanup(&n->value, 1);
+        }
+    }
+    map.map->len = len;
+    if(len < size) {
+        map.map = lv_realloc(map.map, sizeof(LvMap) + len * sizeof(LvMapNode));
     }
     //now we sort keys, yay!
-    qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
+    qsort(map.map->data, len, sizeof(LvMapNode), mapKeyCmp);
     push(&map);
 }
 

@@ -11,6 +11,11 @@
 
 static bool equal(TextBufferObj* a, TextBufferObj* b);
 
+bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
+
+    return equal(a, b);
+}
+
 // evaluates any by-name expressions in the arguments
 static void getArgs(TextBufferObj* dst, TextBufferObj* src, size_t len) {
 
