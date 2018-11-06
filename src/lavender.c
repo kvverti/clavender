@@ -466,9 +466,8 @@ static void makeMap(int size) {
     map.type = OPT_MAP;
     map.map = lv_alloc(sizeof(LvMap) + size * sizeof(LvMapNode));
     map.map->refCount = 0;
-    size_t len = 0;
-    for(int i = 0; i < size; i++) {
-        LvMapNode* n = &map.map->data[len];
+    for(int i = size; i > 0; i--) {
+        LvMapNode* n = &map.map->data[i - 1];
         TextBufferObj key;
         lv_buf_pop(&stack, &n->value);
         lv_buf_pop(&stack, &n->key);
@@ -481,28 +480,29 @@ static void makeMap(int size) {
             n->key = key;
         }
         n->hash = lv_blt_hash(&n->key);
-        bool dup = false;
-        for(size_t j = len; j > 0; j--) {
-            if(n->hash == map.map->data[j - 1].hash
-            && lv_blt_equal(&n->key, &map.map->data[j - 1].key)) {
-                dup = true;
-                break;
+    }
+    //now we sort keys, yay!
+    qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
+    size_t len = size;
+    //remove duplicates
+    if(size > 1) {
+        LvMapNode* last = &map.map->data[0];
+        LvMapNode* check = &map.map->data[1];
+        while((check - map.map->data) != size) {
+            if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
+                lv_expr_cleanup(&last->key, 1);
+                lv_expr_cleanup(&last->value, 1);
+            } else {
+                last++;
             }
+            *last = *check++;
         }
-        //only increment if the key was not a duplicate
-        if(!dup) {
-            len++;
-        } else {
-            lv_expr_cleanup(&n->key, 1);
-            lv_expr_cleanup(&n->value, 1);
+        len = last - map.map->data + 1;
+        if(len < size) {
+            map.map = lv_realloc(map.map, sizeof(LvMap) + len * sizeof(LvMapNode));
         }
     }
     map.map->len = len;
-    if(len < size) {
-        map.map = lv_realloc(map.map, sizeof(LvMap) + len * sizeof(LvMapNode));
-    }
-    //now we sort keys, yay!
-    qsort(map.map->data, len, sizeof(LvMapNode), mapKeyCmp);
     push(&map);
 }
 
