@@ -488,7 +488,8 @@ static void makeMap(int size) {
     if(size > 1) {
         LvMapNode* last = &map.map->data[0];
         LvMapNode* check = &map.map->data[1];
-        while((check - map.map->data) != size) {
+        LvMapNode* end = map.map->data + size;
+        while(check != end) {
             if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
                 lv_expr_cleanup(&last->key, 1);
                 lv_expr_cleanup(&last->value, 1);
