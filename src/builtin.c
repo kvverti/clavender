@@ -557,6 +557,16 @@ uint64_t lv_blt_hash(TextBufferObj* arg) {
     return res;
 }
 
+static TextBufferObj hash(TextBufferObj* _args) {
+
+    TextBufferObj arg, res;
+    getArgs(&arg, _args, 1);
+    res.type = OPT_INTEGER;
+    res.integer = lv_blt_hash(&arg);
+    clearArgs(&arg, 1);
+    return res;
+}
+
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
 
     if(a->type != b->type) {
@@ -620,8 +630,8 @@ static TextBufferObj eq(TextBufferObj* _args) {
 
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
-    res.type = OPT_NUMBER;
-    res.number = equal(&args[0], &args[1]);
+    res.type = OPT_INTEGER;
+    res.integer = equal(&args[0], &args[1]);
     clearArgs(args, 2);
     return res;
 }
@@ -1383,6 +1393,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCT(SYS, call);
     MK_FUNCN(SYS, at);
     MK_FUNNR(SYS, bool);
+    MK_FUNCN(SYS, hash);
     MK_FUNCN(SYS, eq);
     MK_FUNCN(SYS, lt);
     MK_FUNCN(SYS, ge);
