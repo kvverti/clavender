@@ -179,7 +179,7 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                 }
                 cxt.expectOperand = false;
             }
-        } else if(lv_tkn_cmp(cxt.head, "mat") == 0) {
+        } else if(false && lv_tkn_cmp(cxt.head, "mat") == 0) {
             if(!cxt.expectOperand) {
                 LV_EXPR_ERROR = XPE_EXPECT_PRE;
                 IF_ERROR_CLEANUP;
@@ -1013,6 +1013,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 pushStack(&cxt->ops, obj);
                 pushToken(&cxt->tok, cxt->head);
                 pushParam(&cxt->params, -1);
+                pushParam(&cxt->maps, cxt->nesting);
                 break;
             case '}': {
                 //shunt ops onto out until '{'
@@ -1033,16 +1034,15 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 if(-*cxt->maps.top - 1 == cxt->nesting) {
                     vect.type = OPT_MAKE_MAP;
                     cxt->maps.top--;
-                    cxt->tok.top--; //pop `mat`
-                }else if(*cxt->maps.top - 1 == cxt->nesting) {
-                    if(arity != 0) {
+                    // cxt->tok.top--; //pop `mat`
+                } else if(*cxt->maps.top - 1 == cxt->nesting) {
+                    if(arity == 1 || arity == 0) {
+                        //it's really a vect
+                        vect.type = OPT_MAKE_VECT;
+                    } else {
                         //map did not specify a value!
                         LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
                         return;
-                    } else {
-                        //empty map
-                        vect.type = OPT_MAKE_MAP;
-                        cxt->maps.top--;
                     }
                 } else {
                     vect.type = OPT_MAKE_VECT;
@@ -1081,9 +1081,14 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                 if(-*cxt->maps.top == cxt->nesting) {
                     *cxt->maps.top = -*cxt->maps.top;
                 } else if(*cxt->maps.top == cxt->nesting) {
-                    //map did not specify a value!
-                    LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
-                    return;
+                    if(*cxt->params.top != 1) {
+                        //map did not specify a value!
+                        LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
+                        return;
+                    } else {
+                        //not a map, but a vect
+                        cxt->maps.top--;
+                    }
                 }
                 REQUIRE_NONEMPTY(cxt->params);
                 ++*cxt->params.top;
