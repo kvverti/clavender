@@ -1039,6 +1039,7 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
                     if(arity == 1 || arity == 0) {
                         //it's really a vect
                         vect.type = OPT_MAKE_VECT;
+                        cxt->maps.top--;
                     } else {
                         //map did not specify a value!
                         LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
