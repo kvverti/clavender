@@ -179,23 +179,6 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
                 }
                 cxt.expectOperand = false;
             }
-        } else if(false && lv_tkn_cmp(cxt.head, "mat") == 0) {
-            if(!cxt.expectOperand) {
-                LV_EXPR_ERROR = XPE_EXPECT_PRE;
-                IF_ERROR_CLEANUP;
-            }
-            if(!cxt.head->next) {
-                LV_EXPR_ERROR = XPE_UNTERM_EXPR;
-                IF_ERROR_CLEANUP;
-            }
-            if(cxt.head->next->start[0] != '{') {
-                cxt.head = cxt.head->next;
-                LV_EXPR_ERROR = XPE_UNEXPECT_TOKEN;
-                IF_ERROR_CLEANUP;
-            }
-            cxt.head = cxt.head->next;
-            pushParam(&cxt.maps, cxt.nesting + 1);
-            pushToken(&cxt.tok, cxt.head);
         } else {
             //get the next text object
             parseTextObj(&obj, &cxt);
