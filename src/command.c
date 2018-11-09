@@ -74,10 +74,25 @@ static void freeNameScopes(void) {
     lv_free(nameScopes.data);
 }
 
+static void addScope(char* sc) {
+
+    if(nameScopes.len + 1 == nameScopes.cap) {
+        nameScopes.data = lv_realloc(nameScopes.data, nameScopes.cap * 2 * sizeof(char*));
+        nameScopes.cap *= 2;
+    }
+    nameScopes.data[nameScopes.len++] = sc;
+}
+
 void lv_cmd_onStartup(void) {
 
     lv_tbl_init(&usingNames);
     initNameScopes();
+    //global namespace is always wildcard imported
+    #define GLOBAL_NS "global"
+    char* global = lv_alloc(sizeof(GLOBAL_NS));
+    memcpy(global, GLOBAL_NS, sizeof(GLOBAL_NS));
+    addScope(global);
+    #undef GLOBAL_NS
 }
 
 void lv_cmd_onShutdown(void) {
@@ -90,15 +105,6 @@ void lv_cmd_onShutdown(void) {
 char* lv_cmd_getQualNameFor(char* simpleName) {
 
     return lv_tbl_get(&usingNames, simpleName);
-}
-
-void addScope(char* sc) {
-
-    if(nameScopes.len + 1 == nameScopes.cap) {
-        nameScopes.data = lv_realloc(nameScopes.data, nameScopes.cap * 2 * sizeof(char*));
-        nameScopes.cap *= 2;
-    }
-    nameScopes.data[nameScopes.len++] = sc;
 }
 
 void lv_cmd_getUsingScopes(char*** scopes, size_t* len) {

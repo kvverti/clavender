@@ -1364,7 +1364,7 @@ TextBufferObj skip(TextBufferObj* _args) {
     return res;
 }
 
-Hashtable intrinsics;
+static Hashtable intrinsics;
 
 Builtin lv_blt_getIntrinsic(char* name) {
 

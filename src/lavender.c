@@ -83,7 +83,10 @@ static bool addFile(char* file) {
 void lv_run(void) {
 
     lv_startup();
-    if(lv_mainFile) {
+    bool load = lv_readFile("sys") && lv_readFile("global");
+    if(!load) {
+        puts("Fatal: stdlib does not exist");
+    } else if(lv_mainFile) {
         bool read = lv_readFile(lv_mainFile);
         if(!read) {
             puts("Error reading main file");
