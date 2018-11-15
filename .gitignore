@@ -51,3 +51,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+_site
+.bundle
+vendor
+Gemfile.lock
