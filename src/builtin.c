@@ -13,7 +13,10 @@ static bool equal(TextBufferObj* a, TextBufferObj* b);
 
 bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
 
-    return equal(a, b);
+    TextBufferObj eq;
+    TextBufferObj ab[2] = { *a, *b };
+    lv_callFunction(&lv_globalEquals, 2, ab, &eq);
+    return eq.type == OPT_INTEGER ? eq.integer : equal(a, b);
 }
 
 // evaluates any by-name expressions in the arguments
@@ -259,13 +262,13 @@ static void bsearchMap(TextBufferObj* map, TextBufferObj* key, TextBufferObj* re
         if(h == mid->hash) {
             //find the one of potential hash collisions
             for(LvMapNode* n = mid; n < hi && h == n->hash; n++) {
-                if(equal(&n->key, key)) {
+                if(lv_blt_equal(&n->key, key)) {
                     *res = n->value;
                     return;
                 }
             }
             for(LvMapNode* n = mid; n > lo && h == n[-1].hash; n--) {
-                if(equal(&n[-1].key, key)) {
+                if(lv_blt_equal(&n[-1].key, key)) {
                     *res = n[-1].value;
                     return;
                 }
@@ -504,7 +507,7 @@ static uint64_t hashOf(void* mem, size_t len) {
     return res;
 }
 
-uint64_t lv_blt_hash(TextBufferObj* arg) {
+static uint64_t hashcode(TextBufferObj* arg) {
 
     uint64_t res;
     switch(arg->type) {
@@ -562,9 +565,16 @@ static TextBufferObj hash(TextBufferObj* _args) {
     TextBufferObj arg, res;
     getArgs(&arg, _args, 1);
     res.type = OPT_INTEGER;
-    res.integer = lv_blt_hash(&arg);
+    res.integer = hashcode(&arg);
     clearArgs(&arg, 1);
     return res;
+}
+
+uint64_t lv_blt_hash(TextBufferObj* a) {
+
+    TextBufferObj res;
+    lv_callFunction(&lv_globalHash, 1, a, &res);
+    return res.type == OPT_INTEGER ? res.integer : hashcode(a);
 }
 
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
@@ -593,7 +603,7 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             if(a->capfunc != b->capfunc)
                 return false;
             for(int i = 0; i < a->capfunc->captureCount; i++) {
-                if(!equal(&a->capture->value[i], &b->capture->value[i]))
+                if(!lv_blt_equal(&a->capture->value[i], &b->capture->value[i]))
                     return false;
             }
             return true;
@@ -601,7 +611,7 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             if(a->vect->len != b->vect->len)
                 return false;
             for(size_t i = 0; i < a->vect->len; i++) {
-                if(!equal(&a->vect->data[i], &b->vect->data[i]))
+                if(!lv_blt_equal(&a->vect->data[i], &b->vect->data[i]))
                     return false;
             }
             return true;
@@ -613,7 +623,7 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             for(size_t i = 0; i < a->map->len; i++) {
                 LvMapNode* na = &a->map->data[i];
                 LvMapNode* nb = &b->map->data[i];
-                if(!equal(&na->key, &nb->key) || !equal(&na->value, &nb->value)) {
+                if(!lv_blt_equal(&na->key, &nb->key) || !lv_blt_equal(&na->value, &nb->value)) {
                     return false;
                 }
             }

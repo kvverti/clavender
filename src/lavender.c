@@ -502,9 +502,7 @@ static void makeMap(int size) {
             }
             n->key = key;
         }
-        TextBufferObj res;
-        lv_callFunction(&lv_globalHash, 1, &n->key, &res);
-        n->hash = res.type == OPT_INTEGER ? res.integer : 0;
+        n->hash = lv_blt_hash(&n->key);
     }
     //now we sort keys, yay!
     qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
@@ -515,16 +513,9 @@ static void makeMap(int size) {
         LvMapNode* check = &map.map->data[1];
         LvMapNode* end = map.map->data + size;
         while(check != end) {
-            if(check->hash == last->hash) {
-                TextBufferObj eq;
-                TextBufferObj ab[2] = { check->key, last->key };
-                lv_callFunction(&lv_globalEquals, 2, ab, &eq);
-                if((eq.type == OPT_INTEGER && eq.integer) || lv_blt_equal(&check->key, &last->key)) {
-                    lv_expr_cleanup(&last->key, 1);
-                    lv_expr_cleanup(&last->value, 1);
-                } else {
-                    last++;
-                }
+            if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
+                lv_expr_cleanup(&last->key, 1);
+                lv_expr_cleanup(&last->value, 1);
             } else {
                 last++;
             }
