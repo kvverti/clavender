@@ -90,6 +90,8 @@ void lv_run(void) {
         lv_globalEquals.func = lv_op_getOperator("global:=", FNS_INFIX);
         lv_globalHash.type = OPT_FUNCTION;
         lv_globalHash.func = lv_op_getOperator("global:hash", FNS_PREFIX);
+        lv_globalLt.type = OPT_FUNCTION;
+        lv_globalLt.func = lv_op_getOperator("global:<", FNS_INFIX);
     }
     if(!load) {
         puts("Fatal: stdlib does not exist");
@@ -461,8 +463,8 @@ static void makeVect(int length) {
 
 static int mapKeyCmp(const void* p1, const void* p2) {
 
-    const LvMapNode* a = p1;
-    const LvMapNode* b = p2;
+    LvMapNode* a = (LvMapNode*)p1;
+    LvMapNode* b = (LvMapNode*)p2;
     if(a->hash < b->hash) {
         return -1;
     } else if(a->hash > b->hash) {
@@ -470,13 +472,9 @@ static int mapKeyCmp(const void* p1, const void* p2) {
     } else {
         //compare by sys:__lt__ for equal hashes
         //ensures the same ordering of the same elements
-        TextBufferObj keys[2] = { a->key, b->key };
-        if(sysLt(keys).integer) {
+        if(lv_blt_lt(&a->key, &b->key)) {
             return -1;
-        }
-        keys[0] = b->key;
-        keys[1] = a->key;
-        if(sysLt(keys).integer) {
+        } else if(lv_blt_lt(&b->key, &a->key)) {
             return 1;
         }
         return 0;

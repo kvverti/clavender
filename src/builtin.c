@@ -676,8 +676,11 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_CAPTURE:
             if(a->capfunc == b->capfunc) {
                 for(int i = 0; i < a->capfunc->captureCount; i++) {
-                    if(!equal(&a->capture->value[i], &b->capture->value[i]))
-                        return ltImpl(&a->capture->value[i], &b->capture->value[i]);
+                    if(lv_blt_lt(&a->capture->value[i], &b->capture->value[i])) {
+                        return true;
+                    } else if(lv_blt_lt(&b->capture->value[i], &a->capture->value[i])) {
+                        return false;
+                    }
                 }
                 return false;
             }
@@ -685,8 +688,11 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_VECT:
             if(a->vect->len == b->vect->len) {
                 for(size_t i = 0; i < a->vect->len; i++) {
-                    if(!equal(&a->vect->data[i], &b->vect->data[i]))
-                        return ltImpl(&a->vect->data[i], &b->vect->data[i]);
+                    if(lv_blt_lt(&a->vect->data[i], &b->vect->data[i])) {
+                        return true;
+                    } else if(lv_blt_lt(&b->vect->data[i], &a->vect->data[i])) {
+                        return false;
+                    }
                 }
                 return false;
             }
@@ -696,10 +702,14 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
                 for(size_t i = 0; i < a->map->len; i++) {
                     LvMapNode* na = &a->map->data[i];
                     LvMapNode* nb = &b->map->data[i];
-                    if(!equal(&na->key, &nb->key)) {
-                        return ltImpl(&na->key, &nb->key);
-                    } else if(!equal(&na->value, &nb->value)) {
-                        return ltImpl(&na->value, &nb->value);
+                    if(lv_blt_lt(&na->key, &nb->key)) {
+                        return true;
+                    } else if(lv_blt_lt(&nb->key, &na->key)) {
+                        return false;
+                    } else if(lv_blt_lt(&na->value, &nb->value)) {
+                        return true;
+                    } else if(lv_blt_lt(&nb->value, &na->value)) {
+                        return false;
                     }
                 }
                 return false;
@@ -708,6 +718,14 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         default:
             assert(false);
     }
+}
+
+bool lv_blt_lt(TextBufferObj* a, TextBufferObj* b) {
+
+    TextBufferObj lt;
+    TextBufferObj ab[2] = { *a, *b };
+    lv_callFunction(&lv_globalLt, 2, ab, &lt);
+    return lt.type == OPT_INTEGER ? lt.integer : ltImpl(a, b);
 }
 
 static TextBufferObj lt(TextBufferObj* _args) {

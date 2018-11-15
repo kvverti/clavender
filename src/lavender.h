@@ -16,6 +16,7 @@ struct LvMainArgs {
 // essential non-intrinsic Lavender functions
 TextBufferObj lv_globalEquals;
 TextBufferObj lv_globalHash;
+TextBufferObj lv_globalLt;
 
 void lv_run(void);
 void lv_repl(void);
