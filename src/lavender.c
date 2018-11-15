@@ -23,6 +23,7 @@ static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
 static Operator atFunc; //built in sys:__at__
+static Builtin sysLt; //built in sys:__lt__
 static Operator scope = { .type = FUN_FWD_DECL };
 
 static void push(TextBufferObj* obj) {
@@ -84,6 +85,12 @@ void lv_run(void) {
 
     lv_startup();
     bool load = lv_readFile("sys") && lv_readFile("global");
+    if(load) {
+        lv_globalEquals.type = OPT_FUNCTION;
+        lv_globalEquals.func = lv_op_getOperator("global:=", FNS_INFIX);
+        lv_globalHash.type = OPT_FUNCTION;
+        lv_globalHash.func = lv_op_getOperator("global:hash", FNS_PREFIX);
+    }
     if(!load) {
         puts("Fatal: stdlib does not exist");
     } else if(lv_mainFile) {
@@ -192,6 +199,8 @@ void lv_startup(void) {
     atFunc.arity = 2;
     atFunc.builtin = lv_blt_getIntrinsic("sys:__at__");
     assert(atFunc.builtin);
+    sysLt = lv_blt_getIntrinsic("sys:__lt__");
+    assert(sysLt);
 }
 
 void lv_shutdown(void) {
@@ -459,6 +468,17 @@ static int mapKeyCmp(const void* p1, const void* p2) {
     } else if(a->hash > b->hash) {
         return 1;
     } else {
+        //compare by sys:__lt__ for equal hashes
+        //ensures the same ordering of the same elements
+        TextBufferObj keys[2] = { a->key, b->key };
+        if(sysLt(keys).integer) {
+            return -1;
+        }
+        keys[0] = b->key;
+        keys[1] = a->key;
+        if(sysLt(keys).integer) {
+            return 1;
+        }
         return 0;
     }
 }
@@ -482,7 +502,9 @@ static void makeMap(int size) {
             }
             n->key = key;
         }
-        n->hash = lv_blt_hash(&n->key);
+        TextBufferObj res;
+        lv_callFunction(&lv_globalHash, 1, &n->key, &res);
+        n->hash = res.type == OPT_INTEGER ? res.integer : 0;
     }
     //now we sort keys, yay!
     qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
@@ -493,9 +515,16 @@ static void makeMap(int size) {
         LvMapNode* check = &map.map->data[1];
         LvMapNode* end = map.map->data + size;
         while(check != end) {
-            if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
-                lv_expr_cleanup(&last->key, 1);
-                lv_expr_cleanup(&last->value, 1);
+            if(check->hash == last->hash) {
+                TextBufferObj eq;
+                TextBufferObj ab[2] = { check->key, last->key };
+                lv_callFunction(&lv_globalEquals, 2, ab, &eq);
+                if((eq.type == OPT_INTEGER && eq.integer) || lv_blt_equal(&check->key, &last->key)) {
+                    lv_expr_cleanup(&last->key, 1);
+                    lv_expr_cleanup(&last->value, 1);
+                } else {
+                    last++;
+                }
             } else {
                 last++;
             }

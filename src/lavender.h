@@ -13,6 +13,10 @@ struct LvMainArgs {
     int count;
 } lv_mainArgs;
 
+// essential non-intrinsic Lavender functions
+TextBufferObj lv_globalEquals;
+TextBufferObj lv_globalHash;
+
 void lv_run(void);
 void lv_repl(void);
 bool lv_readFile(char* name);
