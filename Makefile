@@ -4,9 +4,10 @@ CC = gcc
 CSRC = src/*.c
 RELASE_ARGS = -Wall -O3 -DNDEBUG
 DEBUG_ARGS = -Wall -g
+STDLIB_DIR = stdlib/src
 
 release:
-@   $(CC) -o lavender $(RELASE_ARGS) $(CSRC) -lm
+@   $(CC) -o lavender -DSTDLIB=\"$(STDLIB_DIR)\" $(RELASE_ARGS) $(CSRC) -lm
 
 debug:
-@   $(CC) -o lavender $(DEBUG_ARGS) $(CSRC) -lm
+@   $(CC) -o lavender -DSTDLIB=\"$(STDLIB_DIR)\" $(DEBUG_ARGS) $(CSRC) -lm

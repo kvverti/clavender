@@ -286,9 +286,15 @@ bool lv_readFile(char* name) {
     strcat(file, "/");  // '/' works on all major OS (Windows, Mac, Linux)
     strcat(file, name);
     strcat(file, ext);
-    //try the current directory first, then the Lavender filepath
-    FILE* importFile = fopen(file + strlen(lv_filepath) + 1, "r");
+    //try the Lavender filepath
+    FILE* importFile = fopen(file, "r");
     if(!importFile) {
+        //lastly try the standard library
+        lv_free(file);
+        file = lv_alloc(sizeof(STDLIB) + strlen(name) + sizeof(ext));
+        strcpy(file, STDLIB "/");
+        strcat(file, name);
+        strcat(file, ext);
         importFile = fopen(file, "r");
         if(!importFile) {
             lv_free(file);
