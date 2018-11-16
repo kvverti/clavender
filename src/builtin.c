@@ -94,13 +94,12 @@ static void mkTypes(void) {
     INIT(4, "function");
     INIT(5, "int");
     INIT(6, "symb");
-    INIT(7, "mat");
+    INIT(7, "map");
     #undef INIT
 }
 
 /**
  * Returns the type of this object, as a string.
- * Possible types are: "undefined", "number", "int", "string", "vect", "function"
  */
 static TextBufferObj typeof_(TextBufferObj* args) {
 

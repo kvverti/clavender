@@ -14,6 +14,8 @@ struct LvMainArgs {
 } lv_mainArgs;
 
 // essential non-intrinsic Lavender functions
+// they are declared here as they must be initialized after
+// Lavender starts up.
 TextBufferObj lv_globalEquals;
 TextBufferObj lv_globalHash;
 TextBufferObj lv_globalLt;
