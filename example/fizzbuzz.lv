@@ -1,0 +1,15 @@
+' A FizzBuzz program. For each number in 1..N, it prints
+' "FizzBuzz" if it is divisible by both 3 and 5
+' "Fizz" if it is divisible by 3
+' "Buzz" if it is divisible by 5
+' The number otherwise
+
+@import stream using Indices, take
+
+(def main(args)
+    let n(int(args(0)) else 20)
+    => Indices map (def(a)
+        => (a % 5 = 0) ?: ("FizzBuzz", "Fizz") ; a % 3 = 0
+        => (a % 5 = 0) ?: ("Buzz", str(a)) ; otherwise
+    ) take n reduce (def(ac, el) => ac ++ "\n" ++ el)
+)

@@ -1,0 +1,4 @@
+' This program echoes the first argument passed to it
+' back to the user.
+
+def main(args) => "Hello, " ++ args(0) else "Pass an argument!"

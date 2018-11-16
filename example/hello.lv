@@ -1,0 +1,3 @@
+' The ephantical Hello World program.
+
+def main(args) => "Hello world!"
