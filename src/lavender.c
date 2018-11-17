@@ -12,7 +12,7 @@
 bool lv_debug = false;
 char* lv_filepath = ".";
 char* lv_mainFile = NULL;
-size_t lv_maxStackSize = 512 * 1024; //512KiB
+size_t lv_maxStackSize = 512 * 1024 / sizeof(TextBufferObj); //512KiB
 struct LvMainArgs lv_mainArgs = { NULL, 0 };
 
 static void readInput(FILE* in, bool repl);

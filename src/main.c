@@ -5,7 +5,7 @@
 #include <assert.h>
 
 int main(int argc, char* argv[]) {
-    
+
     bool usingMain = false;
     //parse command line arguments
     for(int i = 1; i < argc; i++) {
@@ -54,8 +54,8 @@ int main(int argc, char* argv[]) {
                         argv[i]);
                     exit(1);
             }
-            //in bytes
-            lv_maxStackSize = size * multiplier;
+            //in number of TextBufferObj
+            lv_maxStackSize = size * multiplier / sizeof(TextBufferObj);
         } else if(strncmp(argv[i], "-", 1) == 0) {
             printf("Argument %s not recognized\n", argv[i]);
             exit(1);
