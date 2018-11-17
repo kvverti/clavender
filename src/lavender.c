@@ -796,6 +796,16 @@ static void runCycle(void) {
             }
             break;
         }
+        case OPT_TAIL: {
+            //replace fp parameters with the recently pushed parameters
+            assert(value->func->type == FUN_FUNCTION);
+            int ar = value->func->arity;
+            lv_expr_cleanup(lv_buf_get(&stack, fp), ar + value->func->locals);
+            memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
+            stack.len -= ar;
+            pc = value->func->textOffset;
+            break;
+        }
         case OPT_FUNCTION: {
             jumpAndLink(value->func);
             break;

@@ -127,6 +127,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             memcpy(res->value + 1, val, len + 1);
             return res;
         }
+        case OPT_TAIL:
         case OPT_FUNCTION:
         case OPT_FUNCTION_VAL: {
             size_t len = strlen(obj->func->name);
