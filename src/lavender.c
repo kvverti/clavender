@@ -274,6 +274,19 @@ typedef struct HelperDeclObj {
 
 static bool getFuncSig(FILE* file, Operator* scope, DynBuffer* decls);
 
+static void eatShebangLine(FILE* file) {
+
+    char bgn[3] = "";
+    fgets(bgn, 3, file);
+    if(strcmp(bgn, "#!") == 0) {
+        //unget a comment marker to effectively comment
+        //out the shebang line
+        ungetc('\'', file);
+    } else {
+        rewind(file);
+    }
+}
+
 bool lv_readFile(char* name) {
 
     if(!addFile(name))
@@ -310,6 +323,7 @@ bool lv_readFile(char* name) {
     lv_tkn_resetLine();
     //parse all function declarations (not the bodies)
     //and gather runtime commands
+    eatShebangLine(importFile);
     while(!feof(importFile) && res) {
         res = getFuncSig(importFile, &scope, &decls);
     }
