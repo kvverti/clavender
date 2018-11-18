@@ -30,10 +30,9 @@ primarily Python and Scala.
 2.  Run `make` to compile the project. Building Lavender requires a C compiler
     to be installed.
 
-3.  Assuming the build is successful, run Lavender using the following command
-    exactly as written.
+3.  Assuming the build is successful, run Lavender using the following command.
     ```
-    $ ./lavender -fp stdlib/src
+    $ ./lavender
     ```
     You should see something like the following.
     ```
@@ -43,5 +42,4 @@ primarily Python and Scala.
     >
     ```
     If an error about being unable to find the standard library appears, make
-    sure that the `stdlib` subfolder contains Lavender source files and that
-    Lavender is being passed the correct file path.
+    sure that the `stdlib` subfolder contains Lavender source files.
