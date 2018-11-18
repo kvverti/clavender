@@ -590,7 +590,7 @@ static Token* parseFunctionLocals(Operator* decl) {
             if(init->code[j].type == OPT_PARAM && init->code[j].param >= i) {
                 LV_EXPR_ERROR = XPE_NAME_NOT_FOUND;
                 //free all the initializers
-                for(size_t k = 0; k < decl->locals; k++) {
+                for(int k = 0; k < i; k++) {
                     lv_expr_free(initializers[k].code, initializers[k].len);
                 }
                 return startOfInit;
