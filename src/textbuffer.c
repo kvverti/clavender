@@ -356,16 +356,13 @@ Token* lv_tb_defineFunction(Token* head, Operator* scope, Operator** res) {
     return head;
 }
 
-static Token* parseFunctionLocals(Operator* decl);
+static Token* parseFunctionLocals(Operator* decl, size_t* bgn);
 
 Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
 
     Token* beginningToken = head;
     //save the top so we can roll back if necessary
     size_t top = textBufferTop;
-    //function begin, often the same as top, but
-    //different if there are nested functions.
-    size_t fbgn = textBufferTop;
     bool setbgn = false;
     bool conditional = false;
     //the index of the previous conditional branch
@@ -404,8 +401,13 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         decl->builtin = func;
         return head;
     }
+    //function begin, often the same as top, but
+    //different if there are nested functions.
+    //local defs are parsed before this function
+    //so fbgn is first set there
+    size_t fbgn;
     //parse function local initializers (if any)
-    Token* err = parseFunctionLocals(decl);
+    Token* err = parseFunctionLocals(decl, &fbgn);
     if(LV_EXPR_ERROR) {
         rollback(decl, top);
         return err;
@@ -561,7 +563,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
  * Returns NULL if locals were successfully parsed, the erroring token
  * otherwise.
  */
-static Token* parseFunctionLocals(Operator* decl) {
+static Token* parseFunctionLocals(Operator* decl, size_t* bgn) {
 
     assert(decl->type == FUN_FWD_DECL);
     if(decl->locals == 0) {
@@ -578,7 +580,9 @@ static Token* parseFunctionLocals(Operator* decl) {
         Token* startOfInit = decl->params[i].initializer;
         assert(startOfInit);
         struct Initializer* init = &initializers[i - decl->arity];
+        decl->locals = i - decl->arity;
         startOfInit = lv_expr_parseExpr(startOfInit, decl, &init->code, &init->len);
+        decl->locals = len - decl->arity;
         if(LV_EXPR_ERROR) {
             //there was an error parsing the initializer
             return startOfInit;
@@ -598,6 +602,7 @@ static Token* parseFunctionLocals(Operator* decl) {
         }
         assert(startOfInit->start[0] == ')');
     }
+    *bgn = textBufferTop;
     //push initializer and put operation
     for(size_t i = 0; i < decl->locals; i++) {
         pushText(initializers[i].code + 1, initializers[i].len - 1);

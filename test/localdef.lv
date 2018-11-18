@@ -1,0 +1,7 @@
+
+(def main(a)
+    let b(a(0) ++ "1"),
+        c(def(d) => { a, b, d }),
+        d({ c }) =>
+    { a, b, c, c(\main), d }
+)

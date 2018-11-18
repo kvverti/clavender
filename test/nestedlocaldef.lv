@@ -1,0 +1,7 @@
+
+(def main(r)
+    let a(r(0) ++ "1"),
+        b(def q(c) => { r, a, c }),
+        c(def w(d) => def(e) => { r, a, b, d, e, \w })
+    => { c(.d)(.e), c }
+)
