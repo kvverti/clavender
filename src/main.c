@@ -13,6 +13,9 @@ int main(int argc, char* argv[]) {
             lv_mainArgs.args = &argv[i];
             lv_mainArgs.count = argc - i;
             break;
+        } else if(strcmp(argv[i], "-version") == 0) {
+            puts("C Lavender version 1.0");
+            return 0;
         } else if(strcmp(argv[i], "-fp") == 0) {
             //-fp takes one argument
             if(i == (argc - 1)) {
@@ -56,6 +59,19 @@ int main(int argc, char* argv[]) {
             }
             //in number of TextBufferObj
             lv_maxStackSize = size * multiplier / sizeof(TextBufferObj);
+        } else if(strcmp(argv[i], "-help") == 0) {
+            puts(
+                "Usage: lavender [options] [main file] [args]\n"
+                "where 'options' is one of:\n"
+                "         -fp <directory> : Sets the filepath. The filepath is where\n"
+                "                           Lavender looks for user defined files.\n"
+                "                  -debug : Enables debug logging.\n"
+                "    -maxStackSize <size> : Sets the maximum size of the Lavender stack\n"
+                "                           in kibibytes (K), mebibiyes (M), or gibibytes (G).\n"
+                "                -version : Print version information and exit.\n"
+                "                   -help : Print this information and exit."
+            );
+            return 0;
         } else if(strncmp(argv[i], "-", 1) == 0) {
             printf("Argument %s not recognized\n", argv[i]);
             exit(1);
