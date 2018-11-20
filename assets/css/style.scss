@@ -1,19 +1,29 @@
 ---
 ---
 
-$brand-dark: #784f84;
-$brand-light: #c37bbd;
+$brand-primary: #784f84;
+$brand-light: lighten($brand-primary, 20%);
 
+@import "bootstrap";
 // Why did you use SASS, if you do not take advantage of variables???
 // That's like, the whole point of SASS, and you missed it entirely!
 @import "{{ site.theme }}";
+
+.navbar {
+    margin-bottom: 0;
+}
+
+#navbar {
+    padding-top: 0;
+    padding-bottom: 0;
+}
 
 .inner {
     max-width: 740px;
 }
 
 #header_wrap, #footer_wrap {
-    background: $brand-dark;
+    background: $brand-primary;
 }
 
 #forkme_banner {
