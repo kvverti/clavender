@@ -583,7 +583,28 @@ static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
         LV_EXPR_ERROR = XPE_EXPECT_PRE;
         return;
     }
-    uint64_t num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
+    uint64_t num;
+    if(cxt->head->start[0] == '0') {
+        //parse in the given base
+        switch(cxt->head->start[1]) {
+            case 'x':
+            case 'X':
+                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 16);
+                break;
+            case 'c':
+            case 'C':
+                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 8);
+                break;
+            case 'b':
+            case 'B':
+                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 2);
+                break;
+            default:
+                num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
+        }
+    } else {
+        num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
+    }
     obj->type = OPT_INTEGER;
     obj->integer = num;
     cxt->expectOperand = false;

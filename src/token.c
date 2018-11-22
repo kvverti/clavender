@@ -39,6 +39,7 @@ char* lv_tkn_getError(TokenError err) {
         "Unterminated string",
         "Unknown string escape sequence",
         "Invalid character in string",
+        "Expected numeric constant after prefix",
         "Unbalanced parentheses"
     };
     assert(err > 0 && err <= LEN);
@@ -134,6 +135,23 @@ static int isident(int c) {
 static int isdot(int c) {
 
     return c == '.';
+}
+
+static int ishexdigit(int c) {
+
+    static char chars[] = "0123456789abcdefABCDEF";
+    return strchr(chars, c) != NULL;
+}
+
+static int isoctaldigit(int c) {
+
+    static char chars[] = "01234567";
+    return strchr(chars, c) != NULL;
+}
+
+static int isbinarydigit(int c) {
+
+    return c == '0' || c == '1';
 }
 
 //loops over the input while the passed
@@ -416,6 +434,41 @@ static TokenType getSymbol(void) {
 static TokenType getNumber(void) {
 
     if(isdigit(buffer[idx])) {
+        if(buffer[idx] == '0') {
+            idx++;
+            //get the prefix if it's there
+            switch(buffer[idx]) {
+                case 'x':
+                case 'X': //hexadecimal
+                    if(ishexdigit(buffer[++idx])) {
+                        getInputWhile(ishexdigit);
+                        return TTY_INTEGER;
+                    } else {
+                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
+                        return -1;
+                    }
+                case 'c':
+                case 'C': //octal
+                    if(isoctaldigit(buffer[++idx])) {
+                        getInputWhile(isoctaldigit);
+                        return TTY_INTEGER;
+                    } else {
+                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
+                        return -1;
+                    }
+                case 'b':
+                case 'B': //binary
+                    if(isbinarydigit(buffer[++idx])) {
+                        getInputWhile(isbinarydigit);
+                        return TTY_INTEGER;
+                    } else {
+                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
+                        return -1;
+                    }
+                default: //not a prefix
+                    idx--;
+            }
+        }
         //start with whole number
         getInputWhile(isdigit);
         //optional decimal

@@ -36,6 +36,7 @@ typedef enum TokenError {
     TE_UNTERM_STR,      //unterminated string
     TE_BAD_STR_ESC,     //bad string escape sequence
     TE_BAD_STR_CHR,     //bad string character
+    TE_BAD_INT_PREFIX,  //bad numeric prefix
     TE_UNBAL_PAREN      //unbalanced parens
 } TokenError;
 
