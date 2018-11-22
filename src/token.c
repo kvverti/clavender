@@ -429,6 +429,10 @@ static TokenType getNumber(void) {
                 return -1;
             }
             getInputWhile(isdigit);
+        } else if(buffer[idx] == 'd' || buffer[idx] == 'D') {
+            //numbers with the suffix 'd' are floating-point
+            idx++;
+            return TTY_NUMBER;
         } else {
             //no decimal -> integral value
             return TTY_INTEGER;
@@ -469,6 +473,10 @@ static TokenType getNumber(void) {
             return -1;
         }
         getInputWhile(isdigit);
+    }
+    //optional suffix 'd' or 'D'
+    if(buffer[idx] == 'd' || buffer[idx] == 'D') {
+        idx++;
     }
     return TTY_NUMBER;
 }
