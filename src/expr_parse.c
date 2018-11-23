@@ -58,7 +58,6 @@ static void parseInteger(TextBufferObj* obj, ExprContext* cxt);
 static void parseString(TextBufferObj* obj, ExprContext* cxt);
 static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt);
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt);
-static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt);
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt); //calls above functions
 //runs one cycle of shunting yard
 static void shuntingYard(TextBufferObj* obj, ExprContext* cxt);
@@ -367,14 +366,27 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
     obj->literal = cxt->head->start[0];
     switch(obj->literal) {
         case '(':
-            if(!cxt->expectOperand) {
-                //value call 2 operator
-                obj->type = OPT_FUNC_CALL2;
-                cxt->expectOperand = true;
+            if(cxt->head->next->start[0] == ')') {
+                //empty args
+                if(!cxt->expectOperand) {
+                    //unless this is a func call 2!
+                    obj->type = OPT_FUNC_CALL2;
+                    //expectOperand is already false
+                } else {
+                    obj->type = OPT_EMPTY_ARGS;
+                    cxt->expectOperand = false;
+                }
+                cxt->head = cxt->head->next;
+            } else {
+                if(!cxt->expectOperand) {
+                    //value call 2 operator
+                    obj->type = OPT_FUNC_CALL2;
+                    cxt->expectOperand = true;
+                }
+                //else parenthesized expression
+                //increment nesting in either case
+                cxt->nesting++;
             }
-            //else parenthesized expression
-            //increment nesting in either case
-            cxt->nesting++;
             break;
         case '{':
             cxt->nesting++;
@@ -658,19 +670,6 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     cxt->expectOperand = false;
 }
 
-static void parseEmptyArgs(TextBufferObj* obj, ExprContext* cxt) {
-    //we should be expecting an operand, then we change to
-    //expecting an operator
-    if(!cxt->expectOperand) {
-        //unless this is a func call 2!
-        obj->type = OPT_FUNC_CALL2;
-        //expectOperand is already false
-    } else {
-        obj->type = OPT_EMPTY_ARGS;
-        cxt->expectOperand = false;
-    }
-}
-
 static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt) {
 
     if(!cxt->expectOperand) {
@@ -721,9 +720,6 @@ static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
         case TTY_FUNC_VAL:
         case TTY_QUAL_FUNC_VAL:
             parseFuncValue(obj, cxt);
-            break;
-        case TTY_EMPTY_ARGS:
-            parseEmptyArgs(obj, cxt);
             break;
         case TTY_FUNC_SYMBOL:
         case TTY_ELLIPSIS:
@@ -1000,7 +996,8 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
 
     if(obj->type == OPT_EMPTY_ARGS) {
         //set source args explicitly to 0 (or 1 for infix)
-        if(cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
+        //and make sure we are directly after a function
+        if(cxt->ops.top->type != OPT_LITERAL && cxt->params.top != cxt->params.stack && *cxt->params.top < 0) {
             *cxt->params.top = -*cxt->params.top - 1;
             //to signal that a comma should NOT appear after
             pushStack(&cxt->out, obj);

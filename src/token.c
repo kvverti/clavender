@@ -12,7 +12,6 @@
 static TokenType tryGetFuncSymb(void);
 static TokenType tryGetQualName(void);
 static TokenType tryGetEllipsis(void);
-static TokenType tryGetEmptyArgs(void);
 static TokenType tryGetDotSymb(void);
 static TokenType getSymbol(void);
 static TokenType getString(void);
@@ -250,8 +249,6 @@ Token* lv_tkn_split(FILE* in) {
             type = getFuncVal();
         } else if(c == '"') {
             type = getString();
-        } else if(c == '(') {
-            type = tryGetEmptyArgs();
         } else {
             //literal token
             type = getLiteral();
@@ -409,19 +406,6 @@ static TokenType tryGetDotSymb(void) {
     // not a dot symb, must be a number
     idx = bgn;
     return getNumber();
-}
-
-static TokenType tryGetEmptyArgs(void) {
-
-    assert(buffer[idx] == '(');
-    idx++;
-    if(buffer[idx] && buffer[idx] == ')') {
-        idx++;
-        return TTY_EMPTY_ARGS;
-    } else {
-        idx = bgn;
-        return getLiteral();
-    }
 }
 
 static TokenType getSymbol(void) {

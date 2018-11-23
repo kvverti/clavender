@@ -87,8 +87,9 @@ static Operator* declareFunctionImpl(Token* tok, Operator* nspace, Token** bodyT
         *bodyTok = context.head;
         return NULL;
     }
-    if(context.head->type == TTY_EMPTY_ARGS) {
+    if(context.head->next && context.head->next->start[0] == ')') {
         //no formal parameters, but maybe still locals
+        context.head = context.head->next;
         context.arity = 0;
         *bodyTok = context.head;
         INCR_HEAD(context.head);

@@ -15,7 +15,6 @@ typedef enum TokenType {
     TTY_STRING,         //string
     TTY_DOT_SYMB,       //.symbol value
     TTY_ELLIPSIS,       //vararg (vect capture) modifier
-    TTY_EMPTY_ARGS,     //empty arg placeholder ()
     TTY_LITERAL         //literal character
 } TokenType;
 
