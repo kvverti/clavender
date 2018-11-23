@@ -21,6 +21,7 @@ struct LvString {
  */
 struct TextBufferObj {
     OpType type;
+    OpType fromType;
     union {
         double number;
         uint64_t integer;

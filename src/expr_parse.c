@@ -368,18 +368,18 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
         case '(':
             if(cxt->head->next->start[0] == ')') {
                 //empty args
+                obj->type = OPT_EMPTY_ARGS;
                 if(!cxt->expectOperand) {
                     //unless this is a func call 2!
+                    obj->fromType = obj->type;
                     obj->type = OPT_FUNC_CALL2;
-                    //expectOperand is already false
-                } else {
-                    obj->type = OPT_EMPTY_ARGS;
-                    cxt->expectOperand = false;
                 }
+                cxt->expectOperand = false;
                 cxt->head = cxt->head->next;
             } else {
                 if(!cxt->expectOperand) {
                     //value call 2 operator
+                    obj->fromType = obj->type;
                     obj->type = OPT_FUNC_CALL2;
                     cxt->expectOperand = true;
                 }
@@ -392,7 +392,10 @@ static void parseLiteral(TextBufferObj* obj, ExprContext* cxt) {
             cxt->nesting++;
             //open groupings are "operands"
             if(!cxt->expectOperand) {
-                LV_EXPR_ERROR = XPE_EXPECT_PRE;
+                //value call 2 operator
+                obj->fromType = obj->type;
+                obj->type = OPT_FUNC_CALL2;
+                cxt->expectOperand = true;
             }
             break;
         case '}':
@@ -488,10 +491,25 @@ static void parseSymbolImpl(TextBufferObj* obj, FuncNamespace ns, char* _name, s
         ((!cxt->expectOperand && func->arity != 1) || func->arity == 0);
 }
 
-static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
+static void parseSymbolHelp(TextBufferObj* obj, char* name, size_t nameLen, ExprContext* cxt) {
 
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseSymbolImpl(obj, ns, cxt->head->start, cxt->head->len, cxt);
+    parseSymbolImpl(obj, ns, name, nameLen, cxt);
+    if(LV_EXPR_ERROR && !cxt->expectOperand) {
+        //check prefix functions and make a func call 2
+        LV_EXPR_ERROR = 0;
+        cxt->expectOperand = true;
+        parseSymbolImpl(obj, FNS_PREFIX, name, nameLen, cxt);
+        if(!LV_EXPR_ERROR) {
+            obj->fromType = obj->type;
+            obj->type = OPT_FUNC_CALL2;
+        }
+    }
+}
+
+static void parseSymbol(TextBufferObj* obj, ExprContext* cxt) {
+
+    parseSymbolHelp(obj, cxt->head->start, cxt->head->len, cxt);
 }
 
 static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* _name, size_t nameLen, ExprContext* cxt) {
@@ -520,33 +538,48 @@ static void parseQualNameImpl(TextBufferObj* obj, FuncNamespace ns, char* _name,
         ((!cxt->expectOperand && func->arity != 1) || func->arity == 0);
 }
 
-static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
+static void parseQualNameHelp(TextBufferObj* obj, char* name, size_t nameLen, ExprContext* cxt) {
 
     FuncNamespace ns = cxt->expectOperand ? FNS_PREFIX : FNS_INFIX;
-    parseQualNameImpl(obj, ns, cxt->head->start, cxt->head->len, cxt);
+    parseQualNameImpl(obj, ns, name, nameLen, cxt);
+    if(LV_EXPR_ERROR && !cxt->expectOperand) {
+        //check prefix functions and make a func call 2
+        LV_EXPR_ERROR = 0;
+        cxt->expectOperand = true;
+        parseQualNameImpl(obj, FNS_PREFIX, name, nameLen, cxt);
+        if(!LV_EXPR_ERROR) {
+            obj->fromType = obj->type;
+            obj->type = OPT_FUNC_CALL2;
+        }
+    }
+}
+
+static void parseQualName(TextBufferObj* obj, ExprContext* cxt) {
+
+    parseQualNameHelp(obj, cxt->head->start, cxt->head->len, cxt);
 }
 
 static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_PRE;
-        return;
-    }
+    bool expectedOperand = cxt->expectOperand;
     size_t len = cxt->head->len;
     FuncNamespace ns;
     //values ending in '\' are infix functions
     //subtract 1 from length so we can skip the initial '\'
     if(cxt->head->start[len - 1] == '\\') {
         ns = FNS_INFIX;
+        cxt->expectOperand = false;
         //substringing
         cxt->head->start[len - 1] = '\0';
     } else {
         ns = FNS_PREFIX;
+        cxt->expectOperand = true;
     }
-    if(cxt->head->type == TTY_QUAL_FUNC_VAL)
-        parseQualNameImpl(obj, ns, cxt->head->start + 1, cxt->head->len - 1, cxt);
-    else
-        parseSymbolImpl(obj, ns, cxt->head->start + 1, cxt->head->len - 1, cxt);
+    if(cxt->head->type == TTY_QUAL_FUNC_VAL) {
+        parseQualNameHelp(obj, cxt->head->start + 1, cxt->head->len - 1, cxt);
+    } else {
+        parseSymbolHelp(obj, cxt->head->start + 1, cxt->head->len - 1, cxt);
+    }
     //undo substringing
     if(ns == FNS_INFIX)
         cxt->head->start[len - 1] = '\\';
@@ -556,22 +589,28 @@ static void parseFuncValue(TextBufferObj* obj, ExprContext* cxt) {
         return;
     }
     obj->type = OPT_FUNCTION_VAL;
+    if(!expectedOperand) {
+        obj->fromType = obj->type;
+        obj->type = OPT_FUNC_CALL2;
+    }
     cxt->expectOperand = false;
 }
 
 static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(cxt->expectOperand) {
-        //try parameter names first
-        int numParams = cxt->decl->arity + cxt->decl->locals;
-        for(int i = 0; i < numParams; i++) {
-            if(lv_tkn_cmp(cxt->head, cxt->decl->params[i].name) == 0) {
-                //save param name
-                obj->type = OPT_PARAM;
-                obj->param = i;
-                cxt->expectOperand = false;
-                return;
+    //try parameter names first
+    int numParams = cxt->decl->arity + cxt->decl->locals;
+    for(int i = 0; i < numParams; i++) {
+        if(lv_tkn_cmp(cxt->head, cxt->decl->params[i].name) == 0) {
+            //save param name
+            obj->type = OPT_PARAM;
+            obj->param = i;
+            if(!cxt->expectOperand) {
+                obj->fromType = obj->type;
+                obj->type = OPT_FUNC_CALL2;
             }
+            cxt->expectOperand = false;
+            return;
         }
     }
     //not a parameter, try a function
@@ -580,22 +619,18 @@ static void parseIdent(TextBufferObj* obj, ExprContext* cxt) {
 
 static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_PRE;
-        return;
-    }
     double num = strtod(cxt->head->start, NULL);
     obj->type = OPT_NUMBER;
     obj->number = num;
+    if(!cxt->expectOperand) {
+        obj->fromType = obj->type;
+        obj->type = OPT_FUNC_CALL2;
+    }
     cxt->expectOperand = false;
 }
 
 static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_PRE;
-        return;
-    }
     uint64_t num;
     if(cxt->head->start[0] == '0') {
         //parse in the given base
@@ -620,6 +655,10 @@ static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
     }
     obj->type = OPT_INTEGER;
     obj->integer = num;
+    if(!cxt->expectOperand) {
+        obj->fromType = obj->type;
+        obj->type = OPT_FUNC_CALL2;
+    }
     cxt->expectOperand = false;
 }
 
@@ -654,10 +693,6 @@ static size_t getStringValue(char* c, char* str) {
 
 static void parseString(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_PRE;
-        return;
-    }
     char* c = cxt->head->start + 1; //skip open quote
     LvString* newStr = lv_alloc(sizeof(LvString) + cxt->head->len);
     newStr->refCount = 1; //it will be added to the text buffer
@@ -667,26 +702,30 @@ static void parseString(TextBufferObj* obj, ExprContext* cxt) {
     newStr->len = len;
     obj->type = OPT_STRING;
     obj->str = newStr;
+    if(!cxt->expectOperand) {
+        obj->fromType = obj->type;
+        obj->type = OPT_FUNC_CALL2;
+    }
     cxt->expectOperand = false;
 }
 
 static void parseDotSymb(TextBufferObj* obj, ExprContext* cxt) {
 
-    if(!cxt->expectOperand) {
-        LV_EXPR_ERROR = XPE_EXPECT_INF;
+    char name[cxt->head->len];
+    if(cxt->head->start[1] == '"') {
+        size_t len = getStringValue(cxt->head->start + 2, name);
+        assert(len < cxt->head->len);
+        name[len] = '\0';
     } else {
-        char name[cxt->head->len];
-        if(cxt->head->start[1] == '"') {
-            size_t len = getStringValue(cxt->head->start + 2, name);
-            assert(len < cxt->head->len);
-            name[len] = '\0';
-        } else {
-            memcpy(name, cxt->head->start + 1, cxt->head->len - 1);
-            name[cxt->head->len - 1] = '\0';
-        }
-        *obj = lv_tb_getSymb(name);
-        cxt->expectOperand = false;
+        memcpy(name, cxt->head->start + 1, cxt->head->len - 1);
+        name[cxt->head->len - 1] = '\0';
     }
+    *obj = lv_tb_getSymb(name);
+    if(!cxt->expectOperand) {
+        obj->fromType = obj->type;
+        obj->type = OPT_FUNC_CALL2;
+    }
+    cxt->expectOperand = false;
 }
 
 static void parseTextObj(TextBufferObj* obj, ExprContext* cxt) {
@@ -1128,16 +1167,17 @@ static void shuntingYard(TextBufferObj* obj, ExprContext* cxt) {
             if(!shuntOps(cxt))
                 return;
         }
-        if(cxt->expectOperand) {
+        // if(cxt->expectOperand) {
+        if(obj->fromType != OPT_EMPTY_ARGS) {
             //nonzero arity version
-            //push an lparen because we pop with rparen
-            TextBufferObj lparen = { .type = OPT_LITERAL, .literal = '(' };
             pushStack(&cxt->ops, obj);
-            pushStack(&cxt->ops, &lparen);
             pushToken(&cxt->tok, cxt->head);
             pushToken(&cxt->tok, cxt->head);
             //func call 2 is an 'infix' operator
             pushParam(&cxt->params, -2);
+            TextBufferObj obj2 = *obj;
+            obj2.type = obj->fromType;
+            shuntingYard(&obj2, cxt);
         } else {
             //zero arity version
             //push directly to out, since there are no args
