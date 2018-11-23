@@ -259,21 +259,22 @@ static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cx
 static int getLexicographicPrecedence(char c) {
 
     switch(c) {
-        case '|': return 1;
-        case '^': return 2;
-        case '&': return 3;
+        case '$': return 1;
+        case '|': return 2;
+        case '^': return 3;
+        case '&': return 4;
         case '!':
-        case '=': return 4;
+        case '=': return 5;
         case '>':
-        case '<': return 5;
-        case '#': return 6; //':' was changed to '#' earlier
+        case '<': return 6;
+        case '#': return 7; //':' was changed to '#' earlier
         case '-':
-        case '+': return 7;
+        case '+': return 8;
         case '%':
         case '/':
-        case '*': return 8;
+        case '*': return 9;
         case '~':
-        case '?': return 9;
+        case '?': return 10;
         default:  return 0;
     }
 }

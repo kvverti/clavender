@@ -114,7 +114,7 @@ static void setInputEnd(void) {
 
 static int issymb(int c) {
 
-    static char* symbols = "~!%^&*-+=|<>/?:";
+    static char* symbols = "~!%^&*-+=|<>/?:$";
     return strchr(symbols, c) != NULL;
 }
 
