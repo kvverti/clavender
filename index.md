@@ -10,16 +10,21 @@ primarily Python and Scala.
 ## Why Use Lavender?
 * **Simplicity** - Lavender relies only on function evaluation, eschewing mutable state
   and complex control flow in favor of simple, declarative function application.
+  Conditional primitives are supported via piecewise function definition, or standard
+  library functions may be used.
 * **Immutability** - Values may *never* be modified, and there are no unsafe functions
-  that mutate hidden state.
+  that mutate hidden state. Side effects such as IO and global state are provided via
+  standard library abstractions.
 * **Clarity** - Lavender aims to have an intuitive syntax and standard library that
   leverage popular notation rather than strict mathematical precision.
 * **Referential transparency** - Every terminating expression has a well-defined value
-  that may be lazily evaluated or aggressively folded.
+  that may be lazily evaluated or aggressively folded. Lavender supports opt-in lazy
+  evaluation through the use of by-name expressions.
 * **Locality** - There are no nonlocal control mechanisms in Lavender. Error states
   and branching in general are expressed with recursion and composition.
 
-## Getting Started
+<span id="installation"/>
+## Installation
 1.  To get started with Lavender, first clone the repository and download the
     Lavender standard libraries.
     ```
