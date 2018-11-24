@@ -258,7 +258,7 @@ static TextBufferObj makeByName(TextBufferObj* expr, size_t len, ExprContext* cx
 static int getLexicographicPrecedence(char c) {
 
     switch(c) {
-        case '$': return 1;
+        case '$': return 0;
         case '|': return 2;
         case '^': return 3;
         case '&': return 4;
@@ -274,7 +274,7 @@ static int getLexicographicPrecedence(char c) {
         case '*': return 9;
         case '~':
         case '?': return 10;
-        default:  return 0;
+        default:  return 1;
     }
 }
 
