@@ -13,6 +13,7 @@ Example:
 ```
 $ git clone https://github.com/kvverti/clavender.git
 $ cd ./clavender
+$ git submodule update --init
 $ make
 $ ./lavender
 ```
