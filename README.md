@@ -4,7 +4,7 @@ Lavender is an interpreted, pure functional REPL-based programming language. It 
 
 This repository contains an implementation of Lavender in the C programming language. The original Java implementation is still around for posterity, but may not be updated in the future.
 
-Further documentation can be found on the [GitHub pages site](https://kvverti.github.io/lavender).
+Further documentation can be found on the [Lavender GitHub pages site](https://kvverti.github.io/clavender).
 
 ## Running Lavender
 After cloning the repository, you can run `make` to build the interpreter. Then, run the interpreter with `./lavender`.
