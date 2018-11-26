@@ -294,20 +294,24 @@ bool lv_readFile(char* name) {
     //open file
     //TODO clean up a bit (i.e. less strlen)
     static char ext[] = ".lv";  //lv_filepath/name.lv
-    char* file = lv_alloc(strlen(lv_filepath) + 1 + strlen(name) + sizeof(ext));
+    size_t nameLen = strlen(name);
+    bool noExt = strcmp(name + nameLen - (sizeof(ext) - 1), ext) != 0;
+    char* file = lv_alloc(strlen(lv_filepath) + 1 + nameLen + (noExt ? sizeof(ext) : 1));
     strcpy(file, lv_filepath);
     strcat(file, "/");  // '/' works on all major OS (Windows, Mac, Linux)
     strcat(file, name);
-    strcat(file, ext);
+    if(noExt)
+        strcat(file, ext);
     //try the Lavender filepath
     FILE* importFile = fopen(file, "r");
     if(!importFile) {
         //lastly try the standard library
         lv_free(file);
-        file = lv_alloc(sizeof(STDLIB) + strlen(name) + sizeof(ext));
+        file = lv_alloc(sizeof(STDLIB) + nameLen + (noExt ? sizeof(ext) : 1));
         strcpy(file, STDLIB "/");
         strcat(file, name);
-        strcat(file, ext);
+        if(noExt)
+            strcat(file, ext);
         importFile = fopen(file, "r");
         if(!importFile) {
             lv_free(file);
