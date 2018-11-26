@@ -2,10 +2,6 @@
 title: Getting Started
 ---
 
-**Note**: This section assumes that you have already set up the Lavender interpreter.
-If you have not, [download and install Lavender](index.html#installation) first.
-{: .alert .alert-info }
-
 # Program Structure
 
 Lavender files use the extension `.lv`. Each files defines a namespace which contains
@@ -22,6 +18,21 @@ def main(args)
 def main(...args)
 ```
 
+## Comments
+
+Single line comments may be inserted anywhere and are signaled with the single
+quote mark (`'`). There are no multiline comments in Lavender.
+
+A shebang line may optionally be present as the first line in a Lavender source
+file, where it will be treated as a comment.
+
+Example:
+```
+#!/usr/some/path/to/lavender
+
+def main(args) => "Hello world!" ' Eval to a string
+```
+
 ## Simple Expressions
 
 Expressions make up the bulk of Lavender programs. Expressions are made up of
@@ -33,7 +44,7 @@ There are three types of literal values: numbers, strings, and symbols.
 
 Numeric literals evaluate to integers when consisting solely of a sequence of digits, otherwise
 they evaluate as floating-point numbers. Integer literals can be written in base 10,
-or in octal, hexadecimal, or binary using the prefixes `0c`, `0x`, or `0b` respectively
+or in octal, hexadecimal, or binary using the prefixes `0c`, `0x`, or `0b` respectively.
 An otherwise integer literal can be forced to evaluate as floating-point by appending
 the suffix `d`.
 
@@ -136,3 +147,89 @@ Examples:
 \+\
 def(a) => a + 1
 ```
+
+## Compound Expressions
+
+Zero or more simple expressions may be combined into compound expressions.
+Compound expressions always involve a function call.
+
+### Function Evaluation
+
+A function call is written using the function's name and a list of zero or
+more arguments. A single argument may optionally be enclosed in parentheses,
+while multiple arguments must always be separated by commas
+and enclosed in parentheses. If a function takes zero arguments, then the function
+name is written and no argument list is specified. If a function takes a variable
+number of arguments, writing an empty pair of parentheses passes zero arguments.
+
+Examples:
+```
+def f(...a) => ...
+def v() => ...
+f 1
+f(1)
+f(1, 2)
+f()
+v
+```
+
+**Warning**: Passing zero arguments to a variable-arity function requires using
+an empty pair of parentheses, while evaluating zero-arity functions requires the
+absence of parentheses.
+{: .alert .alert-warning }
+
+Infix functions are called similarly to prefix functions, except that their
+first argument is written to the left of the function name.
+
+### Precedence
+
+When multiple function calls are present in the same expression, precedence is
+resolved as follows.
+
+1.  Groups in parentheses.
+2.  Prefix functions.
+3.  Postfix functions.
+4.  Value calls.
+5.  Infix functions, where precedence is resolved using the first character
+    of the function name.
+
+Infix function precedence is as follows.
+
+Characters | Standard Operators
+-----------|-------------------
+`~ ?` | `?:`
+`**`<sup>1</sup> | `**`
+`* / %` | `* / // %`
+`+ -` | `+ - ++`
+`:` | `::`
+`< >` | `< <= >= > <|`
+`= !` | `= != !`
+`&` | `&& &`
+`|` | `|| | |>`
+`^` | `^`
+`_` and alpha | `map flatmap in filter fold reduce takeWhile skipWhile`
+`$` | `$`
+
+1: Infix functions beginning with `**` have precedence over infix functions
+    beginning with a single `*`, in order to support the exponentiation
+    operator.
+
+## Names
+
+Values in Lavender may have one or more names associated with them. Names are
+bound to values in function parameters, function locals, and function names.
+Function parameter and function local names must be alphanumeric, while function
+names may be symbolic.
+
+The symbolic characters allowed in function names are the following.
+```
+? ~ * / % + - : < > = ! & | ^ $
+```
+
+Names may also not be the same as one of the few reserved words.
+* `def`
+* `let`
+* `do`
+* `native`
+* `=>`
+* `<-`
