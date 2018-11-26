@@ -1,5 +1,5 @@
 ---
-title: Getting Started
+title: Program Structure
 ---
 
 # Program Structure
@@ -203,7 +203,7 @@ Characters | Standard Operators
 `+ -` | `+ - ++`
 `:` | `::`
 `< >` | `< <= >= > <|`
-`= !` | `= != !`
+`= !` | `= !=`
 `&` | `&& &`
 `|` | `|| | |>`
 `^` | `^`

@@ -39,7 +39,7 @@ primarily Python and Scala.
     the standard libraries directly into the `stdlib` folder.
 
     ```
-    $ git clone https://github.com/kvverti/lavender-stdlib.git stdlib
+    $ git clone https://github.com/kvverti/lavender-stdlib.git <PROJECT_DIR>/stdlib
     ```
 
 2.  Run `make` to compile the project. Building Lavender requires a C compiler
@@ -48,7 +48,7 @@ primarily Python and Scala.
     GCC on UNIX.
 
     ```
-    gcc -o lavender -DSTDLIB=\"stdlib/src\" src/*.c
+    gcc -o lavender -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c
     ```
 
 3.  Assuming the build is successful, run Lavender using the following command.
