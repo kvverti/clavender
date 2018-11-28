@@ -1,0 +1,2 @@
+
+def main(a) => { "a" => 1, "b" => 2 } map (def(k, v) => k ++ str(v))

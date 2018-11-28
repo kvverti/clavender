@@ -272,6 +272,8 @@ static void bsearchMap(TextBufferObj* map, TextBufferObj* key, TextBufferObj* re
                     return;
                 }
             }
+            //no equal element found
+            break;
         } else if(h < mid->hash) {
             hi = mid;
         } else {
@@ -1225,6 +1227,25 @@ static TextBufferObj map(TextBufferObj* _args) {
         }
         res.type = OPT_VECT;
         res.vect = vect;
+    } else if(args[0].type == OPT_MAP) {
+        TextBufferObj func = args[1];
+        LvMapNode* oldData = args[0].map->data;
+        size_t len = args[0].map->len;
+        LvMap* map = lv_alloc(sizeof(LvMap) + len * sizeof(LvMapNode));
+        map->refCount = 0;
+        map->len = len;
+        for(size_t i = 0; i < len; i++) {
+            TextBufferObj keyValue[2] = { oldData[i].key, oldData[i].value };
+            TextBufferObj obj;
+            lv_callFunction(&func, 2, keyValue, &obj);
+            incRefCount(&obj);
+            map->data[i].value = obj;
+            incRefCount(&oldData[i].key);
+            map->data[i].key = oldData[i].key;
+            map->data[i].hash = oldData[i].hash;
+        }
+        res.type = OPT_MAP;
+        res.map = map;
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -1256,9 +1277,39 @@ static TextBufferObj filter(TextBufferObj* _args) {
             lv_expr_cleanup(&passed, 1);
         }
         vect->len = newLen;
-        vect = lv_realloc(vect, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
+        if(newLen < len) {
+            vect = lv_realloc(vect, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
+        }
         res.type = OPT_VECT;
         res.vect = vect;
+    } else if(args[0].type == OPT_MAP) {
+        TextBufferObj func = args[1];
+        LvMapNode* oldData = args[0].map->data;
+        size_t len = args[0].map->len;
+        LvMap* map = lv_alloc(sizeof(LvMap) + len * sizeof(LvMapNode));
+        map->refCount = 0;
+        size_t newLen = 0;
+        for(size_t i = 0; i < len; i++) {
+            TextBufferObj keyValue[2] = { oldData[i].key, oldData[i].value };
+            TextBufferObj passed;
+            lv_callFunction(&func, 2, keyValue, &passed);
+            incRefCount(&passed);
+            if(lv_blt_toBool(&passed)) {
+                incRefCount(&keyValue[0]);
+                map->data[newLen].key = keyValue[0];
+                map->data[newLen].hash = oldData[i].hash;
+                incRefCount(&keyValue[1]);
+                map->data[newLen].value = keyValue[1];
+                newLen++;
+            }
+            lv_expr_cleanup(&passed, 1);
+        }
+        map->len = newLen;
+        if(newLen < len) {
+            map = lv_realloc(map, sizeof(LvMap) + newLen * sizeof(LvMapNode));
+        }
+        res.type = OPT_MAP;
+        res.map = map;
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -1279,6 +1330,17 @@ static TextBufferObj fold(TextBufferObj* _args) {
         for(size_t i = 0; i < len; i++) {
             accum[1] = oldData[i];
             lv_callFunction(&func, 2, accum, &accum[0]);
+        }
+        res = accum[0];
+    } else if(args[0].type == OPT_MAP) {
+        size_t len = args[0].map->len;
+        LvMapNode* oldData = args[0].map->data;
+        TextBufferObj accum[3] = { args[1] };
+        TextBufferObj func = args[2];
+        for(size_t i = 0; i < len; i++) {
+            accum[1] = oldData[i].key;
+            accum[2] = oldData[i].value;
+            lv_callFunction(&func, 3, accum, &accum[0]);
         }
         res = accum[0];
     } else {

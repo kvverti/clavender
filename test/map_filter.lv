@@ -1,0 +1,2 @@
+
+def main(a) => { "a" => 1, "b" => 2 } filter (def(k, v) => v % 2)
