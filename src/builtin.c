@@ -333,37 +333,67 @@ static TextBufferObj concat(TextBufferObj* _args) {
 
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
-    if(args[0].type == OPT_STRING && args[1].type == OPT_STRING) {
-        //string concatenation
-        size_t alen = args[0].str->len;
-        size_t blen = args[1].str->len;
-        LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
-        str->refCount = 0;
-        str->len = alen + blen;
-        memcpy(str->value, args[0].str->value, alen);
-        memcpy(str->value + alen, args[1].str->value, blen);
-        str->value[alen + blen] = '\0';
-        res.type = OPT_STRING;
-        res.str = str;
-    } else if(args[0].type == OPT_VECT && args[1].type == OPT_VECT) {
-        //vect concatenation
-        size_t alen = args[0].vect->len;
-        size_t blen = args[1].vect->len;
-        LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
-        vec->refCount = 0;
-        vec->len = alen + blen;
-        for(size_t i = 0; i < alen; i++) {
-            vec->data[i] = args[0].vect->data[i];
-            incRefCount(&vec->data[i]);
-        }
-        for(size_t i = 0; i < blen; i++) {
-            vec->data[alen + i] = args[1].vect->data[i];
-            incRefCount(&vec->data[alen + i]);
-        }
-        res.type = OPT_VECT;
-        res.vect = vec;
-    } else {
+    if(args[0].type != args[1].type) {
         res.type = OPT_UNDEFINED;
+    } else {
+        switch(args[0].type) {
+            case OPT_STRING: {
+                //string concatenation
+                size_t alen = args[0].str->len;
+                size_t blen = args[1].str->len;
+                LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
+                str->refCount = 0;
+                str->len = alen + blen;
+                memcpy(str->value, args[0].str->value, alen);
+                memcpy(str->value + alen, args[1].str->value, blen);
+                str->value[alen + blen] = '\0';
+                res.type = OPT_STRING;
+                res.str = str;
+                break;
+            }
+            case OPT_VECT: {
+                //vect concatenation
+                size_t alen = args[0].vect->len;
+                size_t blen = args[1].vect->len;
+                LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
+                vec->refCount = 0;
+                vec->len = alen + blen;
+                for(size_t i = 0; i < alen; i++) {
+                    vec->data[i] = args[0].vect->data[i];
+                    incRefCount(&vec->data[i]);
+                }
+                for(size_t i = 0; i < blen; i++) {
+                    vec->data[alen + i] = args[1].vect->data[i];
+                    incRefCount(&vec->data[alen + i]);
+                }
+                res.type = OPT_VECT;
+                res.vect = vec;
+                break;
+            }
+            case OPT_MAP: {
+                size_t alen = args[0].map->len;
+                size_t blen = args[1].map->len;
+                LvMap* map = lv_alloc(sizeof(LvMap) + (alen + blen) * sizeof(LvMapNode));
+                map->refCount = 0;
+                map->len = alen + blen;
+                for(size_t i = 0; i < alen; i++) {
+                    map->data[i] = args[0].map->data[i];
+                    incRefCount(&map->data[i].key);
+                    incRefCount(&map->data[i].value);
+                }
+                for(size_t i = 0; i < blen; i++) {
+                    map->data[alen + i] = args[1].map->data[i];
+                    incRefCount(&map->data[alen + i].key);
+                    incRefCount(&map->data[alen + i].value);
+                }
+                lv_tb_initMap(&map);
+                res.type = OPT_MAP;
+                res.map = map;
+                break;
+            }
+            default:
+                res.type = OPT_UNDEFINED;
+        }
     }
     clearArgs(args, 2);
     return res;

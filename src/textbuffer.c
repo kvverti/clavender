@@ -5,9 +5,57 @@
 #include "builtin.h"
 #include "dynbuffer.h"
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <assert.h>
+
+static int mapKeyCmp(const void* p1, const void* p2) {
+
+    LvMapNode* a = (LvMapNode*)p1;
+    LvMapNode* b = (LvMapNode*)p2;
+    if(a->hash < b->hash) {
+        return -1;
+    } else if(a->hash > b->hash) {
+        return 1;
+    } else {
+        //compare by sys:__lt__ for equal hashes
+        //ensures the same ordering of the same elements
+        if(lv_blt_lt(&a->key, &b->key)) {
+            return -1;
+        } else if(lv_blt_lt(&b->key, &a->key)) {
+            return 1;
+        }
+        return 0;
+    }
+}
+
+void lv_tb_initMap(LvMap** map) {
+
+    size_t len = (*map)->len;
+    //sort the keys
+    qsort((*map)->data, len, sizeof(LvMapNode), mapKeyCmp);
+    //remove duplicates
+    if(len > 1) {
+        LvMapNode* last = &(*map)->data[0];
+        LvMapNode* check = &(*map)->data[1];
+        LvMapNode* end = (*map)->data + len;
+        while(check != end) {
+            if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
+                lv_expr_cleanup(&last->key, 1);
+                lv_expr_cleanup(&last->value, 1);
+            } else {
+                last++;
+            }
+            *last = *check++;
+        }
+        size_t newLen = last - (*map)->data + 1;
+        if(newLen < len) {
+            *map = lv_realloc(*map, sizeof(LvMap) + newLen * sizeof(LvMapNode));
+            (*map)->len = newLen;
+        }
+    }
+}
 
 //redeclaration of the global text buffer
 TextBufferObj* TEXT_BUFFER;

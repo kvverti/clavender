@@ -42,6 +42,12 @@ typedef struct LvMap LvMap;
 TextBufferObj* TEXT_BUFFER;
 
 /**
+ * Initialize the given map by sorting its values and by removing
+ * duplicate values.
+ */
+void lv_tb_initMap(LvMap** map);
+
+/**
  * Returns a Lavender string representation of the
  * given object.
  */

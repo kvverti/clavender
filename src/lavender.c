@@ -485,32 +485,13 @@ static void makeVect(int length) {
     push(&vect);
 }
 
-static int mapKeyCmp(const void* p1, const void* p2) {
-
-    LvMapNode* a = (LvMapNode*)p1;
-    LvMapNode* b = (LvMapNode*)p2;
-    if(a->hash < b->hash) {
-        return -1;
-    } else if(a->hash > b->hash) {
-        return 1;
-    } else {
-        //compare by sys:__lt__ for equal hashes
-        //ensures the same ordering of the same elements
-        if(lv_blt_lt(&a->key, &b->key)) {
-            return -1;
-        } else if(lv_blt_lt(&b->key, &a->key)) {
-            return 1;
-        }
-        return 0;
-    }
-}
-
 static void makeMap(int size) {
 
     TextBufferObj map;
     map.type = OPT_MAP;
     map.map = lv_alloc(sizeof(LvMap) + size * sizeof(LvMapNode));
     map.map->refCount = 0;
+    map.map->len = size;
     for(int i = size; i > 0; i--) {
         LvMapNode* n = &map.map->data[i - 1];
         TextBufferObj key;
@@ -526,29 +507,7 @@ static void makeMap(int size) {
         }
         n->hash = lv_blt_hash(&n->key);
     }
-    //now we sort keys, yay!
-    qsort(map.map->data, size, sizeof(LvMapNode), mapKeyCmp);
-    size_t len = size;
-    //remove duplicates
-    if(size > 1) {
-        LvMapNode* last = &map.map->data[0];
-        LvMapNode* check = &map.map->data[1];
-        LvMapNode* end = map.map->data + size;
-        while(check != end) {
-            if(check->hash == last->hash && lv_blt_equal(&check->key, &last->key)) {
-                lv_expr_cleanup(&last->key, 1);
-                lv_expr_cleanup(&last->value, 1);
-            } else {
-                last++;
-            }
-            *last = *check++;
-        }
-        len = last - map.map->data + 1;
-        if(len < size) {
-            map.map = lv_realloc(map.map, sizeof(LvMap) + len * sizeof(LvMapNode));
-        }
-    }
-    map.map->len = len;
+    lv_tb_initMap(&map.map);
     push(&map);
 }
 
