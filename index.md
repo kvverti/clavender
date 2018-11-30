@@ -48,7 +48,7 @@ primarily Python and Scala.
     GCC on UNIX.
 
     ```
-    gcc -o lavender -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c
+    gcc -o lavender -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c -lm
     ```
 
 3.  Assuming the build is successful, run Lavender using the following command.
