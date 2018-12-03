@@ -4,9 +4,53 @@
 #include "builtin.h"
 #include "expression.h"
 #include <assert.h>
+#include <string.h>
 
 #define INTRINSIC(name) \
     TextBufferObj lv_vect_##name(TextBufferObj* args)
+
+INTRINSIC(str) {
+    TextBufferObj* obj = args;
+    LvString* res;
+    //handle Nil vect separately
+    if(obj->vect->len == 0) {
+        static char str[] = "{ }";
+        res = lv_alloc(sizeof(LvString) + sizeof(str));
+        res->refCount = 0;
+        res->len = sizeof(str) - 1;
+        memcpy(res->value, str, sizeof(str));
+        return (TextBufferObj) {
+            .type = OPT_STRING,
+            .str = res
+        };
+    }
+    //[ val1, val2, ..., valn ]
+    size_t len = 2;
+    res = lv_alloc(sizeof(LvString) + len + 1);
+    res->refCount = 0;
+    res->value[0] = '{';
+    res->value[1] = ' ';
+    res->value[2] = '\0';
+    //concatenate values
+    for(size_t i = 0; i < obj->vect->len; i++) {
+        LvString* tmp = lv_tb_getString(&obj->vect->data[i]);
+        len += tmp->len + 2;
+        res = lv_realloc(res, sizeof(LvString) + len + 1);
+        strcat(res->value, tmp->value);
+        res->value[len - 2] = ',';
+        res->value[len - 1] = ' ';
+        res->value[len] = '\0';
+        if(tmp->refCount == 0)
+            lv_free(tmp);
+    }
+    res->value[len - 2] = ' ';
+    res->value[len - 1] = '}';
+    res->len = len;
+    return (TextBufferObj) {
+        .type = OPT_STRING,
+        .str = res
+    };
+}
 
 INTRINSIC(cat) {
     TextBufferObj res;
@@ -42,7 +86,7 @@ INTRINSIC(at) {
 }
 
 INTRINSIC(eq) {
-    TextBufferObj res;
+    TextBufferObj res = { .type = OPT_INTEGER };
     assert(args[0].type == OPT_VECT);
     assert(args[1].type == OPT_VECT);
     res.type = OPT_INTEGER;
@@ -59,7 +103,7 @@ INTRINSIC(eq) {
 }
 
 INTRINSIC(lt) {
-    TextBufferObj res;
+    TextBufferObj res = { .type = OPT_INTEGER };
     assert(args[0].type == OPT_VECT);
     assert(args[1].type == OPT_VECT);
     if(args[0].vect->len == args[1].vect->len) {
@@ -74,6 +118,15 @@ INTRINSIC(lt) {
         res.integer = cmp == -1;
     }
     res.integer = args[0].vect->len < args[1].vect->len;
+    return res;
+}
+
+INTRINSIC(len) {
+    assert(args[0].type == OPT_VECT);
+    TextBufferObj res = {
+        .type = OPT_INTEGER,
+        .integer = args[0].vect->len != 0
+    };
     return res;
 }
 

@@ -1212,41 +1212,13 @@ static TextBufferObj map(TextBufferObj* _args) {
 
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
-    if(args[0].type == OPT_VECT) {
-        res = lv_vect_map(args);
-        // TextBufferObj func = args[1]; //in case the stack is reallocated
-        // TextBufferObj* oldData = args[0].vect->data;
-        // size_t len = args[0].vect->len;
-        // LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
-        // vect->refCount = 0;
-        // vect->len = len;
-        // for(size_t i = 0; i < len; i++) {
-        //     TextBufferObj obj;
-        //     lv_callFunction(&func, 1, &oldData[i], &obj);
-        //     incRefCount(&obj);
-        //     vect->data[i] = obj;
-        // }
-        // res.type = OPT_VECT;
-        // res.vect = vect;
-    } else if(args[0].type == OPT_MAP) {
-        TextBufferObj func = args[1];
-        LvMapNode* oldData = args[0].map->data;
-        size_t len = args[0].map->len;
-        LvMap* map = lv_alloc(sizeof(LvMap) + len * sizeof(LvMapNode));
-        map->refCount = 0;
-        map->len = len;
-        for(size_t i = 0; i < len; i++) {
-            TextBufferObj keyValue[2] = { oldData[i].key, oldData[i].value };
-            TextBufferObj obj;
-            lv_callFunction(&func, 2, keyValue, &obj);
-            incRefCount(&obj);
-            map->data[i].value = obj;
-            incRefCount(&oldData[i].key);
-            map->data[i].key = oldData[i].key;
-            map->data[i].hash = oldData[i].hash;
-        }
-        res.type = OPT_MAP;
-        res.map = map;
+    Hashtable* tbl = lv_blt_getFunctionTable(args[0].type);
+    Builtin b = NULL;
+    if(tbl != NULL) {
+        b = lv_tbl_get(tbl, ".map");
+    }
+    if(b != NULL) {
+        res = b(args);
     } else {
         res.type = OPT_UNDEFINED;
     }

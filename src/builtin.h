@@ -11,7 +11,7 @@ bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b);
 uint64_t lv_blt_hash(TextBufferObj* obj);
 bool lv_blt_toBool(TextBufferObj* obj);
 Builtin lv_blt_getIntrinsic(char* name);
-Hashtable lv_blt_getFunctionTable(OpType type);
+Hashtable* lv_blt_getFunctionTable(OpType type);
 
 void lv_blt_onStartup(void);
 void lv_blt_onShutdown(void);

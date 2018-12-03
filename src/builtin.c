@@ -17,17 +17,20 @@ static Hashtable mapFuncs;
 static void mkFuncTables(void) {
 
     lv_tbl_init(&vectFuncs);
-    lv_tbl_put(&vectFuncs, "sys:__concat__", lv_vect_cat);
-    lv_tbl_put(&vectFuncs, "sys:__at__", lv_vect_at);
-    lv_tbl_put(&vectFuncs, "sys:__eq__", lv_vect_eq);
-    lv_tbl_put(&vectFuncs, "sys:__lt__", lv_vect_lt);
-    // lv_tbl_put(&vectFuncs, "sys:__len__", lv_vect_len);
-    lv_tbl_put(&vectFuncs, "sys:__map__", lv_vect_map);
-    lv_tbl_put(&vectFuncs, "sys:__filter__", lv_vect_filter);
-    lv_tbl_put(&vectFuncs, "sys:__fold__", lv_vect_fold);
-    lv_tbl_put(&vectFuncs, "sys:__slice__", lv_vect_slice);
-    lv_tbl_put(&vectFuncs, "sys:__take__", lv_vect_take);
-    lv_tbl_put(&vectFuncs, "sys:__skip__", lv_vect_skip);
+    lv_tbl_put(&vectFuncs, ".cat", lv_vect_cat);
+    lv_tbl_put(&vectFuncs, ".at", lv_vect_at);
+    lv_tbl_put(&vectFuncs, ".eq", lv_vect_eq);
+    lv_tbl_put(&vectFuncs, ".lt", lv_vect_lt);
+    lv_tbl_put(&vectFuncs, ".len", lv_vect_len);
+    lv_tbl_put(&vectFuncs, ".map", lv_vect_map);
+    lv_tbl_put(&vectFuncs, ".flatmap", lv_vect_filter);
+    lv_tbl_put(&vectFuncs, ".fold", lv_vect_fold);
+    lv_tbl_put(&vectFuncs, ".slice", lv_vect_slice);
+    lv_tbl_put(&vectFuncs, ".take", lv_vect_take);
+    lv_tbl_put(&vectFuncs, ".skip", lv_vect_skip);
+    lv_tbl_init(&strFuncs);
+    lv_tbl_init(&mapFuncs);
+    lv_tbl_put(&mapFuncs, ".map", lv_map_map);
 }
 
 Hashtable* lv_blt_getFunctionTable(OpType type) {
@@ -40,7 +43,7 @@ Hashtable* lv_blt_getFunctionTable(OpType type) {
         case OPT_MAP:
             return &mapFuncs;
         default:
-            assert(false);
+            return NULL;
     }
 }
 
@@ -53,6 +56,7 @@ void lv_blt_onStartup(void) {
     #define MK_FUNCR(s, f) lv_tbl_put(&intrinsics, s#f, f##_)
     #define MK_FUNNR(s, f) lv_tbl_put(&intrinsics, s"__"#f"__", f##_)
     mkTypes();
+    mkFuncTables();
     lv_tbl_init(&intrinsics);
     MK_FUNCT(SYS, defined);
     MK_FUNCT(SYS, undefined);

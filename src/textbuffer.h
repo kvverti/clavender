@@ -23,10 +23,6 @@ struct LvString {
 struct TextBufferObj {
     OpType type;
     OpType fromType;
-    //map for funcName (char*) => funcImpl (Builtin)
-    //this is the same across all instances of a concrete
-    //type, like a vtable
-    Hashtable* funcImpls;
     union {
         double number;
         uint64_t integer;
