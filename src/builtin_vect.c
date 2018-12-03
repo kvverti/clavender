@@ -55,22 +55,25 @@ INTRINSIC(str) {
 INTRINSIC(cat) {
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
-    assert(args[1].type == OPT_VECT);
-    size_t alen = args[0].vect->len;
-    size_t blen = args[1].vect->len;
-    LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
-    vec->refCount = 0;
-    vec->len = alen + blen;
-    for(size_t i = 0; i < alen; i++) {
-        vec->data[i] = args[0].vect->data[i];
-        INC_REFCOUNT(&vec->data[i]);
+    if(args[1].type == OPT_VECT) {
+        size_t alen = args[0].vect->len;
+        size_t blen = args[1].vect->len;
+        LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
+        vec->refCount = 0;
+        vec->len = alen + blen;
+        for(size_t i = 0; i < alen; i++) {
+            vec->data[i] = args[0].vect->data[i];
+            INC_REFCOUNT(&vec->data[i]);
+        }
+        for(size_t i = 0; i < blen; i++) {
+            vec->data[alen + i] = args[1].vect->data[i];
+            INC_REFCOUNT(&vec->data[alen + i]);
+        }
+        res.type = OPT_VECT;
+        res.vect = vec;
+    } else {
+        res.type = OPT_UNDEFINED;
     }
-    for(size_t i = 0; i < blen; i++) {
-        vec->data[alen + i] = args[1].vect->data[i];
-        INC_REFCOUNT(&vec->data[alen + i]);
-    }
-    res.type = OPT_VECT;
-    res.vect = vec;
     return res;
 }
 
@@ -88,9 +91,10 @@ INTRINSIC(at) {
 INTRINSIC(eq) {
     TextBufferObj res = { .type = OPT_INTEGER };
     assert(args[0].type == OPT_VECT);
-    assert(args[1].type == OPT_VECT);
     res.type = OPT_INTEGER;
-    if(args[0].vect->len != args[1].vect->len) {
+    if(args[1].type != OPT_VECT) {
+        res.integer = 0;
+    } else if(args[0].vect->len != args[1].vect->len) {
         res.integer = 0;
     } else {
         bool equal = true;
@@ -125,7 +129,7 @@ INTRINSIC(len) {
     assert(args[0].type == OPT_VECT);
     TextBufferObj res = {
         .type = OPT_INTEGER,
-        .integer = args[0].vect->len != 0
+        .integer = args[0].vect->len
     };
     return res;
 }

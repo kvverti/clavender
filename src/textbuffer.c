@@ -212,47 +212,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             return lv_vect_str(obj).str;
         }
         case OPT_MAP: {
-            if(obj->map->len == 0) {
-                static char str[] = "{ }";
-                res = lv_alloc(sizeof(LvString) + sizeof(str));
-                res->refCount = 0;
-                res->len = sizeof(str) - 1;
-                memcpy(res->value, str, sizeof(str));
-                return res;
-            }
-            size_t len = 2;
-            res = lv_alloc(sizeof(LvString) + len + 1);
-            res->refCount = 0;
-            res->value[0] = '{';
-            res->value[1] = ' ';
-            res->value[2] = '\0';
-            //concatenate keys and values
-            for(size_t i = 0; i < obj->map->len; i++) {
-                LvString* tmp = lv_tb_getString(&obj->map->data[i].key);
-                len += tmp->len + 4;
-                res = lv_realloc(res, sizeof(LvString) + len + 1);
-                strcat(res->value, tmp->value);
-                res->value[len - 4] = ' ';
-                res->value[len - 3] = '=';
-                res->value[len - 2] = '>';
-                res->value[len - 1] = ' ';
-                res->value[len] = '\0';
-                if(tmp->refCount == 0)
-                    lv_free(tmp);
-                tmp = lv_tb_getString(&obj->map->data[i].value);
-                len += tmp->len + 2;
-                res = lv_realloc(res, sizeof(LvString) + len + 1);
-                strcat(res->value, tmp->value);
-                res->value[len - 2] = ',';
-                res->value[len - 1] = ' ';
-                res->value[len] = '\0';
-                if(tmp->refCount == 0)
-                    lv_free(tmp);
-            }
-            res->value[len - 2] = ' ';
-            res->value[len - 1] = '}';
-            res->len = len;
-            return res;
+            return lv_map_str(obj).str;
         }
         //not called outside of debug mode
         case OPT_PARAM: {

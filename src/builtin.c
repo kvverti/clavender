@@ -17,6 +17,9 @@ static Hashtable mapFuncs;
 static void mkFuncTables(void) {
 
     lv_tbl_init(&vectFuncs);
+    lv_tbl_init(&strFuncs);
+    lv_tbl_init(&mapFuncs);
+    lv_tbl_put(&vectFuncs, ".str", lv_vect_str);
     lv_tbl_put(&vectFuncs, ".cat", lv_vect_cat);
     lv_tbl_put(&vectFuncs, ".at", lv_vect_at);
     lv_tbl_put(&vectFuncs, ".eq", lv_vect_eq);
@@ -28,9 +31,14 @@ static void mkFuncTables(void) {
     lv_tbl_put(&vectFuncs, ".slice", lv_vect_slice);
     lv_tbl_put(&vectFuncs, ".take", lv_vect_take);
     lv_tbl_put(&vectFuncs, ".skip", lv_vect_skip);
-    lv_tbl_init(&strFuncs);
-    lv_tbl_init(&mapFuncs);
+    lv_tbl_put(&mapFuncs, ".str", lv_map_str);
+    lv_tbl_put(&mapFuncs, ".cat", lv_map_cat);
+    lv_tbl_put(&mapFuncs, ".at", lv_map_at);
+    lv_tbl_put(&mapFuncs, ".eq", lv_map_eq);
+    lv_tbl_put(&mapFuncs, ".lt", lv_map_lt);
     lv_tbl_put(&mapFuncs, ".map", lv_map_map);
+    // lv_tbl_put(&mapFuncs, ".flatmap", lv_map_flatmap);
+    lv_tbl_put(&mapFuncs, ".fold", lv_map_fold);
 }
 
 Hashtable* lv_blt_getFunctionTable(OpType type) {
