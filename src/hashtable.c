@@ -5,7 +5,6 @@
 #define INIT_TABLE_LEN 64 //must be power of two
 #define TABLE_LOAD_FACT 0.75
 struct HashNode {
-    //key and value must be dynamically allocated
     char* key;
     void* value;
     HashNode* next;
