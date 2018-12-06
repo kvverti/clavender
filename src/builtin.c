@@ -39,11 +39,13 @@ static void mkFuncTables(void) {
     lv_tbl_put(&strFuncs, ".eq", lv_str_eq);
     lv_tbl_put(&strFuncs, ".lt", lv_str_lt);
     lv_tbl_put(&strFuncs, ".len", lv_str_len);
+    lv_tbl_put(&strFuncs, ".slice", lv_str_slice);
     lv_tbl_put(&mapFuncs, ".str", lv_map_str);
     lv_tbl_put(&mapFuncs, ".cat", lv_map_cat);
     lv_tbl_put(&mapFuncs, ".at", lv_map_at);
     lv_tbl_put(&mapFuncs, ".eq", lv_map_eq);
     lv_tbl_put(&mapFuncs, ".lt", lv_map_lt);
+    lv_tbl_put(&mapFuncs, ".len", lv_map_len);
     lv_tbl_put(&mapFuncs, ".map", lv_map_map);
     lv_tbl_put(&mapFuncs, ".filter", lv_map_filter);
     lv_tbl_put(&mapFuncs, ".fold", lv_map_fold);

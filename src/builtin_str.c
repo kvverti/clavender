@@ -118,3 +118,29 @@ INTRINSIC(len) {
         .integer = args[0].str->len
     };
 }
+
+INTRINSIC(slice) {
+    assert(args[0].type == OPT_STRING);
+    TextBufferObj res = { .type = OPT_UNDEFINED };
+    if(args[1].type != OPT_INTEGER || args[2].type != OPT_INTEGER) {
+        return res;
+    }
+    uint64_t start = args[1].integer;
+    uint64_t end = args[2].integer;
+    //sanity check
+    if(start <= end && !NEGATIVE_INT(start)) {
+        size_t len = args[0].str->len;
+        //bounds check
+        if((size_t)end <= len) {
+            //create new string (include NUL terminator)
+            res.type = OPT_STRING;
+            res.str = lv_alloc(sizeof(LvString) + (end - start + 1));
+            res.str->refCount = 0;
+            res.str->len = end - start;
+            //copy over elements
+            memcpy(res.str->value, &args[0].str->value[start], res.str->len);
+            res.str->value[res.str->len] = '\0';
+        }
+    }
+    return res;
+}

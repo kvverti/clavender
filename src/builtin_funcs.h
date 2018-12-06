@@ -22,6 +22,7 @@ Intrinsic lv_str_at;
 Intrinsic lv_str_eq;
 Intrinsic lv_str_lt;
 Intrinsic lv_str_len;
+Intrinsic lv_str_slice;
 
 Intrinsic lv_vect_str;
 Intrinsic lv_vect_cat;

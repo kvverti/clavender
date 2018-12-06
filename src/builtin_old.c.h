@@ -322,19 +322,7 @@ static TextBufferObj concat(TextBufferObj* args) {
 
     TextBufferObj res;
     evalByNameArgs(args, 2);
-    if(args[0].type != args[1].type) {
-        res.type = OPT_UNDEFINED;
-    } else {
-        res = indirect(args, args[0].type, ".cat");
-        if(res.type != OPT_UNDEFINED) {
-            ;
-        } else {
-            switch(args[0].type) {
-                default:
-                    res.type = OPT_UNDEFINED;
-            }
-        }
-    }
+    res = indirect(args, args[0].type, ".cat");
     return res;
 }
 
@@ -361,9 +349,7 @@ static TextBufferObj str(TextBufferObj* _args) {
     TextBufferObj args[1], res;
     getArgs(args, _args, 1);
     res = indirect(args, args[0].type, ".str");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
+    if(res.type == OPT_UNDEFINED) {
         res.type = OPT_STRING;
         res.str = lv_tb_getString(&args[0]);
     }
@@ -437,14 +423,6 @@ static TextBufferObj len(TextBufferObj* _args) {
         case OPT_CAPTURE:
             res.type = OPT_INTEGER;
             res.integer = args[0].capfunc->arity - args[0].capfunc->captureCount;
-            break;
-        case OPT_VECT:
-            res.type = OPT_INTEGER;
-            res.integer = args[0].vect->len;
-            break;
-        case OPT_MAP:
-            res.type = OPT_INTEGER;
-            res.integer = args[0].map->len;
             break;
         default:
             res.type = OPT_UNDEFINED;
@@ -571,9 +549,7 @@ static TextBufferObj eq(TextBufferObj* _args) {
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
     res = indirect(args, args[0].type, ".eq");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
+    if(res.type == OPT_UNDEFINED) {
         res.type = OPT_INTEGER;
         res.integer = equal(&args[0], &args[1]);
     }
@@ -645,9 +621,7 @@ static TextBufferObj lt(TextBufferObj* _args) {
         return res;
     }
     res = indirect(args, args[0].type, ".lt");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
+    if(res.type == OPT_UNDEFINED) {
         res.type = OPT_INTEGER;
         res.integer = ltImpl(&args[0], &args[1]);
     }
@@ -1109,11 +1083,6 @@ static TextBufferObj filter(TextBufferObj* _args) {
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
     res = indirect(args, args[0].type, ".filter");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
     clearArgs(args, 2);
     return res;
 }
@@ -1124,11 +1093,6 @@ static TextBufferObj fold(TextBufferObj* _args) {
     TextBufferObj args[3], res;
     getArgs(args, _args, 3);
     res = indirect(args, args[0].type, ".fold");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
     clearArgs(args, 3);
     return res;
 }
@@ -1139,39 +1103,6 @@ static TextBufferObj slice(TextBufferObj* _args) {
     TextBufferObj args[3], res;
     getArgs(args, _args, 3);
     res = indirect(args, args[0].type, ".slice");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else if(args[1].type != OPT_INTEGER || args[2].type != OPT_INTEGER) {
-        //check that index args are numbers
-        res.type = OPT_UNDEFINED;
-    } else if(args[0].type != OPT_VECT && args[0].type != OPT_STRING) {
-        //check that the receiver is of appropriate type
-        res.type = OPT_UNDEFINED;
-    } else {
-        uint64_t start = args[1].integer;
-        uint64_t end = args[2].integer;
-        //sanity check
-        if(start > end || isNegative(start) || isNegative(end)) {
-            res.type = OPT_UNDEFINED;
-        } else if(args[0].type == OPT_STRING) {
-            size_t len = args[0].str->len;
-            //bounds check
-            if((size_t)start > len || (size_t)end > len) {
-                res.type = OPT_UNDEFINED;
-            } else {
-                //create new string (include NUL terminator)
-                res.type = OPT_STRING;
-                res.str = lv_alloc(sizeof(LvString) + (end - start + 1));
-                res.str->refCount = 0;
-                res.str->len = end - start;
-                //copy over elements
-                memcpy(res.str->value, &args[0].str->value[start], res.str->len);
-                res.str->value[res.str->len] = '\0';
-            }
-        } else {
-            res.type = OPT_UNDEFINED;
-        }
-    }
     clearArgs(args, 3);
     return res;
 }
@@ -1182,11 +1113,6 @@ TextBufferObj take(TextBufferObj* _args) {
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
     res = indirect(args, args[0].type, ".take");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
     clearArgs(args, 2);
     return res;
 }
@@ -1197,11 +1123,6 @@ TextBufferObj skip(TextBufferObj* _args) {
     TextBufferObj args[2], res;
     getArgs(args, _args, 2);
     res = indirect(args, args[0].type, ".skip");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
     clearArgs(args, 2);
     return res;
 }
