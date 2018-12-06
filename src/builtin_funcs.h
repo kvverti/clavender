@@ -2,9 +2,6 @@
 #define BUILTIN_FUNCS_H
 #include "textbuffer_fwd.h"
 
-void lv_bltf_getArgs(TextBufferObj* dst, TextBufferObj* src, size_t len);
-void lv_bltf_clearArgs(TextBufferObj* args, size_t len);
-
 #define INC_REFCOUNT(obj) \
     if((obj)->type & LV_DYNAMIC) \
         ++*(obj)->refCount; \
