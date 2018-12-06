@@ -267,38 +267,6 @@ static TextBufferObj call(TextBufferObj* _args) {
     return res;
 }
 
-static void bsearchMap(TextBufferObj* map, TextBufferObj* key, TextBufferObj* res) {
-
-    uint64_t h = lv_blt_hash(key);
-    LvMapNode* lo = map->map->data;
-    LvMapNode* hi = lo + map->map->len;
-    while(lo < hi) {
-        LvMapNode* mid = lo + (hi - lo) / 2;
-        if(h == mid->hash) {
-            //find the one of potential hash collisions
-            for(LvMapNode* n = mid; n < hi && h == n->hash; n++) {
-                if(lv_blt_equal(&n->key, key)) {
-                    *res = n->value;
-                    return;
-                }
-            }
-            for(LvMapNode* n = mid; n > lo && h == n[-1].hash; n--) {
-                if(lv_blt_equal(&n[-1].key, key)) {
-                    *res = n[-1].value;
-                    return;
-                }
-            }
-            //no equal element found
-            break;
-        } else if(h < mid->hash) {
-            hi = mid;
-        } else {
-            lo = mid + 1;
-        }
-    }
-    res->type = OPT_UNDEFINED;
-}
-
 /**
  * Returns the i'th element of the given string or vect.
  */
@@ -309,9 +277,6 @@ static TextBufferObj at(TextBufferObj* _args) {
     res = indirect(args, args[1].type, ".at");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[1].type == OPT_MAP) {
-        //binary search the given key in the map
-        bsearchMap(&args[1], &args[0], &res);
     } else if(args[0].type == OPT_INTEGER) {
         if(args[1].type == OPT_STRING
         && !isNegative(args[0].integer) && args[0].integer < args[1].str->len) {
@@ -321,9 +286,6 @@ static TextBufferObj at(TextBufferObj* _args) {
             res.str->len = 1;
             res.str->value[0] = args[1].str->value[(size_t)args[0].integer];
             res.str->value[1] = '\0';
-        } else if(args[1].type == OPT_VECT
-            && !isNegative(args[0].integer) && args[0].integer < args[1].vect->len) {
-            res = args[1].vect->data[(size_t)args[0].integer];
         } else {
             res.type = OPT_UNDEFINED;
         }
@@ -374,46 +336,6 @@ static TextBufferObj concat(TextBufferObj* _args) {
                     str->value[alen + blen] = '\0';
                     res.type = OPT_STRING;
                     res.str = str;
-                    break;
-                }
-                case OPT_VECT: {
-                    //vect concatenation
-                    size_t alen = args[0].vect->len;
-                    size_t blen = args[1].vect->len;
-                    LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
-                    vec->refCount = 0;
-                    vec->len = alen + blen;
-                    for(size_t i = 0; i < alen; i++) {
-                        vec->data[i] = args[0].vect->data[i];
-                        incRefCount(&vec->data[i]);
-                    }
-                    for(size_t i = 0; i < blen; i++) {
-                        vec->data[alen + i] = args[1].vect->data[i];
-                        incRefCount(&vec->data[alen + i]);
-                    }
-                    res.type = OPT_VECT;
-                    res.vect = vec;
-                    break;
-                }
-                case OPT_MAP: {
-                    size_t alen = args[0].map->len;
-                    size_t blen = args[1].map->len;
-                    LvMap* map = lv_alloc(sizeof(LvMap) + (alen + blen) * sizeof(LvMapNode));
-                    map->refCount = 0;
-                    map->len = alen + blen;
-                    for(size_t i = 0; i < alen; i++) {
-                        map->data[i] = args[0].map->data[i];
-                        incRefCount(&map->data[i].key);
-                        incRefCount(&map->data[i].value);
-                    }
-                    for(size_t i = 0; i < blen; i++) {
-                        map->data[alen + i] = args[1].map->data[i];
-                        incRefCount(&map->data[alen + i].key);
-                        incRefCount(&map->data[alen + i].value);
-                    }
-                    lv_tb_initMap(&map);
-                    res.type = OPT_MAP;
-                    res.map = map;
                     break;
                 }
                 default:
@@ -671,27 +593,6 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
                     return false;
             }
             return true;
-        case OPT_VECT:
-            if(a->vect->len != b->vect->len)
-                return false;
-            for(size_t i = 0; i < a->vect->len; i++) {
-                if(!lv_blt_equal(&a->vect->data[i], &b->vect->data[i]))
-                    return false;
-            }
-            return true;
-        case OPT_MAP:
-            //currently maps are stored in sorted order, so pairwise
-            //comparison is fine
-            if(a->map->len != b->map->len)
-                return false;
-            for(size_t i = 0; i < a->map->len; i++) {
-                LvMapNode* na = &a->map->data[i];
-                LvMapNode* nb = &b->map->data[i];
-                if(!lv_blt_equal(&na->key, &nb->key) || !lv_blt_equal(&na->value, &nb->value)) {
-                    return false;
-                }
-            }
-            return true;
         default:
             assert(false);
     }
@@ -754,36 +655,6 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
                 return false;
             }
             return (uintptr_t)a->capfunc < (uintptr_t)b->capfunc;
-        case OPT_VECT:
-            if(a->vect->len == b->vect->len) {
-                for(size_t i = 0; i < a->vect->len; i++) {
-                    if(lv_blt_lt(&a->vect->data[i], &b->vect->data[i])) {
-                        return true;
-                    } else if(lv_blt_lt(&b->vect->data[i], &a->vect->data[i])) {
-                        return false;
-                    }
-                }
-                return false;
-            }
-            return a->vect->len < b->vect->len;
-        case OPT_MAP:
-            if(a->map->len == b->map->len) {
-                for(size_t i = 0; i < a->map->len; i++) {
-                    LvMapNode* na = &a->map->data[i];
-                    LvMapNode* nb = &b->map->data[i];
-                    if(lv_blt_lt(&na->key, &nb->key)) {
-                        return true;
-                    } else if(lv_blt_lt(&nb->key, &na->key)) {
-                        return false;
-                    } else if(lv_blt_lt(&na->value, &nb->value)) {
-                        return true;
-                    } else if(lv_blt_lt(&nb->value, &na->value)) {
-                        return false;
-                    }
-                }
-                return false;
-            }
-            return a->map->len < b->map->len;
         default:
             assert(false);
     }
@@ -812,6 +683,7 @@ static TextBufferObj lt(TextBufferObj* _args) {
     if(res.type != OPT_UNDEFINED) {
         ;
     } else {
+        res.type = OPT_INTEGER;
         res.integer = ltImpl(&args[0], &args[1]);
     }
     clearArgs(args, 2);
@@ -836,6 +708,7 @@ static TextBufferObj ge(TextBufferObj* _args) {
     if(res.type != OPT_UNDEFINED) {
         res.integer = !res.integer;
     } else {
+        res.type = OPT_INTEGER;
         res.integer = !ltImpl(&args[0], &args[1]);
     }
     clearArgs(args, 2);
@@ -1273,58 +1146,6 @@ static TextBufferObj filter(TextBufferObj* _args) {
     res = indirect(args, args[0].type, ".filter");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[0].type == OPT_VECT) {
-        TextBufferObj func = args[1];
-        TextBufferObj* oldData = args[0].vect->data;
-        size_t len = args[0].vect->len;
-        LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
-        vect->refCount = 0;
-        size_t newLen = 0;
-        for(size_t i = 0; i < len; i++) {
-            TextBufferObj passed;
-            lv_callFunction(&func, 1, &oldData[i], &passed);
-            incRefCount(&passed); //so lv_expr_cleanup doesn't blow up
-            if(lv_blt_toBool(&passed)) {
-                incRefCount(&oldData[i]);
-                vect->data[newLen] = oldData[i];
-                newLen++;
-            }
-            lv_expr_cleanup(&passed, 1);
-        }
-        vect->len = newLen;
-        if(newLen < len) {
-            vect = lv_realloc(vect, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
-        }
-        res.type = OPT_VECT;
-        res.vect = vect;
-    } else if(args[0].type == OPT_MAP) {
-        TextBufferObj func = args[1];
-        LvMapNode* oldData = args[0].map->data;
-        size_t len = args[0].map->len;
-        LvMap* map = lv_alloc(sizeof(LvMap) + len * sizeof(LvMapNode));
-        map->refCount = 0;
-        size_t newLen = 0;
-        for(size_t i = 0; i < len; i++) {
-            TextBufferObj keyValue[2] = { oldData[i].key, oldData[i].value };
-            TextBufferObj passed;
-            lv_callFunction(&func, 2, keyValue, &passed);
-            incRefCount(&passed);
-            if(lv_blt_toBool(&passed)) {
-                incRefCount(&keyValue[0]);
-                map->data[newLen].key = keyValue[0];
-                map->data[newLen].hash = oldData[i].hash;
-                incRefCount(&keyValue[1]);
-                map->data[newLen].value = keyValue[1];
-                newLen++;
-            }
-            lv_expr_cleanup(&passed, 1);
-        }
-        map->len = newLen;
-        if(newLen < len) {
-            map = lv_realloc(map, sizeof(LvMap) + newLen * sizeof(LvMapNode));
-        }
-        res.type = OPT_MAP;
-        res.map = map;
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -1340,27 +1161,6 @@ static TextBufferObj fold(TextBufferObj* _args) {
     res = indirect(args, args[0].type, ".fold");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[0].type == OPT_VECT) {
-        size_t len = args[0].vect->len;
-        TextBufferObj* oldData = args[0].vect->data;
-        TextBufferObj accum[2] = { args[1] };
-        TextBufferObj func = args[2];
-        for(size_t i = 0; i < len; i++) {
-            accum[1] = oldData[i];
-            lv_callFunction(&func, 2, accum, &accum[0]);
-        }
-        res = accum[0];
-    } else if(args[0].type == OPT_MAP) {
-        size_t len = args[0].map->len;
-        LvMapNode* oldData = args[0].map->data;
-        TextBufferObj accum[3] = { args[1] };
-        TextBufferObj func = args[2];
-        for(size_t i = 0; i < len; i++) {
-            accum[1] = oldData[i].key;
-            accum[2] = oldData[i].value;
-            lv_callFunction(&func, 3, accum, &accum[0]);
-        }
-        res = accum[0];
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -1388,23 +1188,6 @@ static TextBufferObj slice(TextBufferObj* _args) {
         //sanity check
         if(start > end || isNegative(start) || isNegative(end)) {
             res.type = OPT_UNDEFINED;
-        } else if(args[0].type == OPT_VECT) {
-            size_t len = args[0].vect->len;
-            //bounds check
-            if((size_t)start > len || (size_t)end > len) {
-                res.type = OPT_UNDEFINED;
-            } else {
-                //create new vect
-                res.type = OPT_VECT;
-                res.vect = lv_alloc(sizeof(LvVect) + (end - start) * sizeof(TextBufferObj));
-                res.vect->refCount = 0;
-                res.vect->len = end - start;
-                //copy over elements
-                for(size_t i = 0; i < res.vect->len; i++) {
-                    res.vect->data[i] = args[0].vect->data[start + i];
-                    incRefCount(&res.vect->data[i]);
-                }
-            }
         } else if(args[0].type == OPT_STRING) {
             size_t len = args[0].str->len;
             //bounds check
@@ -1436,32 +1219,6 @@ TextBufferObj take(TextBufferObj* _args) {
     res = indirect(args, args[0].type, ".take");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[0].type == OPT_VECT) {
-        TextBufferObj func = args[1];
-        TextBufferObj* data = args[0].vect->data;
-        size_t len = args[0].vect->len;
-        //overestimate
-        LvVect* vec = lv_alloc(sizeof(LvVect) + args[0].vect->len * sizeof(TextBufferObj));
-        vec->refCount = 0;
-        size_t newLen = 0;
-        bool cont = true;
-        while(cont && newLen < len) {
-            TextBufferObj satisfied;
-            lv_callFunction(&func, 1, &data[newLen], &satisfied);
-            incRefCount(&satisfied);
-            if(lv_blt_toBool(&satisfied)) {
-                incRefCount(&data[newLen]);
-                vec->data[newLen] = data[newLen];
-                newLen++;
-            } else {
-                cont = false;
-            }
-            lv_expr_cleanup(&satisfied, 1);
-        }
-        vec = lv_realloc(vec, sizeof(LvVect) + newLen * sizeof(TextBufferObj));
-        vec->len = newLen;
-        res.type = OPT_VECT;
-        res.vect = vec;
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -1477,32 +1234,6 @@ TextBufferObj skip(TextBufferObj* _args) {
     res = indirect(args, args[0].type, ".skip");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[0].type == OPT_VECT) {
-        TextBufferObj func = args[1];
-        TextBufferObj* data = args[0].vect->data;
-        size_t len = args[0].vect->len;
-        size_t skipLen = 0;
-        bool cont = true;
-        while(cont && skipLen < len) {
-            TextBufferObj satisfied;
-            lv_callFunction(&func, 1, &data[skipLen], &satisfied);
-            incRefCount(&satisfied);
-            if(lv_blt_toBool(&satisfied)) {
-                skipLen++;
-            } else {
-                cont = false;
-            }
-            lv_expr_cleanup(&satisfied, 1);
-        }
-        LvVect* vec = lv_alloc(sizeof(LvVect) + (len - skipLen) * sizeof(TextBufferObj));
-        vec->refCount = 0;
-        vec->len = len - skipLen;
-        for(size_t i = skipLen; i < len; i++) {
-            incRefCount(&data[i]);
-            vec->data[i - skipLen] = data[i];
-        }
-        res.type = OPT_VECT;
-        res.vect = vec;
     } else {
         res.type = OPT_UNDEFINED;
     }

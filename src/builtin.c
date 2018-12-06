@@ -26,7 +26,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&vectFuncs, ".lt", lv_vect_lt);
     lv_tbl_put(&vectFuncs, ".len", lv_vect_len);
     lv_tbl_put(&vectFuncs, ".map", lv_vect_map);
-    lv_tbl_put(&vectFuncs, ".flatmap", lv_vect_filter);
+    lv_tbl_put(&vectFuncs, ".filter", lv_vect_filter);
     lv_tbl_put(&vectFuncs, ".fold", lv_vect_fold);
     lv_tbl_put(&vectFuncs, ".slice", lv_vect_slice);
     lv_tbl_put(&vectFuncs, ".take", lv_vect_take);
@@ -37,7 +37,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&mapFuncs, ".eq", lv_map_eq);
     lv_tbl_put(&mapFuncs, ".lt", lv_map_lt);
     lv_tbl_put(&mapFuncs, ".map", lv_map_map);
-    // lv_tbl_put(&mapFuncs, ".flatmap", lv_map_flatmap);
+    lv_tbl_put(&mapFuncs, ".filter", lv_map_filter);
     lv_tbl_put(&mapFuncs, ".fold", lv_map_fold);
 }
 
