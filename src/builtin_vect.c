@@ -58,13 +58,22 @@ INTRINSIC(cat) {
     if(args[1].type == OPT_VECT) {
         size_t alen = args[0].vect->len;
         size_t blen = args[1].vect->len;
-        LvVect* vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
-        vec->refCount = 0;
-        vec->len = alen + blen;
-        for(size_t i = 0; i < alen; i++) {
-            vec->data[i] = args[0].vect->data[i];
-            INC_REFCOUNT(&vec->data[i]);
+        LvVect* vec;
+        if(args[0].vect->refCount == 1) {
+            // we can sneakily mutate the src vect because it's only
+            // reference is the reference on the stack we currently have
+            vec = lv_realloc(args[0].vect, sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
+            // replace the dead reference with the new reference
+            args[0].vect = vec;
+        } else {
+            vec = lv_alloc(sizeof(LvVect) + (alen + blen) * sizeof(TextBufferObj));
+            vec->refCount = 0;
+            for(size_t i = 0; i < alen; i++) {
+                vec->data[i] = args[0].vect->data[i];
+                INC_REFCOUNT(&vec->data[i]);
+            }
         }
+        vec->len = alen + blen;
         for(size_t i = 0; i < blen; i++) {
             vec->data[alen + i] = args[1].vect->data[i];
             INC_REFCOUNT(&vec->data[alen + i]);
@@ -140,12 +149,23 @@ INTRINSIC(map) {
     TextBufferObj func = args[1]; //in case the stack is reallocated
     TextBufferObj* oldData = args[0].vect->data;
     size_t len = args[0].vect->len;
-    LvVect* vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
-    vect->refCount = 0;
-    vect->len = len;
+    LvVect* vect;
+    bool mutating = false;
+    if(args[0].vect->refCount == 1) {
+        // use the existing vect
+        vect = args[0].vect;
+        mutating = true;
+    } else {
+        vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
+        vect->refCount = 0;
+        vect->len = len;
+    }
     for(size_t i = 0; i < len; i++) {
         TextBufferObj obj;
         lv_callFunction(&func, 1, &oldData[i], &obj);
+        if(mutating) {
+            lv_expr_cleanup(&oldData[i], 1);
+        }
         INC_REFCOUNT(&obj);
         vect->data[i] = obj;
     }

@@ -54,6 +54,24 @@ static void clearArgs(TextBufferObj* args, size_t len) {
 }
 
 /**
+ * Replace by-name expression arguments with their actual results,
+ * in place.
+ */
+static void evalByNameArgs(TextBufferObj* args, size_t len) {
+
+    for(size_t i = 0; i < len; i++) {
+        TextBufferObj tmp;
+        if(lv_evalByName(&args[i], &tmp)) {
+            if(tmp.type & LV_DYNAMIC) {
+                ++*tmp.refCount;
+            }
+            lv_expr_cleanup(&args[i], 1);
+            args[i] = tmp;
+        }
+    }
+}
+
+/**
  * Converts a string to a symbol.
  */
 static TextBufferObj symb(TextBufferObj* args) {
@@ -312,10 +330,10 @@ bool lv_blt_toBool(TextBufferObj* obj) {
 /**
  * Concatenates two values together.
  */
-static TextBufferObj concat(TextBufferObj* _args) {
+static TextBufferObj concat(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    evalByNameArgs(args, 2);
     if(args[0].type != args[1].type) {
         res.type = OPT_UNDEFINED;
     } else {
@@ -343,7 +361,6 @@ static TextBufferObj concat(TextBufferObj* _args) {
             }
         }
     }
-    clearArgs(args, 2);
     return res;
 }
 
