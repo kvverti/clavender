@@ -295,18 +295,6 @@ static TextBufferObj at(TextBufferObj* _args) {
     res = indirect(args, args[1].type, ".at");
     if(res.type != OPT_UNDEFINED) {
         ;
-    } else if(args[0].type == OPT_INTEGER) {
-        if(args[1].type == OPT_STRING
-        && !isNegative(args[0].integer) && args[0].integer < args[1].str->len) {
-            res.type = OPT_STRING;
-            res.str = lv_alloc(sizeof(LvString) + 2);
-            res.str->refCount = 0;
-            res.str->len = 1;
-            res.str->value[0] = args[1].str->value[(size_t)args[0].integer];
-            res.str->value[1] = '\0';
-        } else {
-            res.type = OPT_UNDEFINED;
-        }
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -342,20 +330,6 @@ static TextBufferObj concat(TextBufferObj* args) {
             ;
         } else {
             switch(args[0].type) {
-                case OPT_STRING: {
-                    //string concatenation
-                    size_t alen = args[0].str->len;
-                    size_t blen = args[1].str->len;
-                    LvString* str = lv_alloc(sizeof(LvString) + alen + blen + 1);
-                    str->refCount = 0;
-                    str->len = alen + blen;
-                    memcpy(str->value, args[0].str->value, alen);
-                    memcpy(str->value + alen, args[1].str->value, blen);
-                    str->value[alen + blen] = '\0';
-                    res.type = OPT_STRING;
-                    res.str = str;
-                    break;
-                }
                 default:
                     res.type = OPT_UNDEFINED;
             }
@@ -402,9 +376,12 @@ static TextBufferObj int_(TextBufferObj* _args) {
 
     TextBufferObj args[1], res;
     getArgs(args, _args, 1);
-    if(args[0].type == OPT_INTEGER)
+    res = indirect(args, args[0].type, ".int");
+    if(res.type != OPT_UNDEFINED) {
+        ;
+    } else if(args[0].type == OPT_INTEGER)
         return args[0];
-    if(args[0].type == OPT_NUMBER) {
+    else if(args[0].type == OPT_NUMBER) {
         //get magnitude
         double mag = args[0].number;
         if(!isfinite(mag)) {
@@ -412,18 +389,6 @@ static TextBufferObj int_(TextBufferObj* _args) {
         } else {
             res.type = OPT_INTEGER;
             res.integer = (uint64_t) mag;
-        }
-    } else if(args[0].type == OPT_STRING) {
-        char* rest;
-        LvString* str = args[0].str;
-        //unsigned negation is the same as two's complement negation
-        uint64_t i64 = (uint64_t) strtoumax(str->value, &rest, 10);
-        if(rest != str->value + str->len) {
-            //not all chars interpreted
-            res.type = OPT_UNDEFINED;
-        } else {
-            res.type = OPT_INTEGER;
-            res.integer = i64;
         }
     } else {
         res.type = OPT_UNDEFINED;
@@ -437,22 +402,14 @@ static TextBufferObj num(TextBufferObj* _args) {
 
     TextBufferObj args[1], res;
     getArgs(args, _args, 1);
-    if(args[0].type == OPT_NUMBER)
+    res = indirect(args, args[0].type, ".num");
+    if(res.type != OPT_UNDEFINED) {
+        ;
+    } else if(args[0].type == OPT_NUMBER)
         return args[0];
     else if(args[0].type == OPT_INTEGER) {
         res.type = OPT_NUMBER;
         res.number = intToNum(args[0].integer);
-    } else if(args[0].type == OPT_STRING) {
-        char* rest;
-        LvString* str = args[0].str;
-        double d = strtod(str->value, &rest);
-        if(rest != str->value + str->len) {
-            //not all chars interpreted, error
-            res.type = OPT_UNDEFINED;
-        } else {
-            res.type = OPT_NUMBER;
-            res.number = d;
-        }
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -472,11 +429,6 @@ static TextBufferObj len(TextBufferObj* _args) {
         ;
     } else
     switch(args[0].type) {
-        case OPT_STRING:
-            //length of string
-            res.type = OPT_INTEGER;
-            res.integer = args[0].str->len;
-            break;
         case OPT_FUNCTION_VAL:
             //arity of function
             res.type = OPT_INTEGER;
@@ -596,10 +548,6 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             return a->integer == b->integer;
         case OPT_SYMB:
             return a->symbIdx == b->symbIdx;
-        case OPT_STRING:
-            //strings use value equality
-            return (a->str->len == b->str->len)
-                && (strcmp(a->str->value, b->str->value) == 0);
         case OPT_FUNCTION_VAL:
             return a->func == b->func;
         case OPT_CAPTURE:

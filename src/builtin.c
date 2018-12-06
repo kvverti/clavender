@@ -31,6 +31,14 @@ static void mkFuncTables(void) {
     lv_tbl_put(&vectFuncs, ".slice", lv_vect_slice);
     lv_tbl_put(&vectFuncs, ".take", lv_vect_take);
     lv_tbl_put(&vectFuncs, ".skip", lv_vect_skip);
+    lv_tbl_put(&strFuncs, ".str", lv_str_str);
+    lv_tbl_put(&strFuncs, ".num", lv_str_num);
+    lv_tbl_put(&strFuncs, ".int", lv_str_int);
+    lv_tbl_put(&strFuncs, ".cat", lv_str_cat);
+    lv_tbl_put(&strFuncs, ".at", lv_str_at);
+    lv_tbl_put(&strFuncs, ".eq", lv_str_eq);
+    lv_tbl_put(&strFuncs, ".lt", lv_str_lt);
+    lv_tbl_put(&strFuncs, ".len", lv_str_len);
     lv_tbl_put(&mapFuncs, ".str", lv_map_str);
     lv_tbl_put(&mapFuncs, ".cat", lv_map_cat);
     lv_tbl_put(&mapFuncs, ".at", lv_map_at);
