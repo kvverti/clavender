@@ -57,7 +57,7 @@ static void clearArgs(TextBufferObj* args, size_t len) {
  * Replace by-name expression arguments with their actual results,
  * in place.
  */
-static void evalByNameArgs(TextBufferObj* args, size_t len) {
+static void getActualArgs(TextBufferObj* args, size_t len) {
 
     for(size_t i = 0; i < len; i++) {
         TextBufferObj tmp;
@@ -288,17 +288,11 @@ static TextBufferObj call(TextBufferObj* _args) {
 /**
  * Returns the i'th element of the given string or vect.
  */
-static TextBufferObj at(TextBufferObj* _args) {
+static TextBufferObj at(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[1].type, ".at");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -321,7 +315,7 @@ bool lv_blt_toBool(TextBufferObj* obj) {
 static TextBufferObj concat(TextBufferObj* args) {
 
     TextBufferObj res;
-    evalByNameArgs(args, 2);
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".cat");
     return res;
 }
@@ -329,39 +323,35 @@ static TextBufferObj concat(TextBufferObj* args) {
 /**
  * Converts to bool.
  */
-static TextBufferObj bool_(TextBufferObj* _args) {
+static TextBufferObj bool_(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res.type = OPT_INTEGER;
     res.integer = lv_blt_toBool(&args[0]);
-    clearArgs(args, 1);
     return res;
 }
 
 /**
  * Converts object to string.
  */
-static TextBufferObj str(TextBufferObj* _args) {
+static TextBufferObj str(TextBufferObj* args) {
 
-    if(_args[0].type == OPT_STRING)
-        return _args[0];
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res = indirect(args, args[0].type, ".str");
     if(res.type == OPT_UNDEFINED) {
         res.type = OPT_STRING;
         res.str = lv_tb_getString(&args[0]);
     }
-    clearArgs(args, 1);
     return res;
 }
 
 /** Converts to int. */
-static TextBufferObj int_(TextBufferObj* _args) {
+static TextBufferObj int_(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res = indirect(args, args[0].type, ".int");
     if(res.type != OPT_UNDEFINED) {
         ;
@@ -379,15 +369,14 @@ static TextBufferObj int_(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
 /** Converts object to number. */
-static TextBufferObj num(TextBufferObj* _args) {
+static TextBufferObj num(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res = indirect(args, args[0].type, ".num");
     if(res.type != OPT_UNDEFINED) {
         ;
@@ -399,17 +388,16 @@ static TextBufferObj num(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
 /**
  * Returns length of object if defined.
  */
-static TextBufferObj len(TextBufferObj* _args) {
+static TextBufferObj len(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res = indirect(args, args[0].type, ".len");
     if(res.type != OPT_UNDEFINED) {
         ;
@@ -427,7 +415,6 @@ static TextBufferObj len(TextBufferObj* _args) {
         default:
             res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
@@ -493,13 +480,12 @@ static uint64_t hashcode(TextBufferObj* arg) {
     return res;
 }
 
-static TextBufferObj hash(TextBufferObj* _args) {
+static TextBufferObj hash(TextBufferObj* args) {
 
-    TextBufferObj arg, res;
-    getArgs(&arg, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res.type = OPT_INTEGER;
-    res.integer = hashcode(&arg);
-    clearArgs(&arg, 1);
+    res.integer = hashcode(&args[0]);
     return res;
 }
 
@@ -544,16 +530,15 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
 /**
  * Compares two objects for equality.
  */
-static TextBufferObj eq(TextBufferObj* _args) {
+static TextBufferObj eq(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".eq");
     if(res.type == OPT_UNDEFINED) {
         res.type = OPT_INTEGER;
         res.integer = equal(&args[0], &args[1]);
     }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -609,10 +594,10 @@ bool lv_blt_lt(TextBufferObj* a, TextBufferObj* b) {
     return lt.type == OPT_INTEGER ? lt.integer : ltImpl(a, b);
 }
 
-static TextBufferObj lt(TextBufferObj* _args) {
+static TextBufferObj lt(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res.type = OPT_INTEGER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
     && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
@@ -625,17 +610,16 @@ static TextBufferObj lt(TextBufferObj* _args) {
         res.type = OPT_INTEGER;
         res.integer = ltImpl(&args[0], &args[1]);
     }
-    clearArgs(args, 2);
     return res;
 }
 
 //we need both lt and ge because NaN always compares false.
 //the Lavender comparison functions use either lt or ge
 //as appropriate.
-static TextBufferObj ge(TextBufferObj* _args) {
+static TextBufferObj ge(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res.type = OPT_INTEGER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
     && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
@@ -650,7 +634,6 @@ static TextBufferObj ge(TextBufferObj* _args) {
         res.type = OPT_INTEGER;
         res.integer = !ltImpl(&args[0], &args[1]);
     }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -1068,61 +1051,55 @@ static TextBufferObj sgn(TextBufferObj* _args) {
 //functional functions
 
 /** Functional map */
-static TextBufferObj map(TextBufferObj* _args) {
+static TextBufferObj map(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".map");
-    clearArgs(args, 2);
     return res;
 }
 
 /** Functional filter */
-static TextBufferObj filter(TextBufferObj* _args) {
+static TextBufferObj filter(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".filter");
-    clearArgs(args, 2);
     return res;
 }
 
 /** Functional fold */
-static TextBufferObj fold(TextBufferObj* _args) {
+static TextBufferObj fold(TextBufferObj* args) {
 
-    TextBufferObj args[3], res;
-    getArgs(args, _args, 3);
+    TextBufferObj res;
+    getActualArgs(args, 3);
     res = indirect(args, args[0].type, ".fold");
-    clearArgs(args, 3);
     return res;
 }
 
 /** Slices the given vect or string */
-static TextBufferObj slice(TextBufferObj* _args) {
+static TextBufferObj slice(TextBufferObj* args) {
 
-    TextBufferObj args[3], res;
-    getArgs(args, _args, 3);
+    TextBufferObj res;
+    getActualArgs(args, 3);
     res = indirect(args, args[0].type, ".slice");
-    clearArgs(args, 3);
     return res;
 }
 
 /** Takes elements from the vect while the predicate is satisfied */
-TextBufferObj take(TextBufferObj* _args) {
+TextBufferObj take(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".take");
-    clearArgs(args, 2);
     return res;
 }
 
 /** Drops elements from the vect while the predicate is satisifed */
-TextBufferObj skip(TextBufferObj* _args) {
+TextBufferObj skip(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     res = indirect(args, args[0].type, ".skip");
-    clearArgs(args, 2);
     return res;
 }
