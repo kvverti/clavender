@@ -86,11 +86,11 @@ void lv_run(void) {
     lv_startup();
     bool load = lv_readFile("sys") && lv_readFile("global");
     if(load) {
-        lv_globalEquals.type = OPT_FUNCTION;
+        lv_globalEquals.type = OPT_FUNCTION_VAL;
         lv_globalEquals.func = lv_op_getOperator("global:=", FNS_INFIX);
-        lv_globalHash.type = OPT_FUNCTION;
+        lv_globalHash.type = OPT_FUNCTION_VAL;
         lv_globalHash.func = lv_op_getOperator("global:hash", FNS_PREFIX);
-        lv_globalLt.type = OPT_FUNCTION;
+        lv_globalLt.type = OPT_FUNCTION_VAL;
         lv_globalLt.func = lv_op_getOperator("global:<", FNS_INFIX);
     }
     if(!load) {

@@ -226,7 +226,7 @@ INTRINSIC(slice) {
         uint64_t end = args[2].integer;
         size_t len = args[0].vect->len;
         //sanity check
-        if(!NEGATIVE_INT(start) && start < end && (size_t)end < len) {
+        if(!NEGATIVE_INT(start) && start <= end && (size_t)end <= len) {
             //create new vect
             res.type = OPT_VECT;
             res.vect = lv_alloc(sizeof(LvVect) + (end - start) * sizeof(TextBufferObj));
