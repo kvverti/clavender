@@ -129,8 +129,9 @@ INTRINSIC(lt) {
             }
         }
         res.integer = cmp == -1;
+    } else {
+        res.integer = args[0].vect->len < args[1].vect->len;
     }
-    res.integer = args[0].vect->len < args[1].vect->len;
     return res;
 }
 

@@ -371,17 +371,6 @@ static TextBufferObj len(TextBufferObj* args) {
     TextBufferObj res;
     getActualArgs(args, 1);
     res = indirect(args, args[0].type, ".len");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else
-    switch(args[0].type) {
-        case OPT_CAPTURE:
-            res.type = OPT_INTEGER;
-            res.integer = args[0].capfunc->arity - args[0].capfunc->captureCount;
-            break;
-        default:
-            res.type = OPT_UNDEFINED;
-    }
     return res;
 }
 
@@ -413,14 +402,6 @@ static uint64_t hashcode(TextBufferObj* arg) {
         case OPT_STRING:
             res = hashOf(arg->str->value, arg->str->len);
             break;
-        case OPT_CAPTURE: {
-            uint64_t h = 5381;
-            for(size_t i = 0; i < arg->capfunc->captureCount; i++) {
-                h = ((h << 5) + h) + lv_blt_hash(&arg->capture->value[i]);
-            }
-            res = h;
-            break;
-        }
         case OPT_VECT: {
             uint64_t h = 5381;
             for(size_t i = 0; i < arg->vect->len; i++) {
@@ -479,14 +460,6 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             return a->integer == b->integer;
         case OPT_SYMB:
             return a->symbIdx == b->symbIdx;
-        case OPT_CAPTURE:
-            if(a->capfunc != b->capfunc)
-                return false;
-            for(int i = 0; i < a->capfunc->captureCount; i++) {
-                if(!lv_blt_equal(&a->capture->value[i], &b->capture->value[i]))
-                    return false;
-            }
-            return true;
         default:
             assert(false);
     }
@@ -536,19 +509,6 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_STRING:
             return (strcmp(a->str->value, b->str->value) < 0);
             break;
-        //captures and vects compare the first nonequal values
-        case OPT_CAPTURE:
-            if(a->capfunc == b->capfunc) {
-                for(int i = 0; i < a->capfunc->captureCount; i++) {
-                    if(lv_blt_lt(&a->capture->value[i], &b->capture->value[i])) {
-                        return true;
-                    } else if(lv_blt_lt(&b->capture->value[i], &a->capture->value[i])) {
-                        return false;
-                    }
-                }
-                return false;
-            }
-            return (uintptr_t)a->capfunc < (uintptr_t)b->capfunc;
         default:
             assert(false);
     }

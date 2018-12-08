@@ -625,7 +625,15 @@ static size_t jumpAndLink(Operator* func) {
             //we never actually pushed a new frame, so return the old
             //(current) value.
             size_t tmpFp = stack.len - func->arity;
-            TextBufferObj res = func->builtin(lv_buf_get(&stack, tmpFp));
+            // store the args in a separate buffer
+            // because the stack could be reallocated when
+            // evaluating by-name expressions in the argument list
+            TextBufferObj args[func->arity];
+            {
+                TextBufferObj* src = lv_buf_get(&stack, tmpFp);
+                memcpy(args, src, func->arity * sizeof(TextBufferObj));
+            }
+            TextBufferObj res = func->builtin(args);
             //keep a reference to res while we pop
             if(res.type & LV_DYNAMIC)
                 ++*res.refCount;
