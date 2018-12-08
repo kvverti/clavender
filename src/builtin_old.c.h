@@ -35,24 +35,6 @@ bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
     return eq.type == OPT_INTEGER ? eq.integer : equal(a, b);
 }
 
-// evaluates any by-name expressions in the arguments
-static void getArgs(TextBufferObj* dst, TextBufferObj* src, size_t len) {
-
-    for(size_t i = 0; i < len; i++) {
-        if(!lv_evalByName(&src[i], &dst[i])) {
-            dst[i] = src[i];
-        }
-        if(dst[i].type & LV_DYNAMIC) {
-            ++*dst[i].refCount;
-        }
-    }
-}
-
-static void clearArgs(TextBufferObj* args, size_t len) {
-
-    lv_expr_cleanup(args, len);
-}
-
 /**
  * Replace by-name expression arguments with their actual results,
  * in place.
@@ -76,14 +58,13 @@ static void getActualArgs(TextBufferObj* args, size_t len) {
  */
 static TextBufferObj symb(TextBufferObj* args) {
 
-    TextBufferObj arg, res;
-    getArgs(&arg, args, 1);
-    if(arg.type == OPT_STRING) {
-        res = lv_tb_getSymb(arg.str->value);
+    TextBufferObj res;
+    getActualArgs(args, 1);
+    if(args[0].type == OPT_STRING) {
+        res = lv_tb_getSymb(args[0].str->value);
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(&arg, 1);
     return res;
 }
 
@@ -92,11 +73,10 @@ static TextBufferObj symb(TextBufferObj* args) {
  */
 static TextBufferObj defined(TextBufferObj* args) {
 
-    TextBufferObj arg, res;
-    getArgs(&arg, args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res.type = OPT_INTEGER;
-    res.integer = (arg.type != OPT_UNDEFINED);
-    clearArgs(&arg, 1);
+    res.integer = (args[0].type != OPT_UNDEFINED);
     return res;
 }
 
@@ -137,10 +117,10 @@ static void mkTypes(void) {
  */
 static TextBufferObj typeof_(TextBufferObj* args) {
 
-    TextBufferObj arg, res;
-    getArgs(&arg, args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     res.type = OPT_STRING;
-    switch(arg.type) {
+    switch(args[0].type) {
         case OPT_UNDEFINED:
             res.str = types[0];
             break;
@@ -169,7 +149,6 @@ static TextBufferObj typeof_(TextBufferObj* args) {
         default:
             assert(false);
     }
-    clearArgs(&arg, 1);
     return res;
 }
 
@@ -211,10 +190,10 @@ static double intToNum(uint64_t a) {
 /**
  * Gets the n'th capture value from the given function.
  */
-static TextBufferObj cval(TextBufferObj* _args) {
+static TextBufferObj cval(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     if((args[0].type == OPT_CAPTURE)
     && (args[1].type == OPT_INTEGER)
     && (!isNegative(args[1].integer) && args[1].integer < args[0].capfunc->captureCount)) {
@@ -222,7 +201,6 @@ static TextBufferObj cval(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -236,32 +214,27 @@ static TextBufferObj cat(TextBufferObj* args) {
     res.type = OPT_VECT;
     assert(args[0].type == OPT_VECT);
     size_t len = 0;
+    getActualArgs(args[0].vect->data, args[0].vect->len);
     for(size_t i = 0; i < args[0].vect->len; i++) {
-        // TextBufferObj* obj = &args[0].vect->data[i];
-        TextBufferObj obj;
-        getArgs(&obj, &args[0].vect->data[i], 1);
-        len += obj.type == OPT_VECT ? obj.vect->len : 1;
-        clearArgs(&obj, 1);
-        // len += obj->type == OPT_VECT ? obj->vect->len : 1;
+        TextBufferObj* obj = &args[0].vect->data[i];
+        // getActualArgs(obj, 1);
+        len += obj->type == OPT_VECT ? obj->vect->len : 1;
     }
     res.vect = lv_alloc(sizeof(LvVect) + len * sizeof(TextBufferObj));
     res.vect->refCount = 0;
     res.vect->len = len;
     size_t idx = 0;
     for(size_t i = 0; i < args[0].vect->len; i++) {
-        // TextBufferObj* obj = &args[0].vect->data[i];
-        TextBufferObj obj;
-        getArgs(&obj, &args[0].vect->data[i], 1);
-        if(obj.type == OPT_VECT) {
-            for(int j = 0; j < obj.vect->len; j++) {
-                incRefCount(&obj.vect->data[j]);
-                res.vect->data[idx++] = obj.vect->data[j];
+        TextBufferObj* obj = &args[0].vect->data[i];
+        if(obj->type == OPT_VECT) {
+            for(int j = 0; j < obj->vect->len; j++) {
+                incRefCount(&obj->vect->data[j]);
+                res.vect->data[idx++] = obj->vect->data[j];
             }
         } else {
-            incRefCount(&obj);
-            res.vect->data[idx++] = obj;
+            incRefCount(obj);
+            res.vect->data[idx++] = *obj;
         }
-        clearArgs(&obj, 1);
     }
     assert(idx == len);
     return res;
@@ -272,16 +245,15 @@ static TextBufferObj cat(TextBufferObj* args) {
  * arguments. Varargs functions have extra parameters
  * packed into the varargs vector.
  */
-static TextBufferObj call(TextBufferObj* _args) {
+static TextBufferObj call(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
-    getArgs(args, _args, 2);
+    TextBufferObj res;
+    getActualArgs(args, 2);
     if(args[1].type != OPT_VECT) {
         res.type = OPT_UNDEFINED;
     } else {
         lv_callFunction(&args[0], args[1].vect->len, args[1].vect->data, &res);
     }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -684,11 +656,11 @@ static NumResult getObjsAsNumbers(TextBufferObj args[2], NumType res[2]) {
 /**
  * Addition and string concatenation. Assumes two arguments.
  */
-static TextBufferObj add(TextBufferObj* _args) {
+static TextBufferObj add(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER:
             res.type = OPT_NUMBER;
@@ -702,18 +674,17 @@ static TextBufferObj add(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /**
  * Subtraction. Assumes two arguments.
  */
-static TextBufferObj sub(TextBufferObj* _args) {
+static TextBufferObj sub(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER:
             res.type = OPT_NUMBER;
@@ -727,16 +698,15 @@ static TextBufferObj sub(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Multiplication */
-static TextBufferObj mul(TextBufferObj* _args) {
+static TextBufferObj mul(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER:
             res.type = OPT_NUMBER;
@@ -750,7 +720,6 @@ static TextBufferObj mul(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
@@ -788,11 +757,11 @@ static double numDiv(double a, double b, bool rem) {
 }
 
 /** Division */
-static TextBufferObj div_(TextBufferObj* _args) {
+static TextBufferObj div_(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_INTEGER:
             nums[0].number = intToNum(nums[0].integer);
@@ -806,16 +775,15 @@ static TextBufferObj div_(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Integer division */
-static TextBufferObj idiv(TextBufferObj* _args) {
+static TextBufferObj idiv(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER: {
             double a = nums[0].number;
@@ -843,16 +811,15 @@ static TextBufferObj idiv(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Remainder */
-static TextBufferObj rem(TextBufferObj* _args) {
+static TextBufferObj rem(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER:
             res.type = OPT_NUMBER;
@@ -866,16 +833,15 @@ static TextBufferObj rem(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Exponentiation */
-static TextBufferObj pow_(TextBufferObj* _args) {
+static TextBufferObj pow_(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_NUMBER:
             res.type = OPT_NUMBER;
@@ -914,29 +880,27 @@ static TextBufferObj pow_(TextBufferObj* _args) {
         case NR_ERROR:
             res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Unary + function */
-static TextBufferObj pos(TextBufferObj* _args) {
+static TextBufferObj pos(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     if(args[0].type == OPT_NUMBER || args[0].type == OPT_INTEGER) {
         return args[0];
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
 /** Negation function */
-static TextBufferObj neg(TextBufferObj* _args) {
+static TextBufferObj neg(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
         res.number = -args[0].number;
@@ -946,14 +910,13 @@ static TextBufferObj neg(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
 #define DECL_MATH_FUNC(fnc) \
-static TextBufferObj fnc##_(TextBufferObj* _args) { \
-    TextBufferObj args[1], res; \
-    getArgs(args, _args, 1); \
+static TextBufferObj fnc##_(TextBufferObj* args) { \
+    TextBufferObj res; \
+    getActualArgs(args, 1); \
     if(args[0].type == OPT_NUMBER) { \
         res.type = OPT_NUMBER; \
         res.number = fnc(args[0].number); \
@@ -963,7 +926,6 @@ static TextBufferObj fnc##_(TextBufferObj* _args) { \
     } else { \
         res.type = OPT_UNDEFINED; \
     } \
-    clearArgs(args, 1); \
     return res; \
 }
 
@@ -987,10 +949,10 @@ DECL_MATH_FUNC(round);
 
 #undef DECL_MATH_FUNC
 
-static TextBufferObj abs_(TextBufferObj* _args) {
+static TextBufferObj abs_(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_NUMBER;
         res.number = fabs(args[0].number);
@@ -1001,15 +963,14 @@ static TextBufferObj abs_(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
-static TextBufferObj atan2_(TextBufferObj* _args) {
+static TextBufferObj atan2_(TextBufferObj* args) {
 
-    TextBufferObj args[2], res;
+    TextBufferObj res;
     NumType nums[2];
-    getArgs(args, _args, 2);
+    getActualArgs(args, 2);
     switch(getObjsAsNumbers(args, nums)) {
         case NR_INTEGER:
             nums[0].number = intToNum(nums[0].integer);
@@ -1023,15 +984,14 @@ static TextBufferObj atan2_(TextBufferObj* _args) {
             res.type = OPT_UNDEFINED;
             break;
     }
-    clearArgs(args, 2);
     return res;
 }
 
 /** Sign function. Returns +1 for +0 and -1 for -0. */
-static TextBufferObj sgn(TextBufferObj* _args) {
+static TextBufferObj sgn(TextBufferObj* args) {
 
-    TextBufferObj args[1], res;
-    getArgs(args, _args, 1);
+    TextBufferObj res;
+    getActualArgs(args, 1);
     if(args[0].type == OPT_NUMBER) {
         res.type = OPT_INTEGER;
         // (-inf, -0] -> -1 : [+0, inf) -> +1
@@ -1044,7 +1004,6 @@ static TextBufferObj sgn(TextBufferObj* _args) {
     } else {
         res.type = OPT_UNDEFINED;
     }
-    clearArgs(args, 1);
     return res;
 }
 
