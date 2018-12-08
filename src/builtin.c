@@ -13,12 +13,14 @@ Builtin lv_blt_getIntrinsic(char* name) {
 static Hashtable strFuncs;
 static Hashtable vectFuncs;
 static Hashtable mapFuncs;
+static Hashtable funFuncs;
 
 static void mkFuncTables(void) {
 
     lv_tbl_init(&vectFuncs);
     lv_tbl_init(&strFuncs);
     lv_tbl_init(&mapFuncs);
+    lv_tbl_init(&funFuncs);
     lv_tbl_put(&vectFuncs, ".str", lv_vect_str);
     lv_tbl_put(&vectFuncs, ".cat", lv_vect_cat);
     lv_tbl_put(&vectFuncs, ".at", lv_vect_at);
@@ -49,6 +51,10 @@ static void mkFuncTables(void) {
     lv_tbl_put(&mapFuncs, ".map", lv_map_map);
     lv_tbl_put(&mapFuncs, ".filter", lv_map_filter);
     lv_tbl_put(&mapFuncs, ".fold", lv_map_fold);
+    lv_tbl_put(&funFuncs, ".len", lv_fun_len);
+    lv_tbl_put(&funFuncs, ".hash", lv_fun_hash);
+    lv_tbl_put(&funFuncs, ".eq", lv_fun_eq);
+    lv_tbl_put(&funFuncs, ".lt", lv_fun_lt);
 }
 
 Hashtable* lv_blt_getFunctionTable(OpType type) {
@@ -60,6 +66,8 @@ Hashtable* lv_blt_getFunctionTable(OpType type) {
             return &vectFuncs;
         case OPT_MAP:
             return &mapFuncs;
+        case OPT_FUNCTION_VAL:
+            return &funFuncs;
         default:
             return NULL;
     }

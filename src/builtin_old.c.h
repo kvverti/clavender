@@ -375,11 +375,6 @@ static TextBufferObj len(TextBufferObj* args) {
         ;
     } else
     switch(args[0].type) {
-        case OPT_FUNCTION_VAL:
-            //arity of function
-            res.type = OPT_INTEGER;
-            res.integer = args[0].func->arity;
-            break;
         case OPT_CAPTURE:
             res.type = OPT_INTEGER;
             res.integer = args[0].capfunc->arity - args[0].capfunc->captureCount;
@@ -418,9 +413,6 @@ static uint64_t hashcode(TextBufferObj* arg) {
         case OPT_STRING:
             res = hashOf(arg->str->value, arg->str->len);
             break;
-        case OPT_FUNCTION_VAL:
-            res = (uint64_t)arg->func;
-            break;
         case OPT_CAPTURE: {
             uint64_t h = 5381;
             for(size_t i = 0; i < arg->capfunc->captureCount; i++) {
@@ -456,8 +448,11 @@ static TextBufferObj hash(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 1);
-    res.type = OPT_INTEGER;
-    res.integer = hashcode(&args[0]);
+    res = indirect(args, args[0].type, ".hash");
+    if(res.type == OPT_UNDEFINED) {
+        res.type = OPT_INTEGER;
+        res.integer = hashcode(&args[0]);
+    }
     return res;
 }
 
@@ -484,8 +479,6 @@ static bool equal(TextBufferObj* a, TextBufferObj* b) {
             return a->integer == b->integer;
         case OPT_SYMB:
             return a->symbIdx == b->symbIdx;
-        case OPT_FUNCTION_VAL:
-            return a->func == b->func;
         case OPT_CAPTURE:
             if(a->capfunc != b->capfunc)
                 return false;
@@ -506,10 +499,16 @@ static TextBufferObj eq(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".eq");
-    if(res.type == OPT_UNDEFINED) {
+    if(args[0].type != args[1].type) {
+        // different types cannot be equal
         res.type = OPT_INTEGER;
-        res.integer = equal(&args[0], &args[1]);
+        res.integer = 0;
+    } else {
+        res = indirect(args, args[0].type, ".eq");
+        if(res.type == OPT_UNDEFINED) {
+            res.type = OPT_INTEGER;
+            res.integer = equal(&args[0], &args[1]);
+        }
     }
     return res;
 }
@@ -536,9 +535,6 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
             return (a->symbIdx < b->symbIdx);
         case OPT_STRING:
             return (strcmp(a->str->value, b->str->value) < 0);
-            break;
-        case OPT_FUNCTION_VAL:
-            return (uintptr_t)a->func < (uintptr_t)b->func;
             break;
         //captures and vects compare the first nonequal values
         case OPT_CAPTURE:
@@ -574,7 +570,11 @@ static TextBufferObj lt(TextBufferObj* args) {
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
     && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
         //one of them is NaN
-        res.number = 0.0;
+        res.integer = 0.0;
+        return res;
+    }
+    if(args[0].type != args[1].type) {
+        res.integer = args[0].type < args[1].type;
         return res;
     }
     res = indirect(args, args[0].type, ".lt");
