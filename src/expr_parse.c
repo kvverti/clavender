@@ -203,10 +203,6 @@ Token* lv_expr_parseExpr(Token* head, Operator* decl, TextBufferObj** res, size_
         LV_EXPR_ERROR = XPE_MISSING_BODY;
         IF_ERROR_CLEANUP;
     }
-    //check for tail call
-    if(cxt.out.top->type == OPT_FUNCTION && cxt.out.top->func == cxt.decl) {
-        cxt.out.top->type = OPT_TAIL;
-    }
     *res = cxt.out.stack;
     *len = cxt.out.top - cxt.out.stack + 1;
     //calling plain lv_free is ok because ops is empty

@@ -771,9 +771,15 @@ static void runCycle(void) {
             //replace fp parameters with the recently pushed parameters
             assert(value->func->type == FUN_FUNCTION);
             int ar = value->func->arity;
-            lv_expr_cleanup(lv_buf_get(&stack, fp), ar + value->func->locals);
+            int toPop = stack.len - ar - fp - 2;
+            assert(toPop >= 0);
+            // store the frame pointer and return address
+            TextBufferObj fppc[2];
+            lv_expr_cleanup(lv_buf_get(&stack, fp), toPop);
+            memcpy(fppc, lv_buf_get(&stack, fp + toPop), 2 * sizeof(TextBufferObj));
             memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
-            stack.len -= ar;
+            memcpy(lv_buf_get(&stack, fp + ar + value->func->locals), fppc, 2 * sizeof(TextBufferObj));
+            stack.len -= toPop;
             pc = value->func->textOffset;
             break;
         }

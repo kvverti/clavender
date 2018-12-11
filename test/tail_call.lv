@@ -1,0 +1,7 @@
+
+(def f(a, b)
+    => f(a - 1, b ++ { a }) ; a > 0
+    => b ; 1
+)
+
+def main(a) => f(int(a(0)), {})
