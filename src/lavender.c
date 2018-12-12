@@ -57,6 +57,7 @@ static void popAll(size_t numToPop) {
 static TextBufferObj removeTop(void) {
 
     TextBufferObj res;
+    assert(stack.len != 0);
     lv_buf_pop(&stack, &res);
     if(res.type & LV_DYNAMIC)
         --*res.refCount;
@@ -637,7 +638,8 @@ static size_t jumpAndLink(Operator* func) {
             //keep a reference to res while we pop
             if(res.type & LV_DYNAMIC)
                 ++*res.refCount;
-            popAll(func->arity);
+            lv_expr_cleanup(args, func->arity);
+            stack.len -= func->arity;
             TextBufferObj tmp;
             if(lv_evalByName(&res, &tmp)) {
                 lv_expr_cleanup(&res, 1);
@@ -769,19 +771,27 @@ static void runCycle(void) {
         }
         case OPT_TAIL: {
             //replace fp parameters with the recently pushed parameters
+            #define FRAME_HEADER_SLOTS 2
             assert(value->func->type == FUN_FUNCTION);
             int ar = value->func->arity;
-            int toPop = stack.len - ar - fp - 2;
+            int toPop = stack.len - ar - fp - FRAME_HEADER_SLOTS;
             assert(toPop >= 0);
             // store the frame pointer and return address
-            TextBufferObj fppc[2];
+            TextBufferObj fppc[FRAME_HEADER_SLOTS];
             lv_expr_cleanup(lv_buf_get(&stack, fp), toPop);
-            memcpy(fppc, lv_buf_get(&stack, fp + toPop), 2 * sizeof(TextBufferObj));
+            memcpy(fppc, lv_buf_get(&stack, fp + toPop), FRAME_HEADER_SLOTS * sizeof(TextBufferObj));
             memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
-            memcpy(lv_buf_get(&stack, fp + ar + value->func->locals), fppc, 2 * sizeof(TextBufferObj));
-            stack.len -= toPop;
+            stack.len -= toPop + FRAME_HEADER_SLOTS;
+            for(size_t i = 0; i < value->func->locals; i++) {
+                TextBufferObj undef = { .type = OPT_UNDEFINED };
+                push(&undef);
+            }
+            for(size_t i = 0; i < FRAME_HEADER_SLOTS; i++) {
+                push(&fppc[i]);
+            }
             pc = value->func->textOffset;
             break;
+            #undef FRAME_HEADER_SLOTS
         }
         case OPT_FUNCTION: {
             jumpAndLink(value->func);
