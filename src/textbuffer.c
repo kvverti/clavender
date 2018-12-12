@@ -488,7 +488,7 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
             fbgn = textBufferTop;
             setbgn = true;
         }
-        if(text[len - 1].type == OPT_FUNCTION && text[len - 1].func->type != FUN_BUILTIN) {
+        if(text[len - 1].type == OPT_FUNCTION) {
             text[len - 1].type = OPT_TAIL;
         }
         pushText(text + 1, len - 1);

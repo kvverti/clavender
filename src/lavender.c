@@ -772,7 +772,6 @@ static void runCycle(void) {
         case OPT_TAIL: {
             //replace fp parameters with the recently pushed parameters
             #define FRAME_HEADER_SLOTS 2
-            assert(value->func->type == FUN_FUNCTION);
             int ar = value->func->arity;
             int toPop = stack.len - ar - fp - FRAME_HEADER_SLOTS;
             assert(toPop >= 0);
@@ -782,14 +781,9 @@ static void runCycle(void) {
             memcpy(fppc, lv_buf_get(&stack, fp + toPop), FRAME_HEADER_SLOTS * sizeof(TextBufferObj));
             memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
             stack.len -= toPop + FRAME_HEADER_SLOTS;
-            for(size_t i = 0; i < value->func->locals; i++) {
-                TextBufferObj undef = { .type = OPT_UNDEFINED };
-                push(&undef);
-            }
-            for(size_t i = 0; i < FRAME_HEADER_SLOTS; i++) {
-                push(&fppc[i]);
-            }
-            pc = value->func->textOffset;
+            fp = fppc[0].addr;
+            pc = fppc[1].addr;
+            jumpAndLink(value->func);
             break;
             #undef FRAME_HEADER_SLOTS
         }
