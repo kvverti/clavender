@@ -23,6 +23,7 @@ typedef enum OpType {
     OPT_RETURN,         //return from function
     OPT_BEQZ,           //relative branch if zero
     OPT_TAIL,           //tail call
+    OPT_TAIL_CALL2,     //tail value call
     OPT_ADDR,           //internal address (not present in text buffer)
     OPT_LITERAL,        //literal value (not present in final code)
     OPT_EMPTY_ARGS,     //empty args placeholder (not present in final code)

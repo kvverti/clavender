@@ -607,6 +607,28 @@ bool lv_evalByName(TextBufferObj* obj, TextBufferObj* ret) {
 }
 
 /**
+ * Cleans up the current stack frame and reuses it in preparation for calling
+ * a new function.
+ */
+static void tailEliminate(int ar) {
+    //replace fp parameters with the recently pushed parameters
+    #define FRAME_HEADER_SLOTS 2
+    int toPop = stack.len - ar - fp - FRAME_HEADER_SLOTS;
+    assert(toPop >= 0);
+    // store the frame pointer and return address
+    TextBufferObj fppc[FRAME_HEADER_SLOTS];
+    lv_expr_cleanup(lv_buf_get(&stack, fp), toPop);
+    memcpy(fppc, lv_buf_get(&stack, fp + toPop), FRAME_HEADER_SLOTS * sizeof(TextBufferObj));
+    memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
+    stack.len -= toPop + FRAME_HEADER_SLOTS;
+    assert(fppc[0].type == OPT_ADDR);
+    assert(fppc[1].type == OPT_ADDR);
+    fp = fppc[0].addr;
+    pc = fppc[1].addr;
+    #undef FRAME_HEADER_SLOTS
+}
+
+/**
  * Calls the given function by saving the current stack frame
  * and jumping to the first instruction of the given function.
  * Returns the value of the current (old) frame.
@@ -747,6 +769,7 @@ static void runCycle(void) {
                 pc += value->branchAddr - 1;
             break;
         }
+        case OPT_TAIL_CALL2:
         case OPT_FUNC_CALL2: {
             int arity = value->callArity;
             //in contrast to func call 1, the function is at the bottom
@@ -754,38 +777,30 @@ static void runCycle(void) {
                 //remove the function logically from the stack
                 TextBufferObj* pos = lv_buf_get(&stack, stack.len - arity);
                 func = *pos;
-                //signal for return instruction to remove bottom func
-                pos->type = OPT_FUNC_CALL2;
+                // remove the function from the stack
+                memmove(pos, pos + 1, (arity - 1) * sizeof(TextBufferObj));
+                stack.len--;
             }
             Operator* op;
             bool setup = setUpFuncCall(&func, arity - 1, &op);
             lv_expr_cleanup(&func, 1);
             if(!setup) {
-                assert(stack.len > 0);
-                TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
-                top->type = OPT_UNDEFINED;
+                TextBufferObj tmp = { .type = OPT_UNDEFINED };
+                push(&tmp);
             } else {
+                if(value->type == OPT_TAIL_CALL2) {
+                    // setUpFuncCall(...) may have pushed additional
+                    // arguments on the stack, so we use the op's arity.
+                    tailEliminate(op->arity);
+                }
                 jumpAndLink(op);
             }
             break;
         }
         case OPT_TAIL: {
-            //replace fp parameters with the recently pushed parameters
-            #define FRAME_HEADER_SLOTS 2
-            int ar = value->func->arity;
-            int toPop = stack.len - ar - fp - FRAME_HEADER_SLOTS;
-            assert(toPop >= 0);
-            // store the frame pointer and return address
-            TextBufferObj fppc[FRAME_HEADER_SLOTS];
-            lv_expr_cleanup(lv_buf_get(&stack, fp), toPop);
-            memcpy(fppc, lv_buf_get(&stack, fp + toPop), FRAME_HEADER_SLOTS * sizeof(TextBufferObj));
-            memcpy(lv_buf_get(&stack, fp), lv_buf_get(&stack, stack.len - ar), ar * sizeof(TextBufferObj));
-            stack.len -= toPop + FRAME_HEADER_SLOTS;
-            fp = fppc[0].addr;
-            pc = fppc[1].addr;
+            tailEliminate(value->func->arity);
             jumpAndLink(value->func);
             break;
-            #undef FRAME_HEADER_SLOTS
         }
         case OPT_FUNCTION: {
             jumpAndLink(value->func);

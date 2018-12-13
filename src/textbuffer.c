@@ -239,6 +239,7 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
         }
         case OPT_MAKE_VECT:
         case OPT_MAKE_MAP:
+        case OPT_TAIL_CALL2:
         case OPT_FUNC_CALL2: {
             #define LEN sizeof(" CALL")
             size_t len = length(obj->callArity);
@@ -490,6 +491,8 @@ Token* lv_tb_defineFunctionBody(Token* head, Operator* decl) {
         }
         if(text[len - 1].type == OPT_FUNCTION) {
             text[len - 1].type = OPT_TAIL;
+        } else if(text[len - 1].type == OPT_FUNC_CALL2) {
+            text[len - 1].type = OPT_TAIL_CALL2;
         }
         pushText(text + 1, len - 1);
         end.type = OPT_RETURN;

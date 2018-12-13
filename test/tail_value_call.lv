@@ -1,0 +1,4 @@
+
+def f(a, b) => a(b)
+
+def main(a) => \f(\str, \str)
