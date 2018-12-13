@@ -1002,11 +1002,27 @@ static bool shuntOps(ExprContext* cxt) {
     } else if(tmp->type == OPT_FUNC_CALL2) {
         //get the proper param count
         int ar = *cxt->params.top--;
-        if(ar < 0) {
+        if(ar <= 0) {
             LV_EXPR_ERROR = XPE_BAD_ARITY;
             cxt->head = *cxt->tok.top;
             return false;
         } else {
+            // find the value to be called (`ar` levels down the stack)
+            // and move it to the top
+            TextBufferObj* toBeCalledExprBgn = cxt->out.top + 1;
+            TextBufferObj* toBeCalledExprEnd;
+            for(int i = 0; i < ar; i++) {
+                toBeCalledExprEnd = toBeCalledExprBgn - 1;
+                toBeCalledExprBgn = getExprBounds(toBeCalledExprEnd);
+            }
+            // toBeCalledEnd is inclusive in len, exclusive in rest
+            size_t len = toBeCalledExprEnd - toBeCalledExprBgn + 1;
+            size_t rest = cxt->out.top - toBeCalledExprEnd;
+            TextBufferObj valueCallExpr[len];
+            memcpy(valueCallExpr, toBeCalledExprBgn, len * sizeof(TextBufferObj));
+            memmove(toBeCalledExprBgn, toBeCalledExprEnd + 1, rest * sizeof(TextBufferObj));
+            memcpy(toBeCalledExprBgn + rest, valueCallExpr, len * sizeof(TextBufferObj));
+            // push the value call operator
             tmp->callArity = ar;
             pushStack(&cxt->out, tmp);
         }

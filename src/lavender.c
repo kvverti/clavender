@@ -772,15 +772,7 @@ static void runCycle(void) {
         case OPT_TAIL_CALL2:
         case OPT_FUNC_CALL2: {
             int arity = value->callArity;
-            //in contrast to func call 1, the function is at the bottom
-            {
-                //remove the function logically from the stack
-                TextBufferObj* pos = lv_buf_get(&stack, stack.len - arity);
-                func = *pos;
-                // remove the function from the stack
-                memmove(pos, pos + 1, (arity - 1) * sizeof(TextBufferObj));
-                stack.len--;
-            }
+            lv_buf_pop(&stack, &func);
             Operator* op;
             bool setup = setUpFuncCall(&func, arity - 1, &op);
             lv_expr_cleanup(&func, 1);
@@ -827,13 +819,6 @@ static void runCycle(void) {
                 }
                 retVal = tmp;
             }
-            if(stack.len > 0) {
-                TextBufferObj* top = lv_buf_get(&stack, stack.len - 1);
-                if(top->type == OPT_FUNC_CALL2) {
-                    *top = retVal;
-                    break;
-                }
-            } //else
             lv_buf_push(&stack, &retVal);
             break;
         }
