@@ -117,6 +117,8 @@ void lv_blt_onStartup(void) {
     MK_FUNNR(SYS, pow);
     MK_FUNCN(SYS, pos);
     MK_FUNCN(SYS, neg);
+    MK_FUNCN(SYS, shl);
+    MK_FUNCN(SYS, shr);
     MK_FUNCN(SYS, len);
     MK_FUNCN(SYS, map);
     MK_FUNCN(SYS, filter);

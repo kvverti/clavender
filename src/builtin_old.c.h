@@ -967,6 +967,34 @@ static TextBufferObj sgn(TextBufferObj* args) {
     return res;
 }
 
+TextBufferObj shl(TextBufferObj* args) {
+
+    TextBufferObj res;
+    getActualArgs(args, 2);
+    if(args[0].type == OPT_INTEGER && args[1].type == OPT_INTEGER) {
+        res.type = OPT_INTEGER;
+        res.integer = args[0].integer << (args[1].integer & 63);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
+TextBufferObj shr(TextBufferObj* args) {
+
+    TextBufferObj res;
+    getActualArgs(args, 2);
+    if(args[0].type == OPT_INTEGER && args[1].type == OPT_INTEGER) {
+        uint64_t amt = args[1].integer & 63;
+        uint64_t ext = -NEGATIVE_INT(args[0].integer) & ~(UINT64_C(-1) >> amt);
+        res.type = OPT_INTEGER;
+        res.integer = ext | (args[0].integer >> amt);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 //functional functions
 
 /** Functional map */
