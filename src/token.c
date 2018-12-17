@@ -32,7 +32,7 @@ char* lv_tkn_getError(TokenError err) {
     #define LEN (sizeof(msg) / sizeof(char*))
     static char* msg[] = {
         "Namespace without name",
-        "Number ends in '.'",
+        "Invalid numeric literal",
         "Number has missing exponent",
         "Missing function value",
         "Unterminated string",
@@ -421,36 +421,35 @@ static TokenType getNumber(void) {
         if(buffer[idx] == '0') {
             idx++;
             //get the prefix if it's there
+            int (*func)(int) = NULL;
             switch(buffer[idx]) {
                 case 'x':
                 case 'X': //hexadecimal
-                    if(ishexdigit(buffer[++idx])) {
-                        getInputWhile(ishexdigit);
-                        return TTY_INTEGER;
-                    } else {
-                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
-                        return -1;
-                    }
+                    func = ishexdigit;
+                    break;
                 case 'c':
                 case 'C': //octal
-                    if(isoctaldigit(buffer[++idx])) {
-                        getInputWhile(isoctaldigit);
-                        return TTY_INTEGER;
-                    } else {
-                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
-                        return -1;
-                    }
+                    func = isoctaldigit;
+                    break;
                 case 'b':
                 case 'B': //binary
-                    if(isbinarydigit(buffer[++idx])) {
-                        getInputWhile(isbinarydigit);
-                        return TTY_INTEGER;
-                    } else {
-                        LV_TKN_ERROR = TE_BAD_INT_PREFIX;
-                        return -1;
-                    }
+                    func = isbinarydigit;
+                    break;
                 default: //not a prefix
                     idx--;
+            }
+            if(func) {
+                if(func(buffer[++idx])) {
+                    getInputWhile(func);
+                    if(isdigit(buffer[idx])) {
+                        LV_TKN_ERROR = TE_BAD_NUM;
+                        return -1;
+                    }
+                    return TTY_INTEGER;
+                } else {
+                    LV_TKN_ERROR = TE_BAD_INT_PREFIX;
+                    return -1;
+                }
             }
         }
         //start with whole number
@@ -466,13 +465,23 @@ static TokenType getNumber(void) {
                 return -1;
             }
             getInputWhile(isdigit);
-        } else if(buffer[idx] == 'd' || buffer[idx] == 'D') {
-            //numbers with the suffix 'd' are floating-point
-            idx++;
-            return TTY_NUMBER;
         } else {
-            //no decimal -> integral value
-            return TTY_INTEGER;
+            switch(buffer[idx]) {
+                case 'd':
+                case 'D':
+                case 'f':
+                case 'F':
+                    //numbers with the suffix 'd' or 'f' are floating-point
+                    idx++;
+                    return TTY_NUMBER;
+                case 'e':
+                case 'E':
+                    //possible exponent
+                    break;
+                default:
+                    //no suffix -> integer value
+                    return TTY_INTEGER;
+            }
         }
     } else {
         //required decimal
@@ -511,9 +520,13 @@ static TokenType getNumber(void) {
         }
         getInputWhile(isdigit);
     }
-    //optional suffix 'd' or 'D'
-    if(buffer[idx] == 'd' || buffer[idx] == 'D') {
-        idx++;
+    //optional suffix 'd', 'D', 'f', or 'F'
+    switch(buffer[idx]) {
+        case 'd':
+        case 'D':
+        case 'f':
+        case 'F':
+            idx++;
     }
     return TTY_NUMBER;
 }
