@@ -4,6 +4,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifndef BUILD
+#define BUILD __DATE__ " " __TIME__
+#endif
+
 bool lv_debug;
 char* lv_filepath;
 char* lv_mainFile;
