@@ -627,30 +627,37 @@ static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
 
 static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
 
-    uint64_t num;
+    BigInt* bigint;
     if(cxt->head->start[0] == '0') {
         //parse in the given base
         switch(cxt->head->start[1]) {
-            case 'x':
-            case 'X':
-                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 16);
-                break;
-            case 'c':
-            case 'C':
-                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 8);
-                break;
-            case 'b':
-            case 'B':
-                num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 2);
-                break;
+            // case 'x':
+            // case 'X':
+            //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 16);
+            //     break;
+            // case 'c':
+            // case 'C':
+            //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 8);
+            //     break;
+            // case 'b':
+            // case 'B':
+            //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 2);
+            //     break;
             default:
-                num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
+                bigint = yabi_fromStr(cxt->head->start);
         }
     } else {
-        num = (uint64_t) strtoumax(cxt->head->start, NULL, 10);
+        bigint = yabi_fromStr(cxt->head->start);
     }
-    obj->type = OPT_INTEGER;
-    obj->integer = num;
+    if(bigint->len == 1) {
+        obj->type = OPT_INTEGER;
+        obj->integer = bigint->data[0];
+        lv_free(bigint);
+    } else {
+        bigint->refCount = 1;
+        obj->type = OPT_BIGINT;
+        obj->bigint = bigint;
+    }
     if(!cxt->expectOperand) {
         obj->fromType = obj->type;
         obj->type = OPT_FUNC_CALL2;
@@ -857,6 +864,7 @@ static TextBufferObj* getExprBounds(TextBufferObj* end) {
         case OPT_UNDEFINED:
         case OPT_NUMBER:
         case OPT_INTEGER:
+        case OPT_BIGINT:
         case OPT_PARAM:
         case OPT_FUNCTION_VAL:
         case OPT_STRING:

@@ -3,6 +3,7 @@
 #include "textbuffer_fwd.h"
 #include "operator_fwd.h"
 #include "hashtable.h"
+#include "bigint.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -26,6 +27,7 @@ struct TextBufferObj {
     union {
         double number;
         uint64_t integer;
+        BigInt* bigint;
         LvString* str;
         LvVect* vect;
         LvMap* map;

@@ -61,6 +61,11 @@ void lv_expr_cleanup(TextBufferObj* obj, size_t len) {
                 if(--obj[i].str->refCount == 0)
                     lv_free(obj[i].str);
                 break;
+            case OPT_BIGINT:
+                assert(obj[i].bigint->refCount);
+                if(--obj[i].bigint->refCount == 0)
+                    lv_free(obj[i].bigint);
+                break;
             case OPT_CAPTURE:
                 assert(obj[i].capture->refCount);
                 if(--obj[i].capture->refCount == 0) {

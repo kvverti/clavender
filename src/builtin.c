@@ -15,6 +15,7 @@ static Hashtable vectFuncs;
 static Hashtable mapFuncs;
 static Hashtable funFuncs;
 static Hashtable capFuncs;
+static Hashtable intFuncs;
 
 static void mkFuncTables(void) {
 
@@ -23,6 +24,7 @@ static void mkFuncTables(void) {
     lv_tbl_init(&mapFuncs);
     lv_tbl_init(&funFuncs);
     lv_tbl_init(&capFuncs);
+    lv_tbl_init(&intFuncs);
     lv_tbl_put(&vectFuncs, ".str", lv_vect_str);
     lv_tbl_put(&vectFuncs, ".cat", lv_vect_cat);
     lv_tbl_put(&vectFuncs, ".at", lv_vect_at);
@@ -61,6 +63,16 @@ static void mkFuncTables(void) {
     lv_tbl_put(&capFuncs, ".hash", lv_cap_hash);
     lv_tbl_put(&capFuncs, ".eq", lv_cap_eq);
     lv_tbl_put(&capFuncs, ".lt", lv_cap_lt);
+    lv_tbl_put(&intFuncs, ".str", lv_int_str);
+    lv_tbl_put(&intFuncs, ".num", lv_int_num);
+    lv_tbl_put(&intFuncs, ".int", lv_int_int);
+    lv_tbl_put(&intFuncs, ".hash", lv_int_hash);
+    lv_tbl_put(&intFuncs, ".eq", lv_int_eq);
+    lv_tbl_put(&intFuncs, ".lt", lv_int_lt);
+    lv_tbl_put(&intFuncs, ".neg", lv_int_neg);
+    lv_tbl_put(&intFuncs, ".add", lv_int_add);
+    lv_tbl_put(&intFuncs, ".sub", lv_int_sub);
+    lv_tbl_put(&intFuncs, ".mul", lv_int_mul);
 }
 
 Hashtable* lv_blt_getFunctionTable(OpType type) {
@@ -76,6 +88,9 @@ Hashtable* lv_blt_getFunctionTable(OpType type) {
             return &funFuncs;
         case OPT_CAPTURE:
             return &capFuncs;
+        case OPT_INTEGER:
+        case OPT_BIGINT:
+            return &intFuncs;
         default:
             return NULL;
     }

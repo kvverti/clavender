@@ -32,6 +32,7 @@ typedef enum OpType {
     OPT_VECT,           //Lavender vector
     OPT_MAP,            //Lavender map
     OPT_CAPTURE,        //function value with captured params
+    OPT_BIGINT,         //signed arbitrary precision int
 } OpType;
 
 typedef struct TextBufferObj TextBufferObj;

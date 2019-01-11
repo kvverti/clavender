@@ -744,6 +744,7 @@ static void runCycle(void) {
         case OPT_UNDEFINED:
         case OPT_NUMBER:
         case OPT_INTEGER:
+        case OPT_BIGINT:
         case OPT_STRING:
         case OPT_CAPTURE:
         case OPT_VECT:

@@ -59,4 +59,33 @@ Intrinsic lv_cap_hash;
 Intrinsic lv_cap_eq;
 Intrinsic lv_cap_lt;
 
+Intrinsic lv_int_str;
+Intrinsic lv_int_num;
+Intrinsic lv_int_int;
+Intrinsic lv_int_hash;
+Intrinsic lv_int_eq;
+Intrinsic lv_int_lt;
+Intrinsic lv_int_pos;
+Intrinsic lv_int_neg;
+Intrinsic lv_int_add;
+Intrinsic lv_int_sub;
+Intrinsic lv_int_mul;
+Intrinsic lv_int_div;
+Intrinsic lv_int_rdiv;
+Intrinsic lv_int_shl;
+Intrinsic lv_int_shr;
+
+Intrinsic lv_num_str;
+Intrinsic lv_num_num;
+Intrinsic lv_num_int;
+Intrinsic lv_num_hash;
+Intrinsic lv_num_eq;
+Intrinsic lv_num_lt;
+Intrinsic lv_num_ge;
+Intrinsic lv_num_add;
+Intrinsic lv_num_sub;
+Intrinsic lv_num_mul;
+Intrinsic lv_num_div;
+Intrinsic lv_num_rdiv;
+
 #endif

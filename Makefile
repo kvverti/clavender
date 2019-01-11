@@ -3,7 +3,7 @@
 CC = gcc
 CSRC = src/*.c integer/src/*.c
 STDLIB_DIR = $(CURDIR)/stdlib/src
-COMMON_ARGS = -Iinteger/include -Wall -DSTDLIB=\"$(STDLIB_DIR)\" -DBUILD=\"$(shell date -u -Iseconds)\"
+COMMON_ARGS = -Iinteger/include -Isrc -Wall -DSTDLIB=\"$(STDLIB_DIR)\" -DBUILD=\"$(shell date -u -Iseconds)\"
 RELASE_ARGS = $(COMMON_ARGS) -O3 -DNDEBUG
 DEBUG_ARGS = $(COMMON_ARGS) -g
 
