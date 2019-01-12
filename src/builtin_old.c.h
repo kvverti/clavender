@@ -32,7 +32,9 @@ bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
     TextBufferObj eq;
     TextBufferObj ab[2] = { *a, *b };
     lv_callFunction(&lv_globalEquals, 2, ab, &eq);
-    return eq.type == OPT_INTEGER ? eq.integer : lv_blt_toBool(&eq);
+    bool res = lv_blt_toBool(&eq);
+    lv_expr_cleanup(&eq, 1);
+    return res;
 }
 
 /**
@@ -441,9 +443,11 @@ static TextBufferObj hash(TextBufferObj* args) {
 
 uint64_t lv_blt_hash(TextBufferObj* a) {
 
-    TextBufferObj res;
-    lv_callFunction(&lv_globalHash, 1, a, &res);
-    return res.type == OPT_INTEGER ? res.integer : hashcode(a);
+    TextBufferObj hash;
+    lv_callFunction(&lv_globalHash, 1, a, &hash);
+    uint64_t res = hashcode(&hash);
+    lv_expr_cleanup(&hash, 1);
+    return res;
 }
 
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
