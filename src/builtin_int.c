@@ -148,7 +148,7 @@ INTRINSIC(neg) {
             bi->refCount = 0;
             bi->len = 2;
             bi->data[0] = -args[0].integer;
-            bi->data[1] = -(WordType)NEGATIVE_INT(args[0].integer);
+            bi->data[1] = 0;
             res.type = OPT_BIGINT;
             res.bigint = bi;
         } else {
