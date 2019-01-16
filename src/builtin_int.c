@@ -204,7 +204,7 @@ INTRINSIC(add) {
         TextBufferObj newArgs[2];
         newArgs[0] = lv_int_num(args);
         newArgs[1] = args[1];
-        /* res = lv_num_add(newArgs); */
+        res = lv_num_add(newArgs);
     } else {
         TRY_BIGINT_ELSE(add) {
             uint64_t a = args[0].integer;
@@ -234,7 +234,7 @@ INTRINSIC(sub) {
         TextBufferObj newArgs[2];
         newArgs[0] = lv_int_num(args);
         newArgs[1] = args[1];
-        /* res = lv_num_sub(newArgs); */
+        res = lv_num_sub(newArgs);
     } else {
         TRY_BIGINT_ELSE(sub) {
             uint64_t a = args[0].integer;
@@ -264,7 +264,7 @@ INTRINSIC(mul) {
         TextBufferObj newArgs[2];
         newArgs[0] = lv_int_num(args);
         newArgs[1] = args[1];
-        // res = lv_num_mul(newArgs);
+        res = lv_num_mul(newArgs);
     } else {
         TRY_BIGINT_ELSE(mul) {
             #ifdef __GNUC__

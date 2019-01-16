@@ -82,6 +82,8 @@ Intrinsic lv_num_hash;
 Intrinsic lv_num_eq;
 Intrinsic lv_num_lt;
 Intrinsic lv_num_ge;
+Intrinsic lv_num_pos;
+Intrinsic lv_num_neg;
 Intrinsic lv_num_add;
 Intrinsic lv_num_sub;
 Intrinsic lv_num_mul;
