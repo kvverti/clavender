@@ -354,17 +354,6 @@ static TextBufferObj num(TextBufferObj* args) {
     // TextBufferObj res;
     getActualArgs(args, 1);
     return indirect(args, args[0].type, ".num");
-    // if(res.type != OPT_UNDEFINED) {
-    //     ;
-    // } else if(args[0].type == OPT_NUMBER)
-    //     return args[0];
-    // else if(args[0].type == OPT_INTEGER) {
-    //     res.type = OPT_NUMBER;
-    //     res.number = intToNum(args[0].integer);
-    // } else {
-    //     res.type = OPT_UNDEFINED;
-    // }
-    // return res;
 }
 
 /**
@@ -534,19 +523,20 @@ static TextBufferObj lt(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 2);
-    res.type = OPT_INTEGER;
-    if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
-    && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
-        //one of them is NaN
-        res.integer = 0.0;
-        return res;
-    }
+    // res.type = OPT_INTEGER;
+    // if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
+    // && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
+    //     //one of them is NaN
+    //     res.integer = 0;
+    //     return res;
+    // }
     OpType atyp = args[0].type, btyp = args[1].type;
     if((atyp == btyp) ||
         (atyp == OPT_INTEGER && btyp == OPT_BIGINT) ||
         (atyp == OPT_BIGINT && btyp == OPT_INTEGER)) {
         res = indirect(args, args[0].type, ".lt");
     } else {
+        res.type = OPT_INTEGER;
         res.integer = args[0].type < args[1].type;
         return res;
     }
@@ -566,9 +556,9 @@ static TextBufferObj ge(TextBufferObj* args) {
     getActualArgs(args, 2);
     res.type = OPT_INTEGER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
-    && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
+    && (isnan(args[0].number) || isnan(args[1].number))) {
         //one of them is NaN
-        res.number = 0.0;
+        res.integer = 0;
         return res;
     }
     res = indirect(args, args[0].type, ".lt");
@@ -686,59 +676,15 @@ static double numDiv(double a, double b, bool rem) {
 /** Division */
 static TextBufferObj div_(TextBufferObj* args) {
 
-    TextBufferObj res;
-    NumType nums[2];
     getActualArgs(args, 2);
-    switch(getObjsAsNumbers(args, nums)) {
-        case NR_INTEGER:
-            nums[0].number = intToNum(nums[0].integer);
-            nums[1].number = intToNum(nums[1].integer);
-            //fallthrough
-        case NR_NUMBER:
-            res.type = OPT_NUMBER;
-            res.number = numDiv(nums[0].number, nums[1].number, false);
-            break;
-        case NR_ERROR:
-            res.type = OPT_UNDEFINED;
-            break;
-    }
-    return res;
+    return indirect(args, args[0].type, ".rdiv");
 }
 
 /** Integer division */
 static TextBufferObj idiv(TextBufferObj* args) {
 
-    TextBufferObj res;
-    NumType nums[2];
     getActualArgs(args, 2);
-    switch(getObjsAsNumbers(args, nums)) {
-        case NR_NUMBER: {
-            double a = nums[0].number;
-            double b = nums[1].number;
-            if(isfinite(a) && isfinite(b) && b != 0.0) {
-                res.type = OPT_INTEGER;
-                res.integer = (uint64_t)((a - numDiv(a, b, true)) / b);
-            } else {
-                res.type = OPT_UNDEFINED;
-            }
-            break;
-        }
-        case NR_INTEGER: {
-            uint64_t a = nums[0].integer;
-            uint64_t b = nums[1].integer;
-            if(b != 0) {
-                res.type = OPT_INTEGER;
-                res.integer = intDiv(a, b, false);
-            } else {
-                res.type = OPT_UNDEFINED;
-            }
-            break;
-        }
-        case NR_ERROR:
-            res.type = OPT_UNDEFINED;
-            break;
-    }
-    return res;
+    return indirect(args, args[0].type, ".div");
 }
 
 /** Remainder */
@@ -813,32 +759,15 @@ static TextBufferObj pow_(TextBufferObj* args) {
 /** Unary + function */
 static TextBufferObj pos(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 1);
-    if(args[0].type == OPT_NUMBER || args[0].type == OPT_INTEGER) {
-        return args[0];
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
-    return res;
+    return indirect(args, args[0].type, ".pos");
 }
 
 /** Negation function */
 static TextBufferObj neg(TextBufferObj* args) {
 
-    // TextBufferObj res;
     getActualArgs(args, 1);
     return indirect(args, args[0].type, ".neg");
-    // if(args[0].type == OPT_NUMBER) {
-    //     res.type = OPT_NUMBER;
-    //     res.number = -args[0].number;
-    // } else if(args[0].type == OPT_INTEGER) {
-    //     res.type = OPT_INTEGER;
-    //     res.integer = -args[0].integer;
-    // } else {
-    //     res.type = OPT_UNDEFINED;
-    // }
-    // return res;
 }
 
 #define DECL_MATH_FUNC(fnc) \

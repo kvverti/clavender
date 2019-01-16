@@ -75,6 +75,8 @@ static void mkFuncTables(void) {
     lv_tbl_put(&intFuncs, ".add", lv_int_add);
     lv_tbl_put(&intFuncs, ".sub", lv_int_sub);
     lv_tbl_put(&intFuncs, ".mul", lv_int_mul);
+    lv_tbl_put(&intFuncs, ".div", lv_int_div);
+    lv_tbl_put(&intFuncs, ".rdiv", lv_int_rdiv);
     lv_tbl_put(&numFuncs, ".str", lv_num_str);
     lv_tbl_put(&numFuncs, ".num", lv_num_num);
     lv_tbl_put(&numFuncs, ".hash", lv_num_hash);

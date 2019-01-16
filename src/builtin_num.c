@@ -2,6 +2,7 @@
 #include "textbuffer.h"
 #include <stdio.h>
 #include <math.h>
+#include <inttypes.h>
 #include <assert.h>
 
 #define INTRINSIC(name) \
@@ -32,9 +33,14 @@ INTRINSIC(int) {
     if(!isfinite(d)) {
         res.type = OPT_UNDEFINED;
     } else {
-        int exp;
-        double man = frexp(d, &exp);
-        // ehh
+        char buffer[25]; // max length of %a string
+        char sign;
+        int normal;
+        uint64_t mantissa;
+        int exponent;
+        sprintf(buffer, "%+a", d);
+        sscanf(buffer, "%c 0x %d . %"SCNx64" p %d", &sign, &normal, &mantissa, &exponent);
+        // to be continued...
     }
     return res;
 }
@@ -128,9 +134,11 @@ INTRINSIC(div) {
     double a = args[0].number;
     double b = args[1].type == OPT_NUMBER ? args[1].number : lv_int_num(&args[1]).number;
     if(isfinite(a) && isfinite(b) && b != 0.0) {
-        res.type = OPT_NUMBER;
-        res.number = (a - fmod(a, b)) / b;
-        res = lv_num_int(&res);
+        TextBufferObj tmp = {
+            .type = OPT_NUMBER,
+            .number = (a - fmod(a, b)) / b
+        };
+        res = lv_num_int(&tmp);
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -145,8 +153,8 @@ INTRINSIC(rdiv) {
     double q;
     if(b == 0.0) {
         // 0 / 0 = nan, a / 0 = +-inf
-        int sign = signbit(a) ^ signbit(b);
-        q = copysign(a == 0.0 ? NAN : INFINITY, sign);
+        int sign = (bool)signbit(a) ^ (bool)signbit(b);
+        q = copysign(a == 0.0 ? NAN : INFINITY, -sign);
     } else {
         q = a / b;
     }
