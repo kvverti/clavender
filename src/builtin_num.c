@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <inttypes.h>
+#include <float.h>
 #include <assert.h>
 
 #define INTRINSIC(name) \
@@ -33,14 +34,40 @@ INTRINSIC(int) {
     if(!isfinite(d)) {
         res.type = OPT_UNDEFINED;
     } else {
-        char buffer[25]; // max length of %a string
-        char sign;
-        int normal;
-        uint64_t mantissa;
-        int exponent;
-        sprintf(buffer, "%+a", d);
-        sscanf(buffer, "%c 0x %d . %"SCNx64" p %d", &sign, &normal, &mantissa, &exponent);
-        // to be continued...
+        int exp;
+        int sign = signbit(d);
+        double small = frexp(d, &exp);
+        small = ldexp(small, DBL_MANT_DIG);
+        small = copysign(small, 1.0);
+        exp -= DBL_MANT_DIG;
+        uint64_t sig = (uint64_t) small;
+        if(exp < -63) {
+            res.type = OPT_INTEGER;
+            res.integer = 0;
+        } else if(exp <= 0) {
+            res.type = OPT_INTEGER;
+            res.integer = sig >> -exp;
+            if(sign) {
+                res.integer = -res.integer;
+            }
+        } else {
+            union Fbi {
+                BigInt bi;
+                char c[sizeof(BigInt) + sizeof(WordType)];
+            } fbi;
+            fbi.bi.refCount = 0;
+            fbi.bi.len = 1;
+            fbi.bi.data[0] = sign ? -sig : sig;
+            BigInt* bi = yabi_lshift(&fbi.bi, exp);
+            if(bi->len == 1) {
+                res.type = OPT_INTEGER;
+                res.integer = bi->data[0];
+                lv_free(bi);
+            } else {
+                res.type = OPT_BIGINT;
+                res.bigint = bi;
+            }
+        }
     }
     return res;
 }
