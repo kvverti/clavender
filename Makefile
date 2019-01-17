@@ -1,6 +1,6 @@
 .RECIPEPREFIX = @
 
-CC = gcc
+CC ?= gcc
 CSRC = src/*.c integer/src/*.c
 STDLIB_DIR = $(CURDIR)/stdlib/src
 COMMON_ARGS = -Iinteger/include -Isrc -Wall -DSTDLIB=\"$(STDLIB_DIR)\" -DBUILD=\"$(shell date -u -Iseconds)\"
