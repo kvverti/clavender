@@ -554,17 +554,25 @@ static TextBufferObj ge(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 2);
-    res.type = OPT_INTEGER;
     if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
     && (isnan(args[0].number) || isnan(args[1].number))) {
         //one of them is NaN
+        res.type = OPT_INTEGER;
         res.integer = 0;
         return res;
     }
-    res = indirect(args, args[0].type, ".lt");
-    if(res.type != OPT_UNDEFINED) {
+    OpType atyp = args[0].type, btyp = args[1].type;
+    if((atyp == btyp) ||
+        (atyp == OPT_INTEGER && btyp == OPT_BIGINT) ||
+        (atyp == OPT_BIGINT && btyp == OPT_INTEGER)) {
+        res = indirect(args, args[0].type, ".lt");
         res.integer = !res.integer;
     } else {
+        res.type = OPT_INTEGER;
+        res.integer = args[0].type >= args[1].type;
+        return res;
+    }
+    if(res.type == OPT_UNDEFINED) {
         res.type = OPT_INTEGER;
         res.integer = !ltImpl(&args[0], &args[1]);
     }
