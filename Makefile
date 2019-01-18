@@ -3,12 +3,13 @@
 CC ?= gcc
 CSRC = src/*.c integer/src/*.c
 STDLIB_DIR = $(CURDIR)/stdlib/src
-COMMON_ARGS = -Iinteger/include -Isrc -Wall -DSTDLIB=\"$(STDLIB_DIR)\" -DBUILD=\"$(shell date -u -Iseconds)\"
+BUILD_ID = $(shell git rev-parse HEAD)
+COMMON_ARGS = -o lavender -Iinteger/include -Isrc -Wall -DSTDLIB=\"$(STDLIB_DIR)\"
 RELASE_ARGS = $(COMMON_ARGS) -O3 -DNDEBUG
 DEBUG_ARGS = $(COMMON_ARGS) -g
 
 release:
-@   $(CC) -o lavender $(RELASE_ARGS) $(CSRC) -lm
+@   $(CC) -DBUILD=\"$(BUILD_ID)\" $(RELASE_ARGS) $(CSRC) -lm
 
 debug:
-@   $(CC) -o lavender $(DEBUG_ARGS) $(CSRC) -lm
+@   $(CC) -DBUILD=\"$(BUILD_ID)-debug\" $(DEBUG_ARGS) $(CSRC) -lm
