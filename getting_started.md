@@ -202,7 +202,7 @@ Characters | Standard Operators
 `* / %` | `* / // %`
 `+ -` | `+ - ++`
 `:` | `::`
-`< >` | `< <= >= > <|`
+`< >` | `< <= >= > << >> <|`
 `= !` | `= !=`
 `&` | `&& &`
 `|` | `|| | |>`
@@ -213,6 +213,34 @@ Characters | Standard Operators
 1: Infix functions beginning with `**` have precedence over infix functions
     beginning with a single `*`, in order to support the exponentiation
     operator.
+
+### By-Name Expressions
+Any expression may be made by-name by prepending it with the arrow token
+`=>`. By-name expressions are semantically not evaluated unless their value is needed,
+and can therefore be used for recursive definitions, among other things.
+The arrow token binds as far as possible, like a function definition, so
+by-name subexpressions must be enclosed in a grouper.
+
+```
+def f(a) => ...
+f(=> 3)  ' --> `3` is not evaluated unless needed
+f(=> 3 + 4)  ' --> `3 + 4` is not evaluated unless needed
+f => 3  ' --> error: by-name subexpression not enclosed in groupers
+{ => 3 + 4, 5 }  ' --> ok: `3 + 4` is enclosed in groupers
+```
+
+A by-name expression is evaluated in three cases:
+1. It is used as a key in a map.
+2. It is called as a function with arguments.
+3. It is the return value of a function.
+
+Other uses of by-name expressions, such as using any name bound to them, do
+not evaluate the by-name expression.
+
+```
+def f(a) => { a, a(0) }
+f(=> "hel" ++ "lo")  ' --> { <byname>, h }
+```
 
 ## Names
 
