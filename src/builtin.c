@@ -77,6 +77,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&intFuncs, ".mul", lv_int_mul);
     lv_tbl_put(&intFuncs, ".div", lv_int_div);
     lv_tbl_put(&intFuncs, ".rdiv", lv_int_rdiv);
+    lv_tbl_put(&intFuncs, ".rem", lv_int_rem);
     lv_tbl_put(&numFuncs, ".str", lv_num_str);
     lv_tbl_put(&numFuncs, ".num", lv_num_num);
     lv_tbl_put(&numFuncs, ".int", lv_num_int);
@@ -91,6 +92,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&numFuncs, ".mul", lv_num_mul);
     lv_tbl_put(&numFuncs, ".div", lv_num_div);
     lv_tbl_put(&numFuncs, ".rdiv", lv_num_rdiv);
+    lv_tbl_put(&numFuncs, ".rem", lv_num_rem);
 }
 
 Hashtable* lv_blt_getFunctionTable(OpType type) {

@@ -172,6 +172,20 @@ INTRINSIC(div) {
     return res;
 }
 
+INTRINSIC(rem) {
+    assert(args[0].type == OPT_NUMBER);
+    TextBufferObj res;
+    double a = args[0].number;
+    double b = args[1].type == OPT_NUMBER ? args[1].number : lv_int_num(&args[1]).number;
+    if(isfinite(a) && isfinite(b) && b != 0.0) {
+        res.type = OPT_NUMBER;
+        res.number = fmod(a, b);
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 INTRINSIC(rdiv) {
     assert(args[0].type == OPT_NUMBER);
     TextBufferObj res;

@@ -388,6 +388,66 @@ INTRINSIC(div) {
     return res;
 }
 
+INTRINSIC(rem) {
+    TextBufferObj res;
+    if(args[1].type == OPT_NUMBER) {
+        TextBufferObj newArgs[2];
+        newArgs[0] = lv_int_num(args);
+        newArgs[1] = args[1];
+        res = lv_num_rem(newArgs);
+    } else {
+        bool aisbig = args[0].type == OPT_BIGINT;
+        bool bisbig = args[1].type == OPT_BIGINT;
+        if(!bisbig && args[1].integer == 0) {
+            res.type = OPT_UNDEFINED;
+        } else if(aisbig || bisbig) {
+            BigInt* abi;
+            BigInt* bbi;
+            union FakeBigInt fbi;
+            if(!aisbig) {
+                fbi.bi.refCount = 0;
+                fbi.bi.len = 1;
+                fbi.bi.data[0] = args[0].integer;
+                abi = &fbi.bi;
+                bbi = args[1].bigint;
+            } else {
+                abi = args[0].bigint;
+                fbi.bi.refCount = 0;
+                fbi.bi.len = 1;
+                fbi.bi.data[0] = args[1].integer;
+                bbi = &fbi.bi;
+            }
+            ydiv_t qr = yabi_div(abi, bbi);
+            lv_free(qr.quo);
+            if(qr.rem->len == 1) {
+                res.type = OPT_INTEGER;
+                res.integer = qr.rem->data[0];
+                lv_free(qr.rem);
+            } else {
+                res.type = OPT_BIGINT;
+                res.bigint = qr.rem;
+            }
+        } else {
+            res.type = OPT_INTEGER;
+            uint64_t a = args[0].integer;
+            uint64_t b = args[1].integer;
+            int sign = 0;
+            if(NEGATIVE_INT(a)) {
+                a = -a;
+                sign = 1;
+            }
+            if(NEGATIVE_INT(b)) {
+                b = -b;
+            }
+            res.integer = a % b;
+            if(sign) {
+                res.integer = -res.integer;
+            }
+        }
+    }
+    return res;
+}
+
 INTRINSIC(rdiv) {
     TextBufferObj newArgs[2];
     newArgs[0] = lv_int_num(&args[0]);

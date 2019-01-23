@@ -72,6 +72,7 @@ Intrinsic lv_int_sub;
 Intrinsic lv_int_mul;
 Intrinsic lv_int_div;
 Intrinsic lv_int_rdiv;
+Intrinsic lv_int_rem;
 Intrinsic lv_int_shl;
 Intrinsic lv_int_shr;
 
@@ -89,5 +90,6 @@ Intrinsic lv_num_sub;
 Intrinsic lv_num_mul;
 Intrinsic lv_num_div;
 Intrinsic lv_num_rdiv;
+Intrinsic lv_num_rem;
 
 #endif

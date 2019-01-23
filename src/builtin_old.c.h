@@ -523,13 +523,6 @@ static TextBufferObj lt(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 2);
-    // res.type = OPT_INTEGER;
-    // if((args[0].type == OPT_NUMBER && args[1].type == OPT_NUMBER)
-    // && ((args[0].number != args[0].number) || (args[1].number != args[1].number))) {
-    //     //one of them is NaN
-    //     res.integer = 0;
-    //     return res;
-    // }
     OpType atyp = args[0].type, btyp = args[1].type;
     if((atyp == btyp) ||
         (atyp == OPT_INTEGER && btyp == OPT_BIGINT) ||
@@ -648,39 +641,6 @@ static TextBufferObj mul(TextBufferObj* args) {
     return indirect(args, args[0].type, ".mul");
 }
 
-static uint64_t intDiv(uint64_t a, uint64_t b, bool rem) {
-
-    //twos complement division
-    assert(b != 0);
-    bool quotNegative;
-    {
-        //turn into positive forms
-        //(INT_MIN is its own positive form)
-        bool negA = isNegative(a);
-        bool negB = isNegative(b);
-        if(negA)
-            a = -a;
-        if(negB)
-            b = -b;
-        //remainders only depend on the dividend
-        quotNegative = negA ^ (negB && !rem);
-    }
-    uint64_t quot = rem ? (a % b) : (a / b);
-    return quotNegative ? -quot : quot;
-}
-
-static double numDiv(double a, double b, bool rem) {
-
-    if(b == 0.0) {
-        double sign = copysign(1.0, b) * copysign(1.0, a);
-        double ans = (a == 0.0 ? NAN : INFINITY);
-        ans = copysign(ans, sign);
-        return ans;
-    } else {
-        return rem ? fmod(a, b) : (a / b);
-    }
-}
-
 /** Division */
 static TextBufferObj div_(TextBufferObj* args) {
 
@@ -698,23 +658,8 @@ static TextBufferObj idiv(TextBufferObj* args) {
 /** Remainder */
 static TextBufferObj rem(TextBufferObj* args) {
 
-    TextBufferObj res;
-    NumType nums[2];
     getActualArgs(args, 2);
-    switch(getObjsAsNumbers(args, nums)) {
-        case NR_NUMBER:
-            res.type = OPT_NUMBER;
-            res.number = numDiv(nums[0].number, nums[1].number, true);
-            break;
-        case NR_INTEGER:
-            res.type = OPT_INTEGER;
-            res.integer = intDiv(nums[0].integer, nums[1].integer, true);
-            break;
-        case NR_ERROR:
-            res.type = OPT_UNDEFINED;
-            break;
-    }
-    return res;
+    return indirect(args, args[0].type, ".rem");
 }
 
 /** Exponentiation */
