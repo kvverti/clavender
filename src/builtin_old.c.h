@@ -834,53 +834,41 @@ TextBufferObj shr(TextBufferObj* args) {
 /** Functional map */
 static TextBufferObj map(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".map");
-    return res;
+    return indirect(args, args[0].type, ".map");
 }
 
 /** Functional filter */
 static TextBufferObj filter(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".filter");
-    return res;
+    return indirect(args, args[0].type, ".filter");
 }
 
 /** Functional fold */
 static TextBufferObj fold(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 3);
-    res = indirect(args, args[0].type, ".fold");
-    return res;
+    return indirect(args, args[0].type, ".fold");
 }
 
 /** Slices the given vect or string */
 static TextBufferObj slice(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 3);
-    res = indirect(args, args[0].type, ".slice");
-    return res;
+    return indirect(args, args[0].type, ".slice");
 }
 
 /** Takes elements from the vect while the predicate is satisfied */
 TextBufferObj take(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".take");
-    return res;
+    return indirect(args, args[0].type, ".take");
 }
 
 /** Drops elements from the vect while the predicate is satisifed */
 TextBufferObj skip(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".skip");
-    return res;
+    return indirect(args, args[0].type, ".skip");
 }
