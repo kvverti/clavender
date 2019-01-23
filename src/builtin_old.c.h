@@ -265,10 +265,8 @@ static TextBufferObj call(TextBufferObj* args) {
  */
 static TextBufferObj at(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[1].type, ".at");
-    return res;
+    return indirect(args, args[1].type, ".at");
 }
 
 bool lv_blt_toBool(TextBufferObj* obj) {
@@ -290,10 +288,8 @@ bool lv_blt_toBool(TextBufferObj* obj) {
  */
 static TextBufferObj concat(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 2);
-    res = indirect(args, args[0].type, ".cat");
-    return res;
+    return indirect(args, args[0].type, ".cat");
 }
 
 /**
@@ -326,26 +322,8 @@ static TextBufferObj str(TextBufferObj* args) {
 /** Converts to int. */
 static TextBufferObj int_(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 1);
-    res = indirect(args, args[0].type, ".int");
-    if(res.type != OPT_UNDEFINED) {
-        ;
-    } else if(args[0].type == OPT_INTEGER)
-        return args[0];
-    else if(args[0].type == OPT_NUMBER) {
-        //get magnitude
-        double mag = args[0].number;
-        if(!isfinite(mag)) {
-            res.type = OPT_UNDEFINED;
-        } else {
-            res.type = OPT_INTEGER;
-            res.integer = (uint64_t) mag;
-        }
-    } else {
-        res.type = OPT_UNDEFINED;
-    }
-    return res;
+    return indirect(args, args[0].type, ".int");
 }
 
 /** Converts object to number. */
@@ -361,10 +339,8 @@ static TextBufferObj num(TextBufferObj* args) {
  */
 static TextBufferObj len(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 1);
-    res = indirect(args, args[0].type, ".len");
-    return res;
+    return indirect(args, args[0].type, ".len");
 }
 
 static uint64_t hashOf(void* mem, size_t len) {
