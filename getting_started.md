@@ -46,13 +46,13 @@ Numeric literals evaluate to integers when consisting solely of a sequence of di
 they evaluate as floating-point numbers. Integer literals can be written in base 10,
 or in octal, hexadecimal, or binary using the prefixes `0c`, `0x`, or `0b` respectively.
 An otherwise integer literal can be forced to evaluate as floating-point by appending
-the suffix `d`.
+the suffix `f` or `d`.
 
 Examples:
 ```
 1234    ' 1234
 12.34   ' 12.34
-1234d   ' 1234.0
+1234f   ' 1234.0
 0xff    ' 255
 0c777   ' 255
 0b111   ' 7
