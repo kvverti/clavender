@@ -454,3 +454,93 @@ INTRINSIC(rdiv) {
     newArgs[1] = args[1].type == OPT_NUMBER ? args[1] : lv_int_num(&args[1]);
     return lv_num_rdiv(newArgs);
 }
+
+// negative left shfit is equivalent to right shift
+INTRINSIC(shl) {
+    TextBufferObj res;
+    uint64_t amt;
+    int sign;
+    if(args[1].type == OPT_BIGINT) {
+        BigInt* bi = args[1].bigint;
+        amt = bi->data[0];
+        sign = NEGATIVE_INT(bi->data[bi->len - 1]);
+        if(sign) {
+            amt = -amt;
+        }
+    } else {
+        amt = args[1].integer;
+        sign = NEGATIVE_INT(amt);
+        if(sign) {
+            amt = -amt;
+        }
+    }
+    BigInt* bi;
+    union FakeBigInt fbi;
+    if(args[0].type == OPT_BIGINT) {
+        bi = args[0].bigint;
+    } else {
+        fbi.bi.refCount = 0;
+        fbi.bi.len = 1;
+        fbi.bi.data[0] = args[0].integer;
+        bi = &fbi.bi;
+    }
+    if(sign) {
+        bi = yabi_rshift(bi, amt);
+    } else {
+        bi = yabi_lshift(bi, amt);
+    }
+    if(bi->len == 1) {
+        res.type = OPT_INTEGER;
+        res.integer = bi->data[0];
+        lv_free(bi);
+    } else {
+        res.type = OPT_BIGINT;
+        res.bigint = bi;
+    }
+    return res;
+}
+
+// negative right shfit is equivalent to left shift
+INTRINSIC(shr) {
+    TextBufferObj res;
+    uint64_t amt;
+    int sign;
+    if(args[1].type == OPT_BIGINT) {
+        BigInt* bi = args[1].bigint;
+        amt = bi->data[0];
+        sign = NEGATIVE_INT(bi->data[bi->len - 1]);
+        if(sign) {
+            amt = -amt;
+        }
+    } else {
+        amt = args[1].integer;
+        sign = NEGATIVE_INT(amt);
+        if(sign) {
+            amt = -amt;
+        }
+    }
+    BigInt* bi;
+    union FakeBigInt fbi;
+    if(args[0].type == OPT_BIGINT) {
+        bi = args[0].bigint;
+    } else {
+        fbi.bi.refCount = 0;
+        fbi.bi.len = 1;
+        fbi.bi.data[0] = args[0].integer;
+        bi = &fbi.bi;
+    }
+    if(sign) {
+        bi = yabi_lshift(bi, amt);
+    } else {
+        bi = yabi_rshift(bi, amt);
+    }
+    if(bi->len == 1) {
+        res.type = OPT_INTEGER;
+        res.integer = bi->data[0];
+        lv_free(bi);
+    } else {
+        res.type = OPT_BIGINT;
+        res.bigint = bi;
+    }
+    return res;
+}
