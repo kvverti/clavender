@@ -18,10 +18,10 @@ $ make
 $ ./lavender
 ```
 
-There are two options for `make`. The default mode `release` compiles with optimization and without debugging symbols, while `debug` mode compiles without optimization and with debug symbols and assertions intact. The makefile uses `gcc` for compilation. To compile without `make`, use the following command.
+There are two options for `make`. The default mode `release` compiles with optimization and without debugging symbols, while `debug` mode compiles without optimization and with debug symbols and assertions intact. The makefile uses the default compiler for compilation. To compile without `make`, use the following command.
 
 ```
-gcc -o lavender -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c -lm
+gcc -o lavender -Iinteger/include -Isrc -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c integer/src/*.c -lm
 ```
 
 Lavender accepts the command line options `-fp` to set the filepath, `-maxStackSize` to set the maximum data stack size, and `-debug` to enable debugging output. Lavender runs in REPL mode by default, where you can enter expressions and see their results. By specifying a file to execute on the command line, Lavender instead executes the file and prints the result to stdout.
