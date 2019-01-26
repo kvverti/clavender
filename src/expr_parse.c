@@ -625,24 +625,75 @@ static void parseNumber(TextBufferObj* obj, ExprContext* cxt) {
     cxt->expectOperand = false;
 }
 
+// parses an integer written in the base factor of 64
+static void getIntegerWithWordSize(Token* tok, int digPerWord, BigInt** res) {
+    // local result
+    BigInt* bigint;
+    // start of the number string
+    char* st = tok->start + 2;
+    // length of the number string
+    size_t clen = tok->len - 2;
+    // buffer that stores one word of string
+    char bits[digPerWord + 1];
+    bits[digPerWord] = '\0';
+    // length of the result
+    size_t len;
+    {
+        // skip leading zeros in the number string
+        char* t = st;
+        size_t tlen = clen - 1; // keep at least one char though
+        while(*st == '0' && (st - t) < tlen) {
+            st++;
+            clen--;
+        }
+        len = (clen + digPerWord - 1) / digPerWord;
+    }
+    if(clen % digPerWord == 0 && st[0] > '0') {
+        // hi bit is set, so must increment len by one
+        // to ensure a positive number
+        len++;
+    }
+    assert(len);
+    bigint = YABI_NEW_BIGINT(len);
+    bigint->refCount = 1;
+    bigint->len = len;
+    memset(bigint->data, 0, len * sizeof(WordType));
+    // walk the character stream backwards in word size increments
+    // the loops does not read the leftover hi bits
+    size_t i, c;
+    for(i = 0, c = clen; c >= digPerWord; i++, c -= digPerWord) {
+        assert(i < len);
+        memcpy(bits, st + c - digPerWord, digPerWord);
+        bigint->data[i] = strtoumax(bits, NULL, 1 << (64 / digPerWord));
+    }
+    if(c) {
+        assert(i < len);
+        // leftover bits
+        memcpy(bits, st, c);
+        bits[c] = '\0';
+        bigint->data[i] = strtoumax(bits, NULL, 1 << (64 / digPerWord));
+    }
+    *res = bigint;
+}
+
 static void parseInteger(TextBufferObj* obj, ExprContext* cxt) {
 
     BigInt* bigint;
     if(cxt->head->start[0] == '0') {
         //parse in the given base
         switch(cxt->head->start[1]) {
-            // case 'x':
-            // case 'X':
-            //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 16);
-            //     break;
+            case 'x':
+            case 'X':
+                getIntegerWithWordSize(cxt->head, 16, &bigint);
+                break;
             // case 'c':
             // case 'C':
             //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 8);
             //     break;
-            // case 'b':
-            // case 'B':
-            //     num = (uint64_t) strtoumax(cxt->head->start + 2, NULL, 2);
-            //     break;
+            case 'b':
+            case 'B':
+                getIntegerWithWordSize(cxt->head, 64, &bigint);
+                break;
             default:
                 bigint = yabi_fromStr(cxt->head->start);
         }
