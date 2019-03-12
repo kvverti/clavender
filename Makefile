@@ -1,6 +1,5 @@
 .RECIPEPREFIX = @
 
-CC ?= gcc
 CSRC = src/*.c integer/src/*.c
 STDLIB_DIR = $(CURDIR)/stdlib/src
 BUILD_ID = $(shell git rev-parse HEAD)
@@ -13,3 +12,9 @@ release:
 
 debug:
 @   $(CC) -DBUILD=\"$(BUILD_ID)-debug\" $(DEBUG_ARGS) $(CSRC) -lm
+
+install:
+@   git submodule update --init
+
+clean:
+@   rm lavender
