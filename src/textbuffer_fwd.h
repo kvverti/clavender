@@ -61,6 +61,11 @@ LvString* lv_tb_getString(TextBufferObj* obj);
 TextBufferObj lv_tb_getSymb(char* name);
 
 /**
+ * Returns the symbol name associated with the given index.
+ */
+char* lv_tb_getSymbName(size_t symbIdx);
+
+/**
  * Defines the function described by the given token
  * sequence in the given scope. Returns a pointer to
  * the first unprocessed token in tokens, or NULL if

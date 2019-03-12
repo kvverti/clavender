@@ -111,6 +111,11 @@ TextBufferObj lv_tb_getSymb(char* name) {
     return res;
 }
 
+char* lv_tb_getSymbName(size_t symbIdx) {
+
+    return *(char**)lv_buf_get(&symbols, symbIdx);
+}
+
 //calculate the number of decimal digits
 //in practice the index is usually < 10
 static size_t length(int number) {
@@ -125,95 +130,6 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
 
     LvString* res;
     switch(obj->type) {
-        case OPT_UNDEFINED: {
-            static char str[] = "<undefined>";
-            res = lv_alloc(sizeof(LvString) + sizeof(str));
-            res->refCount = 0;
-            res->len = sizeof(str) - 1;
-            strcpy(res->value, str);
-            return res;
-        }
-        case OPT_STRING: {
-            res = obj->str;
-            return res;
-        }
-        case OPT_NUMBER: {
-            //because rather nontrivial to find the length of a
-            //floating-point value before putting it into a string,
-            //we first call snprintf with an empty buffer. Then, we take
-            //the number of characters printed by snprintf and allocate
-            //the buffer to that length (plus 1 for the terminator).
-            int len = snprintf(NULL, 0, "%g", obj->number);
-            res = lv_alloc(sizeof(LvString) + len + 1);
-            snprintf(res->value, len + 1, "%g", obj->number);
-            res->refCount = 0;
-            res->len = len;
-            return res;
-        }
-        case OPT_INTEGER: {
-            //get the sign bit
-            bool negative = obj->integer >> 63;
-            //get the magnitude of the value
-            uint64_t value = negative ? (-obj->integer) : obj->integer;
-            //get the length (+1 for minus sign)
-            size_t len = snprintf(NULL, 0, "%"PRIu64, value);
-            res = lv_alloc(sizeof(LvString) + negative + len + 1);
-            res->refCount = 0;
-            res->len = negative + len;
-            if(negative) {
-                res->value[0] = '-';
-            }
-            snprintf(res->value + negative, len + 1, "%"PRIu64, value);
-            return res;
-        }
-        case OPT_SYMB: {
-            char* val = *(char**)lv_buf_get(&symbols, obj->symbIdx);
-            size_t len = strlen(val);
-            res = lv_alloc(sizeof(LvString) + len + 2);
-            res->refCount = 0;
-            res->len = len + 1;
-            res->value[0] = '.';
-            memcpy(res->value + 1, val, len + 1);
-            return res;
-        }
-        case OPT_TAIL:
-        case OPT_FUNCTION:
-        case OPT_FUNCTION_VAL: {
-            size_t len = strlen(obj->func->name);
-            res = lv_alloc(sizeof(LvString) + len + 1);
-            res->refCount = 0;
-            res->len = len;
-            strcpy(res->value, obj->func->name);
-            return res;
-        }
-        case OPT_CAPTURE: {
-            //func-name[cap1, cap2, ..., capn]
-            size_t len = strlen(obj->capfunc->name) + 1;
-            res = lv_alloc(sizeof(LvString) + len + 1);
-            res->refCount = 0;
-            strcpy(res->value, obj->capfunc->name);
-            res->value[len - 1] = '[';
-            res->value[len] = '\0';
-            for(int i = 0; i < obj->capfunc->captureCount; i++) {
-                LvString* tmp = lv_tb_getString(&obj->capture->value[i]);
-                len += tmp->len + 1;
-                res = lv_realloc(res, sizeof(LvString) + len + 1);
-                strcat(res->value, tmp->value);
-                res->value[len - 1] = ',';
-                res->value[len] = '\0';
-                if(tmp->refCount == 0)
-                    lv_free(tmp);
-            }
-            res->value[len - 1] = ']';
-            res->len = len;
-            return res;
-        }
-        case OPT_VECT: {
-            return lv_vect_str(obj).str;
-        }
-        case OPT_MAP: {
-            return lv_map_str(obj).str;
-        }
         //not called outside of debug mode
         case OPT_PARAM: {
             static char str[] = "param ";
@@ -279,14 +195,8 @@ LvString* lv_tb_getString(TextBufferObj* obj) {
             sprintf(res->value + sizeof(str) - 1, "%d", obj->branchAddr);
             return res;
         }
-        default: {
-            static char str[] = "<internal operator>";
-            res = lv_alloc(sizeof(LvString) + sizeof(str));
-            res->refCount = 0;
-            res->len = sizeof(str) - 1;
-            strcpy(res->value, str);
-            return res;
-        }
+        default:
+            return lv_blt_str(obj);
     }
 }
 

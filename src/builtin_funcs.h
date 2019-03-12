@@ -54,6 +54,7 @@ Intrinsic lv_fun_hash;
 Intrinsic lv_fun_eq;
 Intrinsic lv_fun_lt;
 
+Intrinsic lv_cap_str;
 Intrinsic lv_cap_len;
 Intrinsic lv_cap_hash;
 Intrinsic lv_cap_eq;

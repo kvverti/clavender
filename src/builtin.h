@@ -6,6 +6,7 @@
 
 typedef TextBufferObj (*Builtin)(TextBufferObj*);
 
+LvString* lv_blt_str(TextBufferObj* obj);
 bool lv_blt_lt(TextBufferObj* a, TextBufferObj* b);
 bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b);
 uint64_t lv_blt_hash(TextBufferObj* obj);

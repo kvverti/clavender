@@ -136,7 +136,7 @@ void lv_run(void) {
                 //print result
                 TextBufferObj obj;
                 lv_buf_pop(&stack, &obj);
-                LvString* str = lv_tb_getString(&obj);
+                LvString* str = lv_blt_str(&obj);
                 puts(str->value);
                 if(str->refCount == 0) {
                     lv_free(str);
@@ -458,7 +458,7 @@ static void readInput(FILE* in, bool repl) {
                 assert(stack.len == 1);
                 TextBufferObj obj;
                 lv_buf_pop(&stack, &obj);
-                LvString* str = lv_tb_getString(&obj);
+                LvString* str = lv_blt_str(&obj);
                 puts(str->value);
                 if(str->refCount == 0) {
                     lv_free(str);

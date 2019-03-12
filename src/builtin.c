@@ -61,6 +61,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&funFuncs, ".hash", lv_fun_hash);
     lv_tbl_put(&funFuncs, ".eq", lv_fun_eq);
     lv_tbl_put(&funFuncs, ".lt", lv_fun_lt);
+    lv_tbl_put(&capFuncs, ".str", lv_cap_str);
     lv_tbl_put(&capFuncs, ".len", lv_cap_len);
     lv_tbl_put(&capFuncs, ".hash", lv_cap_hash);
     lv_tbl_put(&capFuncs, ".eq", lv_cap_eq);

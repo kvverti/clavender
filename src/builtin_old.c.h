@@ -304,19 +304,68 @@ static TextBufferObj bool_(TextBufferObj* args) {
     return res;
 }
 
+static LvString* defaultStr(TextBufferObj* obj) {
+
+    LvString* res;
+    switch(obj->type) {
+        case OPT_UNDEFINED: {
+            static char str[] = "<undefined>";
+            res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
+            res->len = sizeof(str) - 1;
+            strcpy(res->value, str);
+            return res;
+        }
+        case OPT_SYMB: {
+            char* val = lv_tb_getSymbName(obj->symbIdx);
+            size_t len = strlen(val);
+            res = lv_alloc(sizeof(LvString) + len + 2);
+            res->refCount = 0;
+            res->len = len + 1;
+            res->value[0] = '.';
+            memcpy(res->value + 1, val, len + 1);
+            return res;
+        }
+        case OPT_TAIL:
+        case OPT_FUNCTION:
+        case OPT_FUNCTION_VAL: {
+            size_t len = strlen(obj->func->name);
+            res = lv_alloc(sizeof(LvString) + len + 1);
+            res->refCount = 0;
+            res->len = len;
+            strcpy(res->value, obj->func->name);
+            return res;
+        }
+        default: {
+            static char str[] = "<internal operator>";
+            res = lv_alloc(sizeof(LvString) + sizeof(str));
+            res->refCount = 0;
+            res->len = sizeof(str) - 1;
+            strcpy(res->value, str);
+            return res;
+        }
+    }
+}
+
 /**
  * Converts object to string.
  */
 static TextBufferObj str(TextBufferObj* args) {
 
-    TextBufferObj res;
     getActualArgs(args, 1);
-    res = indirect(args, args[0].type, ".str");
+    return (TextBufferObj) {
+        .type = OPT_STRING,
+        .str = lv_blt_str(args)
+    };
+}
+
+LvString* lv_blt_str(TextBufferObj* obj) {
+
+    TextBufferObj res = indirect(obj, obj->type, ".str");
     if(res.type == OPT_UNDEFINED) {
-        res.type = OPT_STRING;
-        res.str = lv_tb_getString(&args[0]);
+        return defaultStr(obj);
     }
-    return res;
+    return res.str;
 }
 
 /** Converts to int. */

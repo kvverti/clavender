@@ -33,7 +33,7 @@ INTRINSIC(str) {
     res->value[2] = '\0';
     //concatenate values
     for(size_t i = 0; i < obj->vect->len; i++) {
-        LvString* tmp = lv_tb_getString(&obj->vect->data[i]);
+        LvString* tmp = lv_blt_str(&obj->vect->data[i]);
         len += tmp->len + 2;
         res = lv_realloc(res, sizeof(LvString) + len + 1);
         strcat(res->value, tmp->value);
