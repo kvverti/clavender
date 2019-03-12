@@ -13,23 +13,23 @@ int main(int argc, char* argv[]) {
             lv_mainArgs.args = &argv[i];
             lv_mainArgs.count = argc - i;
             break;
-        } else if(strcmp(argv[i], "-version") == 0) {
+        } else if(strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
             puts("C Lavender version 1.0, build " BUILD);
             return 0;
-        } else if(strcmp(argv[i], "-fp") == 0) {
+        } else if(strcmp(argv[i], "-fp") == 0 || strcmp(argv[i], "--filepath") == 0) {
             //-fp takes one argument
             if(i == (argc - 1)) {
-                puts("-fp takes one argument");
+                puts("--filepath takes one argument");
                 exit(1);
             }
             i++;
             lv_filepath = argv[i];
-        } else if(strcmp(argv[i], "-debug") == 0) {
+        } else if(strcmp(argv[i], "--debug") == 0) {
             lv_debug = true;
-        } else if(strcmp(argv[i], "-maxStackSize") == 0) {
+        } else if(strcmp(argv[i], "--max-stack-size") == 0) {
             //-maxStackSize takes one argument
             if(i == (argc - 1)) {
-                puts("-maxStackSize takes one argument");
+                puts("--max-stack-size takes one argument");
                 exit(1);
             }
             i++;
@@ -59,17 +59,20 @@ int main(int argc, char* argv[]) {
             }
             //in number of TextBufferObj
             lv_maxStackSize = size * multiplier / sizeof(TextBufferObj);
-        } else if(strcmp(argv[i], "-help") == 0) {
+        } else if(strcmp(argv[i], "-?") == 0 || strcmp(argv[i], "--help") == 0) {
             puts(
                 "Usage: lavender [options] [main file] [args]\n"
-                "where 'options' is one of:\n"
-                "         -fp <directory> : Sets the filepath. The filepath is where\n"
+                "where 'options' are zero or more of:\n"
+                "         -fp <directory>\n"
+                "  --filepath <directory> : Sets the filepath. The filepath is where\n"
                 "                           Lavender looks for user defined files.\n"
-                "                  -debug : Enables debug logging.\n"
-                "    -maxStackSize <size> : Sets the maximum size of the Lavender stack\n"
+                "                 --debug : Enables debug logging.\n"
+                " --max-stack-size <size> : Sets the maximum size of the Lavender stack\n"
                 "                           in kibibytes (K), mebibiyes (M), or gibibytes (G).\n"
-                "                -version : Print version information and exit.\n"
-                "                   -help : Print this information and exit."
+                "                      -v\n"
+                "               --version : Print version information and exit.\n"
+                "                      -?\n"
+                "                  --help : Print this information and exit."
             );
             return 0;
         } else if(strncmp(argv[i], "-", 1) == 0) {
