@@ -23,7 +23,6 @@ static DynBuffer stack; //of TextBufferObj
 static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
 static Operator atFunc; //built in sys:__at__
-static Builtin sysLt; //built in sys:__lt__
 static Operator scope = { .type = FUN_FWD_DECL };
 
 static void push(TextBufferObj* obj) {
@@ -95,7 +94,7 @@ void lv_run(void) {
         lv_globalLt.func = lv_op_getOperator("global:<", FNS_INFIX);
     }
     if(!load) {
-        puts("Fatal: stdlib does not exist");
+        puts("Fatal: errors loading stdlib");
     } else if(lv_mainFile) {
         bool read = lv_readFile(lv_mainFile);
         if(!read) {
@@ -202,8 +201,6 @@ void lv_startup(void) {
     atFunc.arity = 2;
     atFunc.builtin = lv_blt_getIntrinsic("sys:__at__");
     assert(atFunc.builtin);
-    sysLt = lv_blt_getIntrinsic("sys:__lt__");
-    assert(sysLt);
 }
 
 void lv_shutdown(void) {
@@ -239,8 +236,10 @@ static bool isFuncDef(Token* head) {
 
 static void printError(Token* err, char* groupMessage) {
 
-    printf("On line %d: %s: %s\n",
+    int col = err->start - err->line;
+    printf("%d:%d: %s: %s\n",
         err ? err->lineNumber : 0,
+        col + 1,
         groupMessage,
         lv_expr_getError(LV_EXPR_ERROR));
     if(err) {
@@ -248,14 +247,15 @@ static void printError(Token* err, char* groupMessage) {
         char arrows[err->len + 1];
         memset(arrows, '^', err->len);
         arrows[err->len] = '\0';
-        printf("    %*s\n", (int)((err->start - err->line) + err->len), arrows);
+        printf("    %*s\n", (int)(col + err->len), arrows);
     }
 }
 
 static void printTokenError(char* groupMessage) {
 
-    printf("On line %d: %s: %s\n",
+    printf("%d:%d: %s: %s\n",
         lv_tkn_errContext.lineNumber,
+        (int)lv_tkn_errContext.startIdx + 1,
         groupMessage,
         lv_tkn_getError(LV_TKN_ERROR));
     printf("    %s", lv_tkn_errContext.line);
