@@ -4,6 +4,7 @@
 ' "Buzz" if it is divisible by 5
 ' The number otherwise
 
+@import hof using joining
 @import stream using Indices, take
 
 (def main(args)
@@ -11,5 +12,5 @@
     => Indices map (def(a)
         => (a % 5 = 0) ?: ("FizzBuzz", "Fizz") ; a % 3 = 0
         => (a % 5 = 0) ?: ("Buzz", str(a)) ; otherwise
-    ) take n reduce (def(ac, el) => ac ++ "\n" ++ el)
+    ) take n reduce joining "\n"
 )
