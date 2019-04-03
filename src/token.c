@@ -377,6 +377,9 @@ static TokenType tryGetQualName(void) {
             LV_TKN_ERROR = TE_BAD_QUAL;
             return -1;
         }
+    } else if(idx - bgn == 1 && buffer[bgn] == '_') {
+        // the single character '_' has a special meaning
+        type = TTY_LITERAL;
     }
     return type;
 }
