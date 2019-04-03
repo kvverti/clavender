@@ -187,7 +187,7 @@ INTRINSIC(lt) {
 }
 
 INTRINSIC(len) {
-    assert(args[0].type = OPT_MAP);
+    assert(args[0].type == OPT_MAP);
     return (TextBufferObj) {
         .type = OPT_INTEGER,
         .integer = args[0].map->len
