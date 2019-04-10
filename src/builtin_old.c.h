@@ -690,48 +690,8 @@ static TextBufferObj rem(TextBufferObj* args) {
 /** Exponentiation */
 static TextBufferObj pow_(TextBufferObj* args) {
 
-    TextBufferObj res;
-    NumType nums[2];
     getActualArgs(args, 2);
-    switch(getObjsAsNumbers(args, nums)) {
-        case NR_NUMBER:
-            res.type = OPT_NUMBER;
-            res.number = pow(nums[0].number, nums[1].number);
-            break;
-        case NR_INTEGER: {
-            uint64_t a = nums[0].integer;
-            uint64_t b = nums[1].integer;
-            if(isNegative(b)) {
-                if(a == 0) {
-                    res.type = OPT_UNDEFINED;
-                } else {
-                    //negative powers are equiv. to 1 / (a ** b)
-                    res.type = OPT_NUMBER;
-                    res.number = pow(intToNum(a), intToNum(b));
-                }
-            } else if(a == 2) {
-                //2 ** x can be implemented with a bit shift by (b & 63)
-                res.type = OPT_INTEGER;
-                res.integer = UINT64_C(1) << (b & 63);
-            } else {
-                //algorithm taken from everyone's favorite source of knowledge,
-                //stack overflow
-                uint64_t powres = 1;
-                while(b != 0) {
-                    if(b & 1)
-                        powres *= a;
-                    a *= a;
-                    b >>= 1;
-                }
-                res.type = OPT_INTEGER;
-                res.integer = powres;
-            }
-            break;
-        }
-        case NR_ERROR:
-            res.type = OPT_UNDEFINED;
-    }
-    return res;
+    return lv_int_pow(args);
 }
 
 /** Unary + function */

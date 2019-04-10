@@ -79,6 +79,7 @@ static void mkFuncTables(void) {
     lv_tbl_put(&intFuncs, ".div", lv_int_div);
     lv_tbl_put(&intFuncs, ".rdiv", lv_int_rdiv);
     lv_tbl_put(&intFuncs, ".rem", lv_int_rem);
+    lv_tbl_put(&intFuncs, ".pow", lv_int_pow);
     lv_tbl_put(&intFuncs, ".shl", lv_int_shl);
     lv_tbl_put(&intFuncs, ".shr", lv_int_shr);
     lv_tbl_put(&numFuncs, ".str", lv_num_str);

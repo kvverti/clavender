@@ -455,6 +455,72 @@ INTRINSIC(rdiv) {
     return lv_num_rdiv(newArgs);
 }
 
+INTRINSIC(pow) {
+    TextBufferObj res;
+    // TODO: handle BigInts
+    if(args[0].type == OPT_INTEGER && args[1].type == OPT_INTEGER) {
+        // do integer power, move to BigInts if necessary
+        uint64_t a = args[0].integer, b = args[1].integer;
+        if(NEGATIVE_INT(b)) {
+            if(a == 0) {
+                res.type = OPT_UNDEFINED;
+            } else {
+                double da = lv_int_num(&args[0]).number;
+                double db = lv_int_num(&args[1]).number;
+                res.type = OPT_NUMBER;
+                res.number = pow(da, db);
+            }
+        } else {
+            if(b == 0) {
+                res.type = OPT_INTEGER;
+                res.integer = 1;
+            } else {
+                // time to pull out the BigInts
+                // TODO: make more memory efficient
+                BigInt* bia = YABI_NEW_BIGINT(2);
+                BigInt* bib = YABI_NEW_BIGINT(2);
+                BigInt* bic = YABI_NEW_BIGINT(2);
+                bia->len = NEGATIVE_INT(a) + 1;
+                bia->data[0] = a;
+                bia->data[1] = -NEGATIVE_INT(a);
+                bib->len = NEGATIVE_INT(b) + 1;
+                bib->data[0] = b;
+                bib->data[1] = -NEGATIVE_INT(b);
+                bic->len = 1;
+                bic->data[0] = 1;
+                bic->data[1] = 0;
+                // from everyone's favorite source of knowlegde, Stack Overflow
+                while(bib->len != 1 || bib->data[0] != 0) {
+                    if(bib->data[0] & 1) {
+                        BigInt* tmp = yabi_mul(bic, bia);
+                        lv_free(bic);
+                        bic = tmp;
+                    }
+                    BigInt* tmp = yabi_mul(bia, bia);
+                    lv_free(bia);
+                    bia = tmp;
+                    tmp = yabi_rshift(bib, 1);
+                    lv_free(bib);
+                    bib = tmp;
+                }
+                lv_free(bia);
+                lv_free(bib);
+                if(bic->len == 1) {
+                    res.type = OPT_INTEGER;
+                    res.integer = bic->data[0];
+                    lv_free(bic);
+                } else {
+                    res.type = OPT_BIGINT;
+                    res.bigint = bic;
+                }
+            }
+        }
+    } else {
+        res.type = OPT_UNDEFINED;
+    }
+    return res;
+}
+
 // negative left shfit is equivalent to right shift
 INTRINSIC(shl) {
     TextBufferObj res;
