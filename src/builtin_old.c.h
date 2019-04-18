@@ -25,15 +25,14 @@ static TextBufferObj indirect(TextBufferObj* args, OpType type, char* key) {
     return res;
 }
 
-static bool equal(TextBufferObj* a, TextBufferObj* b);
+static TextBufferObj eq(TextBufferObj* args);
 
 bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
 
-    TextBufferObj eq;
     TextBufferObj ab[2] = { *a, *b };
-    lv_callFunction(&lv_globalEquals, 2, ab, &eq);
-    bool res = lv_blt_toBool(&eq);
-    lv_expr_cleanup(&eq, 1);
+    TextBufferObj eql = eq(ab);
+    bool res = lv_blt_toBool(&eql);
+    lv_expr_cleanup(&eql, 1);
     return res;
 }
 
@@ -457,10 +456,15 @@ static TextBufferObj hash(TextBufferObj* args) {
 
 uint64_t lv_blt_hash(TextBufferObj* a) {
 
-    TextBufferObj hash;
-    lv_callFunction(&lv_globalHash, 1, a, &hash);
-    uint64_t res = hashcode(&hash);
-    lv_expr_cleanup(&hash, 1);
+    TextBufferObj hashcd;
+    hashcd = hash(a);
+    uint64_t res;
+    if(hashcd.type != OPT_INTEGER) {
+        res = hashcode(&hashcd);
+    } else {
+        res = hashcd.integer;
+    }
+    lv_expr_cleanup(&hashcd, 1);
     return res;
 }
 
@@ -534,16 +538,6 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
     }
 }
 
-bool lv_blt_lt(TextBufferObj* a, TextBufferObj* b) {
-
-    TextBufferObj lt;
-    TextBufferObj ab[2] = { *a, *b };
-    lv_callFunction(&lv_globalLt, 2, ab, &lt);
-    bool res = lv_blt_toBool(&lt);
-    lv_expr_cleanup(&lt, 1);
-    return res;
-}
-
 static TextBufferObj lt(TextBufferObj* args) {
 
     TextBufferObj res;
@@ -562,6 +556,15 @@ static TextBufferObj lt(TextBufferObj* args) {
         res.type = OPT_INTEGER;
         res.integer = ltImpl(&args[0], &args[1]);
     }
+    return res;
+}
+
+bool lv_blt_lt(TextBufferObj* a, TextBufferObj* b) {
+
+    TextBufferObj ab[2] = { *a, *b };
+    TextBufferObj ltv = lt(ab);
+    bool res = lv_blt_toBool(&ltv);
+    lv_expr_cleanup(&ltv, 1);
     return res;
 }
 
