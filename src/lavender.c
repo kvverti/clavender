@@ -13,6 +13,7 @@ bool lv_debug = false;
 char* lv_filepath = ".";
 char* lv_mainFile = NULL;
 size_t lv_maxStackSize = 512 * 1024 / sizeof(TextBufferObj); //512KiB
+size_t lv_maxNativeStackSize = 512 * 1024; //512KiB
 struct LvMainArgs lv_mainArgs = { NULL, 0 };
 
 static void readInput(FILE* in, bool repl);
@@ -24,6 +25,7 @@ static size_t pc;   //program counter
 static size_t fp;   //frame pointer: index of the first argument
 static Operator atFunc; //built in sys:__at__
 static Operator scope = { .type = FUN_FWD_DECL };
+static void* nativeStackBgn;
 
 static void push(TextBufferObj* obj) {
 
@@ -83,6 +85,10 @@ static bool addFile(char* file) {
 
 void lv_run(void) {
 
+    {
+        int stackStartHopefully;
+        nativeStackBgn = &stackStartHopefully;
+    }
     lv_startup();
     bool load = lv_readFile("sys") && lv_readFile("global");
     if(load) {
@@ -837,6 +843,18 @@ static void runCycle(void) {
  */
 void lv_callFunction(TextBufferObj* func, size_t numArgs, TextBufferObj* args, TextBufferObj* ret) {
 
+    //check native stack usage
+    {
+        int dummy;
+        ptrdiff_t slen = (void*)&dummy - nativeStackBgn;
+        if(slen < 0) {
+            slen = -slen;
+        }
+        if(slen > lv_maxNativeStackSize) {
+            puts("Native stack overflow: terminating");
+            lv_shutdown();
+        }
+    }
     //push args onto stack
     Operator* op;
     for(size_t i = 0; i < numArgs; i++) {

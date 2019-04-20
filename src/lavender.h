@@ -12,6 +12,7 @@ bool lv_debug;
 char* lv_filepath;
 char* lv_mainFile;
 size_t lv_maxStackSize;
+size_t lv_maxNativeStackSize;
 struct LvMainArgs {
     char** args;
     int count;
