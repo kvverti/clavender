@@ -391,12 +391,6 @@ static uint64_t hashcode(TextBufferObj* arg) {
         case OPT_UNDEFINED:
             res = 0;
             break;
-        case OPT_NUMBER:
-            res = hashOf(&arg->number, sizeof(arg->number));
-            break;
-        case OPT_INTEGER:
-            res = arg->integer;
-            break;
         case OPT_SYMB:
             res = arg->symbIdx;
             break;
@@ -440,32 +434,17 @@ static TextBufferObj hash(TextBufferObj* args) {
 
 uint64_t lv_blt_hash(TextBufferObj* a) {
 
-    TextBufferObj hashcd;
-    hashcd = hash(a);
-    uint64_t res;
-    if(hashcd.type != OPT_INTEGER) {
-        res = hashcode(&hashcd);
-    } else {
-        res = hashcd.integer;
-    }
+    TextBufferObj hashcd = hash(a);
+    uint64_t res = hashcd.integer;
     lv_expr_cleanup(&hashcd, 1);
     return res;
 }
 
 static bool equal(TextBufferObj* a, TextBufferObj* b) {
-
-    if(a->type != b->type) {
-        //can't be equal if they have different types
-        //numbers and integers are not equal!
-        return false;
-    }
+    assert(a->type == b->type);
     switch(a->type) {
         case OPT_UNDEFINED:
             return true;
-        case OPT_NUMBER:
-            return a->number == b->number;
-        case OPT_INTEGER:
-            return a->integer == b->integer;
         case OPT_SYMB:
             return a->symbIdx == b->symbIdx;
         default:
@@ -554,22 +533,9 @@ static TextBufferObj ge(TextBufferObj* args) {
         //one of them is NaN
         res.type = OPT_INTEGER;
         res.integer = 0;
-        return res;
-    }
-    OpType atyp = args[0].type, btyp = args[1].type;
-    if((atyp == btyp) ||
-        (atyp == OPT_INTEGER && btyp == OPT_BIGINT) ||
-        (atyp == OPT_BIGINT && btyp == OPT_INTEGER)) {
-        res = indirect(args, args[0].type, ".lt");
-        res.integer = !res.integer;
     } else {
-        res.type = OPT_INTEGER;
-        res.integer = args[0].type >= args[1].type;
-        return res;
-    }
-    if(res.type == OPT_UNDEFINED) {
-        res.type = OPT_INTEGER;
-        res.integer = !ltImpl(&args[0], &args[1]);
+        res = lt(args);
+        res.integer = !res.integer;
     }
     return res;
 }
