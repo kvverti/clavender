@@ -162,19 +162,6 @@ static inline bool isNegative(uint64_t repr) {
     return repr >> 63;
 }
 
-/** Compares two 64bit integers in two's compl representation */
-static int intCmp(uint64_t a, uint64_t b) {
-
-    if(a == b)
-        return 0;
-    bool negA = isNegative(a);
-    bool negB = isNegative(b);
-    if(negA || negB)
-        return a < b ? 1 : -1;
-    else
-        return a < b ? -1 : 1;
-}
-
 /** Converts a Lavender int to a num. */
 static double intToNum(uint64_t a) {
 
@@ -519,17 +506,8 @@ static bool ltImpl(TextBufferObj* a, TextBufferObj* b) {
         case OPT_UNDEFINED:
             return false;
             break;
-        case OPT_NUMBER:
-            return (a->number < b->number);
-            break;
-        case OPT_INTEGER:
-            return intCmp(a->integer, b->integer) < 0;
-            break;
         case OPT_SYMB:
             return (a->symbIdx < b->symbIdx);
-        case OPT_STRING:
-            return (strcmp(a->str->value, b->str->value) < 0);
-            break;
         default:
             assert(false);
     }
@@ -544,14 +522,13 @@ static TextBufferObj lt(TextBufferObj* args) {
         (atyp == OPT_INTEGER && btyp == OPT_BIGINT) ||
         (atyp == OPT_BIGINT && btyp == OPT_INTEGER)) {
         res = indirect(args, args[0].type, ".lt");
+        if(res.type == OPT_UNDEFINED) {
+            res.type = OPT_INTEGER;
+            res.integer = ltImpl(&args[0], &args[1]);
+        }
     } else {
         res.type = OPT_INTEGER;
         res.integer = args[0].type < args[1].type;
-        return res;
-    }
-    if(res.type == OPT_UNDEFINED) {
-        res.type = OPT_INTEGER;
-        res.integer = ltImpl(&args[0], &args[1]);
     }
     return res;
 }
