@@ -162,17 +162,6 @@ static inline bool isNegative(uint64_t repr) {
     return repr >> 63;
 }
 
-/** Converts a Lavender int to a num. */
-static double intToNum(uint64_t a) {
-
-    //turn into positive form
-    //(INT_MIN is its own positive form)
-    bool negA = isNegative(a);
-    if(negA)
-        a = -a;
-    return copysign((double)a, -negA);
-}
-
 /**
  * Gets the n'th capture value from the given function.
  */
@@ -540,50 +529,6 @@ static TextBufferObj ge(TextBufferObj* args) {
     return res;
 }
 
-typedef enum NumResult { NR_ERROR, NR_NUMBER, NR_INTEGER } NumResult;
-typedef union NumType { uint64_t integer; double number; } NumType;
-
-/**
- * Parses the two arguments into numbers if possible, widening from
- * integer to number if necessary.
- */
-static NumResult getObjsAsNumbers(TextBufferObj args[2], NumType res[2]) {
-    switch(args[0].type) {
-        case OPT_INTEGER:
-            switch(args[1].type) {
-                case OPT_INTEGER:
-                    //both are integers
-                    res[0].integer = args[0].integer;
-                    res[1].integer = args[1].integer;
-                    return NR_INTEGER;
-                case OPT_NUMBER:
-                    //convert args[0] to number
-                    res[0].number = intToNum(args[0].integer);
-                    res[1].number = args[1].number;
-                    return NR_NUMBER;
-                default:
-                    return NR_ERROR;
-            }
-        case OPT_NUMBER:
-            switch(args[1].type) {
-                case OPT_INTEGER:
-                    //convert args[1] to number
-                    res[0].number = args[0].number;
-                    res[1].number = intToNum(args[1].integer);
-                    return NR_NUMBER;
-                case OPT_NUMBER:
-                    //both are numbers
-                    res[0].number = args[0].number;
-                    res[1].number = args[1].number;
-                    return NR_NUMBER;
-                default:
-                    return NR_ERROR;
-            }
-        default:
-            return NR_ERROR;
-    }
-}
-
 /**
  * Addition and string concatenation. Assumes two arguments.
  */
@@ -658,9 +603,9 @@ static TextBufferObj fnc##_(TextBufferObj* args) { \
     if(args[0].type == OPT_NUMBER) { \
         res.type = OPT_NUMBER; \
         res.number = fnc(args[0].number); \
-    } else if(args[0].type == OPT_INTEGER) { \
+    } else if(args[0].type == OPT_INTEGER || args[0].type == OPT_BIGINT) { \
         res.type = OPT_NUMBER; \
-        res.number = fnc(intToNum(args[0].integer)); \
+        res.number = fnc(lv_int_num(&args[0]).number); \
     } else { \
         res.type = OPT_UNDEFINED; \
     } \
@@ -695,9 +640,16 @@ static TextBufferObj abs_(TextBufferObj* args) {
         res.type = OPT_NUMBER;
         res.number = fabs(args[0].number);
     } else if(args[0].type == OPT_INTEGER) {
+        // no overflow possible
         uint64_t a = args[0].integer;
         res.type = OPT_INTEGER;
         res.integer = isNegative(a) ? -a : a;
+    } else if(args[0].type == OPT_BIGINT) {
+        if(isNegative(args[0].bigint->data[args[0].bigint->len - 1])) {
+            res = lv_int_neg(&args[0]);
+        } else {
+            res = args[0];
+        }
     } else {
         res.type = OPT_UNDEFINED;
     }
@@ -707,21 +659,26 @@ static TextBufferObj abs_(TextBufferObj* args) {
 static TextBufferObj atan2_(TextBufferObj* args) {
 
     TextBufferObj res;
-    NumType nums[2];
+    double a, b;
     getActualArgs(args, 2);
-    switch(getObjsAsNumbers(args, nums)) {
-        case NR_INTEGER:
-            nums[0].number = intToNum(nums[0].integer);
-            nums[1].number = intToNum(nums[1].integer);
-            //fallthrough
-        case NR_NUMBER:
-            res.type = OPT_NUMBER;
-            res.number = atan2(nums[0].number, nums[1].number);
-            break;
-        case NR_ERROR:
-            res.type = OPT_UNDEFINED;
-            break;
+    if(args[0].type == OPT_INTEGER || args[0].type == OPT_BIGINT) {
+        a = lv_int_num(&args[0]).number;
+    } else if(args[0].type == OPT_NUMBER){
+        a = args[0].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+        return res;
     }
+    if(args[1].type == OPT_INTEGER || args[1].type == OPT_BIGINT) {
+        b = lv_int_num(&args[1]).number;
+    } else if(args[1].type == OPT_NUMBER){
+        b = args[1].number;
+    } else {
+        res.type = OPT_UNDEFINED;
+        return res;
+    }
+    res.type = OPT_NUMBER;
+    res.number = atan2(a, b);
     return res;
 }
 
@@ -736,6 +693,11 @@ static TextBufferObj sgn(TextBufferObj* args) {
         res.integer = 1 - ((bool)signbit(args[0].number) << 1);
     } else if(args[0].type == OPT_INTEGER) {
         uint64_t a = args[0].integer;
+        res.type = OPT_INTEGER;
+        //[min, -1] -> -1, [0] -> 0, [1, max] -> +1
+        res.integer = (a && (a < (UINT64_C(1) << 63))) - (a >> 63);
+    } else if(args[0].type == OPT_BIGINT) {
+        uint64_t a = args[0].bigint->data[args[0].bigint->len - 1];
         res.type = OPT_INTEGER;
         //[min, -1] -> -1, [0] -> 0, [1, max] -> +1
         res.integer = (a && (a < (UINT64_C(1) << 63))) - (a >> 63);
