@@ -92,21 +92,18 @@ static TextBufferObj undefined(TextBufferObj* args) {
 }
 
 #define NUM_TYPES 8
-static LvString* types[NUM_TYPES];
+static size_t types[NUM_TYPES];
 
 static void mkTypes(void) {
 
     #define INIT(i, n) \
         assert(i < NUM_TYPES); \
-        types[i] = lv_alloc(sizeof(LvString) + sizeof(n)); \
-        types[i]->len = sizeof(n) - 1; \
-        types[i]->refCount = 1; \
-        memcpy(types[i]->value, n, sizeof(n))
+        types[i] = lv_tb_getSymb(n).integer;
     INIT(0, "undefined");
-    INIT(1, "number");
-    INIT(2, "string");
+    INIT(1, "num");
+    INIT(2, "str");
     INIT(3, "vect");
-    INIT(4, "function");
+    INIT(4, "func");
     INIT(5, "int");
     INIT(6, "symb");
     INIT(7, "map");
@@ -120,33 +117,33 @@ static TextBufferObj typeof_(TextBufferObj* args) {
 
     TextBufferObj res;
     getActualArgs(args, 1);
-    res.type = OPT_STRING;
+    res.type = OPT_SYMB;
     switch(args[0].type) {
         case OPT_UNDEFINED:
-            res.str = types[0];
+            res.symbIdx = types[0];
             break;
         case OPT_NUMBER:
-            res.str = types[1];
+            res.symbIdx = types[1];
             break;
         case OPT_INTEGER:
         case OPT_BIGINT:
-            res.str = types[5];
+            res.symbIdx = types[5];
             break;
         case OPT_SYMB:
-            res.str = types[6];
+            res.symbIdx = types[6];
             break;
         case OPT_STRING:
-            res.str = types[2];
+            res.symbIdx = types[2];
             break;
         case OPT_VECT:
-            res.str = types[3];
+            res.symbIdx = types[3];
             break;
         case OPT_MAP:
-            res.str = types[7];
+            res.symbIdx = types[7];
             break;
         case OPT_CAPTURE:
         case OPT_FUNCTION_VAL:
-            res.str = types[4];
+            res.symbIdx = types[4];
             break;
         default:
             assert(false);

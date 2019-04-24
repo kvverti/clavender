@@ -199,6 +199,4 @@ void lv_blt_onShutdown(void) {
 
     lv_tbl_clear(&intrinsics, NULL);
     lv_free(intrinsics.table);
-    for(int i = 0; i < NUM_TYPES; i++)
-        lv_free(types[i]);
 }
