@@ -29,9 +29,8 @@ primarily Python and Scala.
     Lavender standard libraries.
 
     ```
-    $ git clone https://github.com/kvverti/clavender.git <PROJECT_DIR>
+    $ git clone --recursive https://github.com/kvverti/clavender.git <PROJECT_DIR>
     $ cd <PROJECT_DIR>
-    $ git submodule update --init
     ```
 
     If you have not [set up a GitHub SSH key](https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/),
@@ -43,13 +42,7 @@ primarily Python and Scala.
     ```
 
 2.  Run `make` to compile the project. Building Lavender requires a C compiler
-    to be installed. Alternatively, compile the C source files in `src/` using
-    the C compiler of your choice. The command below is a minimal example for
-    GCC on UNIX.
-
-    ```
-    gcc -o lavender -DSTDLIB=\"<PROJECT_DIR>/stdlib/src\" src/*.c -lm
-    ```
+    to be installed.
 
 3.  Assuming the build is successful, run Lavender using the following command.
 
@@ -72,7 +65,7 @@ primarily Python and Scala.
 ## Using the Interpreter
 
 Lavender can run programs from files, or run as a REPL (read-eval-print loop).
-On the command line, run `./lavender -help` for a list of command line options.
+On the command line, run `./lavender --help` for a list of command line options.
 
 ### REPL Mode
 

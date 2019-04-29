@@ -105,7 +105,7 @@ Otherwise, the token will be parsed as a number.
 ### Vects
 
 Vectors, or vects, are Lavender's first collection value. Vects are written as
-a pair of curly braces (`{ }`) containing a comma separated list of expressions.
+a pair of curly braces (<code>{&nbsp;}</code>) containing a comma separated list of expressions.
 
 Examples:
 ```
@@ -118,7 +118,7 @@ Examples:
 ### Maps
 
 Maps are Lavender's second collection value. Maps, like vects, are written
-enclosed in curly braces (`{ }`). Unlike vects, maps contain a comma separated
+enclosed in curly braces (<code>{&nbsp;}</code>). Unlike vects, maps contain a comma separated
 list of key-value pairs, where an arrow token (`=>`) separates the key from the
 value. Keys and values may be any expression. If two keys are equal, the map
 contains the value associated with the key that comes textually last.
