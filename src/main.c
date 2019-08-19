@@ -54,6 +54,8 @@ int main(int argc, char* argv[]) {
             lv_filepath = argv[i];
         } else if(strcmp(argv[i], "--debug") == 0) {
             lv_debug = true;
+        } else if(strcmp(argv[i], "--bare") == 0) {
+            lv_bare = true;
         } else if(strcmp(argv[i], "-ss") == 0 || strcmp(argv[i], "--stack-size") == 0) {
             //-maxStackSize takes one argument
             if(i == (argc - 1)) {
@@ -80,6 +82,7 @@ int main(int argc, char* argv[]) {
                 "     --filepath <directory> : Sets the filepath. The filepath is where\n"
                 "                              Lavender looks for user defined files.\n"
                 "                    --debug : Enables debug logging.\n"
+                "                     --bare : Do not import standard libraries.\n"
                 "                 -ss <size>\n"
                 "        --stack-size <size> : Sets the maximum size of the Lavender stack\n"
                 "                              in kibibytes (K), mebibiyes (M), or gibibytes (G).\n"

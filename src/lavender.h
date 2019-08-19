@@ -9,6 +9,7 @@
 #endif
 
 bool lv_debug;
+bool lv_bare;
 char* lv_filepath;
 char* lv_mainFile;
 size_t lv_maxStackSize;
@@ -17,13 +18,6 @@ struct LvMainArgs {
     char** args;
     int count;
 } lv_mainArgs;
-
-// essential non-intrinsic Lavender functions
-// they are declared here as they must be initialized after
-// Lavender starts up.
-TextBufferObj lv_globalEquals;
-TextBufferObj lv_globalHash;
-TextBufferObj lv_globalLt;
 
 void lv_run(void);
 void lv_repl(void);

@@ -10,6 +10,7 @@
 #include <assert.h>
 
 bool lv_debug = false;
+bool lv_bare = false;
 char* lv_filepath = ".";
 char* lv_mainFile = NULL;
 size_t lv_maxStackSize = 512 * 1024 / sizeof(TextBufferObj); //512KiB
@@ -90,14 +91,9 @@ void lv_run(void) {
         nativeStackBgn = &stackStartHopefully;
     }
     lv_startup();
-    bool load = lv_readFile("sys") && lv_readFile("global");
-    if(load) {
-        lv_globalEquals.type = OPT_FUNCTION_VAL;
-        lv_globalEquals.func = lv_op_getOperator("global:=", FNS_INFIX);
-        lv_globalHash.type = OPT_FUNCTION_VAL;
-        lv_globalHash.func = lv_op_getOperator("global:hash", FNS_PREFIX);
-        lv_globalLt.type = OPT_FUNCTION_VAL;
-        lv_globalLt.func = lv_op_getOperator("global:<", FNS_INFIX);
+    bool load = lv_readFile("sys");
+    if(!lv_bare) {
+        load &= lv_readFile("global");
     }
     if(!load) {
         puts("Fatal: errors loading stdlib");
