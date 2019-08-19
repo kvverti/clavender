@@ -143,6 +143,7 @@ void lv_blt_onStartup(void) {
     MK_FUNCT(SYS, cval);
     MK_FUNCT(SYS, cat);
     MK_FUNCT(SYS, call);
+    MK_FUNCT(SYS, lookup);
     MK_FUNCN(SYS, at);
     MK_FUNNR(SYS, bool);
     MK_FUNCN(SYS, hash);
@@ -196,7 +197,20 @@ void lv_blt_onStartup(void) {
 }
 
 void lv_blt_onShutdown(void) {
-
+    lv_tbl_clear(&vectFuncs, NULL);
+    lv_tbl_clear(&strFuncs, NULL);
+    lv_tbl_clear(&mapFuncs, NULL);
+    lv_tbl_clear(&funFuncs, NULL);
+    lv_tbl_clear(&capFuncs, NULL);
+    lv_tbl_clear(&intFuncs, NULL);
+    lv_tbl_clear(&numFuncs, NULL);
     lv_tbl_clear(&intrinsics, NULL);
+    lv_free(vectFuncs.table);
+    lv_free(strFuncs.table);
+    lv_free(mapFuncs.table);
+    lv_free(funFuncs.table);
+    lv_free(capFuncs.table);
+    lv_free(intFuncs.table);
+    lv_free(numFuncs.table);
     lv_free(intrinsics.table);
 }

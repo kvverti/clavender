@@ -54,6 +54,73 @@ static void getActualArgs(TextBufferObj* args, size_t len) {
     }
 }
 
+static TextBufferObj lookup(TextBufferObj* args) {
+    TextBufferObj res;
+    getActualArgs(args, 3);
+    if(args[0].type != OPT_FUNCTION_VAL) {
+        res.type = OPT_UNDEFINED;
+        return res;
+    }
+    FuncNamespace fns = args[0].func->fixing == FIX_PRE ? FNS_PREFIX : FNS_INFIX;
+    char* nm = strchr(args[0].func->name, ':') + 1;
+    char* ns;
+    char* colpos;
+    char* fnm;
+    // get the namespace
+    switch(args[1].type) {
+        case OPT_FUNCTION_VAL:
+            fnm = args[1].func->name;
+            colpos = strchr(fnm, ':');
+            ns = lv_alloc(colpos - fnm + 1);
+            strncpy(ns, fnm, colpos - fnm);
+            ns[colpos - fnm] = '\0';
+            break;
+        case OPT_CAPTURE:
+            fnm = args[1].capfunc->name;
+            colpos = strchr(fnm, ':');
+            ns = lv_alloc(colpos - fnm + 1);
+            strncpy(ns, fnm, colpos - fnm);
+            ns[colpos - fnm] = '\0';
+            break;
+        case OPT_MAP:
+            ns = "map";
+            break;
+        case OPT_VECT:
+            ns = "vect";
+            break;
+        case OPT_SYMB:
+            ns = "symb";
+            break;
+        case OPT_STRING:
+            ns = "str";
+            break;
+        case OPT_NUMBER:
+            ns = "num";
+            break;
+        case OPT_INTEGER:
+        case OPT_BIGINT:
+            ns = "int";
+            break;
+        case OPT_UNDEFINED:
+            ns = "undefined";
+            break;
+        default:
+            assert(((void)"invalid namespace", false));
+            res.type = OPT_UNDEFINED;
+    }
+    Operator* op = lv_op_getScopedOperator(ns, nm, fns);
+    if(op == NULL) {
+        res = args[2];
+    } else {
+        res.type = OPT_FUNCTION_VAL;
+        res.func = op;
+    }
+    if(args[1].type == OPT_CAPTURE || args[1].type == OPT_FUNCTION_VAL) {
+        lv_free(ns);
+    }
+    return res;
+}
+
 /**
  * Converts a string to a symbol.
  */
