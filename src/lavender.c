@@ -151,7 +151,7 @@ void lv_run(void) {
     } else {
         if(lv_debug)
             puts("Running in debug mode");
-        puts("Lavender runtime v. 1.0 by Chris Nero\n"
+        puts("Lavender runtime v. 1.0 by Thalia Nero\n"
              "Open source at https://github.com/kvverti/clavender\n"
              "Enter function definitions or expressions");
         while(!feof(stdin)) {
