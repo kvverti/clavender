@@ -36,24 +36,6 @@ bool lv_blt_equal(TextBufferObj* a, TextBufferObj* b) {
     return res;
 }
 
-/**
- * Replace by-name expression arguments with their actual results,
- * in place.
- */
-static void getActualArgs(TextBufferObj* args, size_t len) {
-
-    for(size_t i = 0; i < len; i++) {
-        TextBufferObj tmp;
-        if(lv_evalByName(&args[i], &tmp)) {
-            if(tmp.type & LV_DYNAMIC) {
-                ++*tmp.refCount;
-            }
-            lv_expr_cleanup(&args[i], 1);
-            args[i] = tmp;
-        }
-    }
-}
-
 static TextBufferObj lookup(TextBufferObj* args) {
     TextBufferObj res;
     getActualArgs(args, 3);

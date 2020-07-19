@@ -10,6 +10,10 @@
     TextBufferObj lv_vect_##name(TextBufferObj* args)
 
 INTRINSIC(str) {
+    getActualArgs(args, 1);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj* obj = args;
     LvString* res;
     //handle Nil vect separately
@@ -53,8 +57,11 @@ INTRINSIC(str) {
 }
 
 INTRINSIC(cat) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
-    assert(args[0].type == OPT_VECT);
     if(args[1].type == OPT_VECT) {
         size_t alen = args[0].vect->len;
         size_t blen = args[1].vect->len;
@@ -98,6 +105,10 @@ INTRINSIC(at) {
 }
 
 INTRINSIC(eq) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res = { .type = OPT_INTEGER };
     assert(args[0].type == OPT_VECT);
     res.type = OPT_INTEGER;
@@ -116,6 +127,10 @@ INTRINSIC(eq) {
 }
 
 INTRINSIC(lt) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res = { .type = OPT_INTEGER };
     assert(args[0].type == OPT_VECT);
     assert(args[1].type == OPT_VECT);
@@ -136,6 +151,10 @@ INTRINSIC(lt) {
 }
 
 INTRINSIC(len) {
+    getActualArgs(args, 1);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     assert(args[0].type == OPT_VECT);
     TextBufferObj res = {
         .type = OPT_INTEGER,
@@ -145,6 +164,10 @@ INTRINSIC(len) {
 }
 
 INTRINSIC(map) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     TextBufferObj func = args[1]; //in case the stack is reallocated
@@ -176,6 +199,10 @@ INTRINSIC(map) {
 }
 
 INTRINSIC(filter) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     TextBufferObj func = args[1];
@@ -205,6 +232,10 @@ INTRINSIC(filter) {
 }
 
 INTRINSIC(fold) {
+    getActualArgs(args, 3);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     size_t len = args[0].vect->len;
@@ -220,6 +251,10 @@ INTRINSIC(fold) {
 }
 
 INTRINSIC(slice) {
+    getActualArgs(args, 3);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     if(args[1].type == OPT_INTEGER && args[2].type == OPT_INTEGER) {
@@ -248,6 +283,10 @@ INTRINSIC(slice) {
 }
 
 INTRINSIC(take) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     TextBufferObj func = args[1];
@@ -279,6 +318,10 @@ INTRINSIC(take) {
 }
 
 INTRINSIC(skip) {
+    getActualArgs(args, 2);
+    if(args[0].type != OPT_VECT) {
+        return UNDEFINED_V;
+    }
     TextBufferObj res;
     assert(args[0].type == OPT_VECT);
     TextBufferObj func = args[1];

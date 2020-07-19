@@ -46,6 +46,8 @@ struct TextBufferObj {
     };
 };
 
+#define UNDEFINED_V ((TextBufferObj) { .type = OPT_UNDEFINED })
+
 /**
  * Dynamically allocated capture arguments.
  * Captures keep a refCount of all the times they

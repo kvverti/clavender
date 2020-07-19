@@ -3,6 +3,19 @@
 #include "lavender.h"
 #include "builtin_old.c.h"
 
+void getActualArgs(TextBufferObj* args, size_t len) {
+    for(size_t i = 0; i < len; i++) {
+        TextBufferObj tmp;
+        if(lv_evalByName(&args[i], &tmp)) {
+            if(tmp.type & LV_DYNAMIC) {
+                ++*tmp.refCount;
+            }
+            lv_expr_cleanup(&args[i], 1);
+            args[i] = tmp;
+        }
+    }
+}
+
 static Hashtable intrinsics;
 
 Builtin lv_blt_getIntrinsic(char* name) {
@@ -188,6 +201,22 @@ void lv_blt_onStartup(void) {
     MK_FUNCR(MATH, abs);
     MK_FUNCR(MATH, round);
     MK_FUNCT(MATH, sgn);
+
+    // TODO: validate arguments to these intrinsics
+    #define MK_FUNC(s, f, n) lv_tbl_put(&intrinsics, s n, f)
+    #define VECT "vect:"
+    MK_FUNC(VECT, lv_vect_str, "str");
+    MK_FUNC(VECT, lv_vect_cat, "__cat__");
+    MK_FUNC(VECT, lv_vect_eq, "__eq__");
+    MK_FUNC(VECT, lv_vect_lt, "__lt__");
+    MK_FUNC(VECT, lv_vect_len, "len");
+    MK_FUNC(VECT, lv_vect_map, "__map__");
+    MK_FUNC(VECT, lv_vect_filter, "__filter__");
+    MK_FUNC(VECT, lv_vect_fold, "__fold__");
+    MK_FUNC(VECT, lv_vect_slice, "__slice__");
+    MK_FUNC(VECT, lv_vect_take, "__take__");
+    MK_FUNC(VECT, lv_vect_skip, "__skip__");
+    #undef MK_FUNC
     #undef MK_FUNNR
     #undef MK_FUNCR
     #undef MK_FUNCN

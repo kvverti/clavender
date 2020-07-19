@@ -14,6 +14,12 @@ bool lv_blt_toBool(TextBufferObj* obj);
 Builtin lv_blt_getIntrinsic(char* name);
 Hashtable* lv_blt_getFunctionTable(OpType type);
 
+/**
+ * Replace by-name expression arguments with their actual results,
+ * in place.
+ */
+void getActualArgs(TextBufferObj* args, size_t len);
+
 void lv_blt_onStartup(void);
 void lv_blt_onShutdown(void);
 

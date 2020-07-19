@@ -1,0 +1,1144 @@
+Function name=global:true, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=0
+0: type=2, value=1
+1: type=12, value=return
+Function name=global:false, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=2
+2: type=2, value=0
+3: type=12, value=return
+Function name=global:otherwise, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=4
+4: type=2, value=1
+5: type=12, value=return
+Function name=global:virt:, arity=4, capture=3, locals=0, fixing=u, varargs=false, offset=6
+6: type=4, value=param 0
+7: type=4, value=param 1
+8: type=6, value=sys:__eq__
+9: type=6, value=global:!
+10: type=13, value=beqz 3
+11: type=4, value=param 0
+12: type=12, value=return
+13: type=2, value=1
+14: type=13, value=beqz 3
+15: type=4, value=param 3
+16: type=12, value=return
+17: type=0, value=<undefined>
+18: type=12, value=return
+Function name=global:virt, arity=3, capture=0, locals=0, fixing=u, varargs=false, offset=19
+19: type=4, value=param 0
+20: type=7, value=global:__virt__
+21: type=4, value=param 1
+22: type=7, value=global:__virt__
+23: type=6, value=sys:lookup
+24: type=9, value=2 CAL2
+25: type=13, value=beqz 12
+26: type=4, value=param 0
+27: type=4, value=param 1
+28: type=4, value=param 2
+29: type=6, value=sys:lookup
+30: type=4, value=param 0
+31: type=4, value=param 1
+32: type=4, value=param 2
+33: type=7, value=global:virt:
+34: type=8, value=CAP
+35: type=15, value=2 CAL2
+36: type=12, value=return
+37: type=2, value=1
+38: type=13, value=beqz 3
+39: type=4, value=param 2
+40: type=12, value=return
+41: type=0, value=<undefined>
+42: type=12, value=return
+Function name=global:__virt__, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=43
+43: type=2, value=1
+44: type=12, value=return
+Function name=global:Vect, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=45
+45: type=4, value=param 0
+46: type=10, value=1 VECT
+47: type=12, value=return
+Function name=global:Unit:value:, arity=4, capture=2, locals=0, fixing=u, varargs=false, offset=95
+95: type=4, value=param 0
+96: type=12, value=return
+Function name=global:Unit:value:, arity=3, capture=2, locals=0, fixing=u, varargs=false, offset=106
+106: type=4, value=param 0
+107: type=12, value=return
+Function name=global:Unit:value:, arity=4, capture=2, locals=0, fixing=u, varargs=false, offset=139
+139: type=4, value=param 0
+140: type=2, value=0
+141: type=6, value=sys:__eq__
+142: type=4, value=param 0
+143: type=4, value=param 1
+144: type=4, value=param 2
+145: type=4, value=param 3
+146: type=7, value=global:Unit:value::
+147: type=8, value=CAP
+148: type=6, value=global:&&
+149: type=13, value=beqz 3
+150: type=7, value=global:Unit:value
+151: type=12, value=return
+152: type=0, value=<undefined>
+153: type=12, value=return
+Function name=global:Unit:value, arity=1, capture=0, locals=1, fixing=u, varargs=false, offset=48
+48: type=7, value=global:Unit:value
+49: type=6, value=global:_const
+50: type=5, value=put 1
+51: type=1, value=0
+52: type=13, value=beqz 1
+53: type=4, value=param 0
+54: type=6, value=global:__object__
+55: type=6, value=sys:__eq__
+56: type=13, value=beqz 3
+57: type=14, value=global:__yes__
+58: type=12, value=return
+59: type=4, value=param 0
+60: type=3, value=.len
+61: type=6, value=sys:__eq__
+62: type=13, value=beqz 3
+63: type=2, value=0
+64: type=12, value=return
+65: type=4, value=param 0
+66: type=3, value=.in
+67: type=6, value=sys:__eq__
+68: type=13, value=beqz 3
+69: type=2, value=0
+70: type=12, value=return
+71: type=4, value=param 0
+72: type=3, value=.str
+73: type=6, value=sys:__eq__
+74: type=13, value=beqz 3
+75: type=32, value=()
+76: type=12, value=return
+77: type=4, value=param 0
+78: type=3, value=.map
+79: type=6, value=sys:__eq__
+80: type=13, value=beqz 3
+81: type=4, value=param 1
+82: type=12, value=return
+83: type=4, value=param 0
+84: type=3, value=.flatmap
+85: type=6, value=sys:__eq__
+86: type=13, value=beqz 3
+87: type=4, value=param 1
+88: type=12, value=return
+89: type=4, value=param 0
+90: type=3, value=.filter
+91: type=6, value=sys:__eq__
+92: type=13, value=beqz 5
+93: type=4, value=param 1
+94: type=12, value=return
+95: type=4, value=param 0
+96: type=12, value=return
+97: type=4, value=param 0
+98: type=3, value=.fold
+99: type=6, value=sys:__eq__
+100: type=13, value=beqz 8
+101: type=4, value=param 0
+102: type=4, value=param 1
+103: type=7, value=global:Unit:value:
+104: type=8, value=CAP
+105: type=12, value=return
+106: type=4, value=param 0
+107: type=12, value=return
+108: type=4, value=param 0
+109: type=3, value=.cat
+110: type=6, value=sys:__eq__
+111: type=13, value=beqz 6
+112: type=4, value=param 0
+113: type=4, value=param 1
+114: type=7, value=global:Unit:value:
+115: type=8, value=CAP
+116: type=12, value=return
+117: type=4, value=param 0
+118: type=3, value=.takeWhile
+119: type=6, value=sys:__eq__
+120: type=13, value=beqz 3
+121: type=4, value=param 1
+122: type=12, value=return
+123: type=4, value=param 0
+124: type=3, value=.skipWhile
+125: type=6, value=sys:__eq__
+126: type=13, value=beqz 3
+127: type=4, value=param 1
+128: type=12, value=return
+129: type=4, value=param 0
+130: type=3, value=.limit
+131: type=6, value=sys:__eq__
+132: type=13, value=beqz 22
+133: type=4, value=param 1
+134: type=12, value=return
+135: type=4, value=param 1
+136: type=2, value=0
+137: type=6, value=sys:__eq__
+138: type=12, value=return
+139: type=4, value=param 0
+140: type=2, value=0
+141: type=6, value=sys:__eq__
+142: type=4, value=param 0
+143: type=4, value=param 1
+144: type=4, value=param 2
+145: type=4, value=param 3
+146: type=7, value=global:Unit:value::
+147: type=8, value=CAP
+148: type=6, value=global:&&
+149: type=13, value=beqz 3
+150: type=7, value=global:Unit:value
+151: type=12, value=return
+152: type=0, value=<undefined>
+153: type=12, value=return
+154: type=4, value=param 0
+155: type=3, value=.slice
+156: type=6, value=sys:__eq__
+157: type=13, value=beqz 6
+158: type=4, value=param 0
+159: type=4, value=param 1
+160: type=7, value=global:Unit:value:
+161: type=8, value=CAP
+162: type=12, value=return
+163: type=4, value=param 0
+164: type=3, value=.toVect
+165: type=6, value=sys:__eq__
+166: type=13, value=beqz 3
+167: type=10, value=0 VECT
+168: type=12, value=return
+169: type=0, value=<undefined>
+170: type=12, value=return
+Function name=global:Unit, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=171
+171: type=7, value=global:Unit:value
+172: type=12, value=return
+Function name=global:_const:, arity=2, capture=1, locals=0, fixing=u, varargs=false, offset=173
+173: type=4, value=param 1
+174: type=12, value=return
+Function name=global:_const, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=175
+175: type=4, value=param 0
+176: type=7, value=global:_const:
+177: type=8, value=CAP
+178: type=12, value=return
+Function name=global:__object__:value, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=179
+179: type=14, value=sys:undefined
+180: type=12, value=return
+Function name=global:__object__, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=181
+181: type=7, value=global:__object__:value
+182: type=12, value=return
+Function name=global:__yes__:value, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=183
+183: type=14, value=sys:undefined
+184: type=12, value=return
+Function name=global:__yes__, arity=0, capture=0, locals=0, fixing=u, varargs=false, offset=185
+185: type=7, value=global:__yes__:value
+186: type=12, value=return
+Function name=global:isObject, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=187
+187: type=6, value=global:__object__
+188: type=4, value=param 0
+189: type=9, value=2 CAL2
+190: type=6, value=global:__yes__
+191: type=14, value=sys:__eq__
+192: type=12, value=return
+Function name=global:!, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=193
+193: type=4, value=param 0
+194: type=6, value=global:bool
+195: type=13, value=beqz 3
+196: type=2, value=0
+197: type=12, value=return
+198: type=2, value=1
+199: type=13, value=beqz 3
+200: type=2, value=1
+201: type=12, value=return
+202: type=0, value=<undefined>
+203: type=12, value=return
+Function name=global:&&, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=204
+204: type=4, value=param 0
+205: type=6, value=global:bool
+206: type=13, value=beqz 3
+207: type=4, value=param 1
+208: type=12, value=return
+209: type=2, value=1
+210: type=13, value=beqz 3
+211: type=4, value=param 0
+212: type=12, value=return
+213: type=0, value=<undefined>
+214: type=12, value=return
+Function name=global:&, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=215
+215: type=4, value=param 0
+216: type=4, value=param 1
+217: type=14, value=global:&&
+218: type=12, value=return
+Function name=global:||, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=219
+219: type=4, value=param 0
+220: type=6, value=global:bool
+221: type=13, value=beqz 3
+222: type=4, value=param 0
+223: type=12, value=return
+224: type=2, value=1
+225: type=13, value=beqz 3
+226: type=4, value=param 1
+227: type=12, value=return
+228: type=0, value=<undefined>
+229: type=12, value=return
+Function name=global:|, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=230
+230: type=4, value=param 0
+231: type=4, value=param 1
+232: type=14, value=global:||
+233: type=12, value=return
+Function name=global:^, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=234
+234: type=4, value=param 0
+235: type=6, value=global:bool
+236: type=4, value=param 1
+237: type=6, value=global:bool
+238: type=6, value=sys:__eq__
+239: type=14, value=global:!
+240: type=12, value=return
+Function name=global:onlyIf, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=241
+241: type=4, value=param 1
+242: type=13, value=beqz 3
+243: type=4, value=param 0
+244: type=12, value=return
+245: type=0, value=<undefined>
+246: type=12, value=return
+Function name=global:else, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=247
+247: type=4, value=param 0
+248: type=6, value=sys:defined
+249: type=13, value=beqz 3
+250: type=4, value=param 0
+251: type=12, value=return
+252: type=2, value=1
+253: type=13, value=beqz 3
+254: type=4, value=param 1
+255: type=12, value=return
+256: type=0, value=<undefined>
+257: type=12, value=return
+Function name=global:?#, arity=3, capture=0, locals=0, fixing=i, varargs=false, offset=258
+258: type=4, value=param 0
+259: type=13, value=beqz 3
+260: type=4, value=param 1
+261: type=12, value=return
+262: type=2, value=1
+263: type=13, value=beqz 3
+264: type=4, value=param 2
+265: type=12, value=return
+266: type=0, value=<undefined>
+267: type=12, value=return
+Function name=global:=, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=268
+268: type=4, value=param 0
+269: type=4, value=param 1
+270: type=14, value=sys:__eq__
+271: type=12, value=return
+Function name=global:!=, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=272
+272: type=4, value=param 0
+273: type=4, value=param 1
+274: type=6, value=global:=
+275: type=14, value=global:!
+276: type=12, value=return
+Function name=global:<, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=277
+277: type=4, value=param 0
+278: type=4, value=param 1
+279: type=14, value=sys:__lt__
+280: type=12, value=return
+Function name=global:>=, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=281
+281: type=4, value=param 0
+282: type=4, value=param 1
+283: type=14, value=sys:__ge__
+284: type=12, value=return
+Function name=global:>, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=285
+285: type=4, value=param 1
+286: type=4, value=param 0
+287: type=14, value=global:<
+288: type=12, value=return
+Function name=global:<=, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=289
+289: type=4, value=param 1
+290: type=4, value=param 0
+291: type=14, value=global:>=
+292: type=12, value=return
+Function name=global:hash, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=293
+293: type=4, value=param 0
+294: type=14, value=sys:__hash__
+295: type=12, value=return
+Function name=global:str, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=296
+296: type=4, value=param 0
+297: type=7, value=global:str
+298: type=4, value=param 0
+299: type=7, value=sys:__str__
+300: type=6, value=global:virt
+301: type=15, value=2 CAL2
+302: type=12, value=return
+Function name=global:num, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=306
+306: type=3, value=.num
+307: type=4, value=param 0
+308: type=4, value=param 0
+309: type=6, value=global:isObject
+310: type=6, value=global:onlyIf
+311: type=9, value=2 CAL2
+312: type=4, value=param 0
+313: type=7, value=global:num:
+314: type=8, value=CAP
+315: type=14, value=global:else
+316: type=12, value=return
+Function name=global:int, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=320
+320: type=3, value=.int
+321: type=4, value=param 0
+322: type=4, value=param 0
+323: type=6, value=global:isObject
+324: type=6, value=global:onlyIf
+325: type=9, value=2 CAL2
+326: type=4, value=param 0
+327: type=7, value=global:int:
+328: type=8, value=CAP
+329: type=14, value=global:else
+330: type=12, value=return
+Function name=global:bool, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=334
+334: type=3, value=.bool
+335: type=4, value=param 0
+336: type=4, value=param 0
+337: type=6, value=global:isObject
+338: type=6, value=global:onlyIf
+339: type=9, value=2 CAL2
+340: type=4, value=param 0
+341: type=7, value=global:bool:
+342: type=8, value=CAP
+343: type=14, value=global:else
+344: type=12, value=return
+Function name=global:len, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=348
+348: type=3, value=.len
+349: type=4, value=param 0
+350: type=4, value=param 0
+351: type=6, value=global:isObject
+352: type=6, value=global:onlyIf
+353: type=9, value=2 CAL2
+354: type=4, value=param 0
+355: type=7, value=global:len:
+356: type=8, value=CAP
+357: type=14, value=global:else
+358: type=12, value=return
+Function name=global:head, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=363
+363: type=3, value=.head
+364: type=4, value=param 0
+365: type=4, value=param 0
+366: type=6, value=global:isObject
+367: type=6, value=global:onlyIf
+368: type=9, value=2 CAL2
+369: type=4, value=param 0
+370: type=7, value=global:head:
+371: type=8, value=CAP
+372: type=14, value=global:else
+373: type=12, value=return
+Function name=global:tail, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=380
+380: type=3, value=.tail
+381: type=4, value=param 0
+382: type=4, value=param 0
+383: type=6, value=global:isObject
+384: type=6, value=global:onlyIf
+385: type=9, value=2 CAL2
+386: type=4, value=param 0
+387: type=7, value=global:tail:
+388: type=8, value=CAP
+389: type=14, value=global:else
+390: type=12, value=return
+Function name=global:+, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=394
+394: type=3, value=.pos
+395: type=4, value=param 0
+396: type=4, value=param 0
+397: type=6, value=global:isObject
+398: type=6, value=global:onlyIf
+399: type=9, value=2 CAL2
+400: type=4, value=param 0
+401: type=7, value=global:+:
+402: type=8, value=CAP
+403: type=14, value=global:else
+404: type=12, value=return
+Function name=global:-, arity=1, capture=0, locals=0, fixing=u, varargs=false, offset=408
+408: type=3, value=.neg
+409: type=4, value=param 0
+410: type=4, value=param 0
+411: type=6, value=global:isObject
+412: type=6, value=global:onlyIf
+413: type=9, value=2 CAL2
+414: type=4, value=param 0
+415: type=7, value=global:-:
+416: type=8, value=CAP
+417: type=14, value=global:else
+418: type=12, value=return
+Function name=global:+, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=427
+427: type=3, value=.add
+428: type=4, value=param 0
+429: type=4, value=param 0
+430: type=6, value=global:isObject
+431: type=6, value=global:onlyIf
+432: type=9, value=2 CAL2
+433: type=6, value=sys:defined
+434: type=4, value=param 0
+435: type=4, value=param 1
+436: type=7, value=global:+:
+437: type=8, value=CAP
+438: type=6, value=global:&&
+439: type=13, value=beqz 7
+440: type=4, value=param 1
+441: type=3, value=.add
+442: type=4, value=param 0
+443: type=9, value=2 CAL2
+444: type=15, value=2 CAL2
+445: type=12, value=return
+446: type=2, value=1
+447: type=13, value=beqz 5
+448: type=4, value=param 0
+449: type=4, value=param 1
+450: type=14, value=sys:__add__
+451: type=12, value=return
+452: type=0, value=<undefined>
+453: type=12, value=return
+Function name=global:-, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=462
+462: type=3, value=.sub
+463: type=4, value=param 0
+464: type=4, value=param 0
+465: type=6, value=global:isObject
+466: type=6, value=global:onlyIf
+467: type=9, value=2 CAL2
+468: type=6, value=sys:defined
+469: type=4, value=param 0
+470: type=4, value=param 1
+471: type=7, value=global:-:
+472: type=8, value=CAP
+473: type=6, value=global:&&
+474: type=13, value=beqz 7
+475: type=4, value=param 1
+476: type=3, value=.sub
+477: type=4, value=param 0
+478: type=9, value=2 CAL2
+479: type=15, value=2 CAL2
+480: type=12, value=return
+481: type=2, value=1
+482: type=13, value=beqz 5
+483: type=4, value=param 0
+484: type=4, value=param 1
+485: type=14, value=sys:__sub__
+486: type=12, value=return
+487: type=0, value=<undefined>
+488: type=12, value=return
+Function name=global:*, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=497
+497: type=3, value=.mul
+498: type=4, value=param 0
+499: type=4, value=param 0
+500: type=6, value=global:isObject
+501: type=6, value=global:onlyIf
+502: type=9, value=2 CAL2
+503: type=6, value=sys:defined
+504: type=4, value=param 0
+505: type=4, value=param 1
+506: type=7, value=global:*:
+507: type=8, value=CAP
+508: type=6, value=global:&&
+509: type=13, value=beqz 7
+510: type=4, value=param 1
+511: type=3, value=.mul
+512: type=4, value=param 0
+513: type=9, value=2 CAL2
+514: type=15, value=2 CAL2
+515: type=12, value=return
+516: type=2, value=1
+517: type=13, value=beqz 5
+518: type=4, value=param 0
+519: type=4, value=param 1
+520: type=14, value=sys:__mul__
+521: type=12, value=return
+522: type=0, value=<undefined>
+523: type=12, value=return
+Function name=global:/, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=532
+532: type=3, value=.div
+533: type=4, value=param 0
+534: type=4, value=param 0
+535: type=6, value=global:isObject
+536: type=6, value=global:onlyIf
+537: type=9, value=2 CAL2
+538: type=6, value=sys:defined
+539: type=4, value=param 0
+540: type=4, value=param 1
+541: type=7, value=global:/:
+542: type=8, value=CAP
+543: type=6, value=global:&&
+544: type=13, value=beqz 7
+545: type=4, value=param 1
+546: type=3, value=.div
+547: type=4, value=param 0
+548: type=9, value=2 CAL2
+549: type=15, value=2 CAL2
+550: type=12, value=return
+551: type=2, value=1
+552: type=13, value=beqz 5
+553: type=4, value=param 0
+554: type=4, value=param 1
+555: type=14, value=sys:__div__
+556: type=12, value=return
+557: type=0, value=<undefined>
+558: type=12, value=return
+Function name=global://, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=567
+567: type=3, value=.idiv
+568: type=4, value=param 0
+569: type=4, value=param 0
+570: type=6, value=global:isObject
+571: type=6, value=global:onlyIf
+572: type=9, value=2 CAL2
+573: type=6, value=sys:defined
+574: type=4, value=param 0
+575: type=4, value=param 1
+576: type=7, value=global://:
+577: type=8, value=CAP
+578: type=6, value=global:&&
+579: type=13, value=beqz 7
+580: type=4, value=param 1
+581: type=3, value=.idiv
+582: type=4, value=param 0
+583: type=9, value=2 CAL2
+584: type=15, value=2 CAL2
+585: type=12, value=return
+586: type=2, value=1
+587: type=13, value=beqz 5
+588: type=4, value=param 0
+589: type=4, value=param 1
+590: type=14, value=sys:__idiv__
+591: type=12, value=return
+592: type=0, value=<undefined>
+593: type=12, value=return
+Function name=global:%, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=602
+602: type=3, value=.rem
+603: type=4, value=param 0
+604: type=4, value=param 0
+605: type=6, value=global:isObject
+606: type=6, value=global:onlyIf
+607: type=9, value=2 CAL2
+608: type=6, value=sys:defined
+609: type=4, value=param 0
+610: type=4, value=param 1
+611: type=7, value=global:%:
+612: type=8, value=CAP
+613: type=6, value=global:&&
+614: type=13, value=beqz 7
+615: type=4, value=param 1
+616: type=3, value=.rem
+617: type=4, value=param 0
+618: type=9, value=2 CAL2
+619: type=15, value=2 CAL2
+620: type=12, value=return
+621: type=2, value=1
+622: type=13, value=beqz 5
+623: type=4, value=param 0
+624: type=4, value=param 1
+625: type=14, value=sys:__rem__
+626: type=12, value=return
+627: type=0, value=<undefined>
+628: type=12, value=return
+Function name=global:**, arity=2, capture=0, locals=0, fixing=r, varargs=false, offset=637
+637: type=3, value=.pow
+638: type=4, value=param 0
+639: type=4, value=param 0
+640: type=6, value=global:isObject
+641: type=6, value=global:onlyIf
+642: type=9, value=2 CAL2
+643: type=6, value=sys:defined
+644: type=4, value=param 0
+645: type=4, value=param 1
+646: type=7, value=global:**:
+647: type=8, value=CAP
+648: type=6, value=global:&&
+649: type=13, value=beqz 7
+650: type=4, value=param 1
+651: type=3, value=.pow
+652: type=4, value=param 0
+653: type=9, value=2 CAL2
+654: type=15, value=2 CAL2
+655: type=12, value=return
+656: type=2, value=1
+657: type=13, value=beqz 5
+658: type=4, value=param 0
+659: type=4, value=param 1
+660: type=14, value=sys:__pow__
+661: type=12, value=return
+662: type=0, value=<undefined>
+663: type=12, value=return
+Function name=global:<<, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=664
+664: type=4, value=param 0
+665: type=6, value=global:isObject
+666: type=13, value=beqz 7
+667: type=4, value=param 1
+668: type=3, value=.shl
+669: type=4, value=param 0
+670: type=9, value=2 CAL2
+671: type=15, value=2 CAL2
+672: type=12, value=return
+673: type=2, value=1
+674: type=13, value=beqz 5
+675: type=4, value=param 0
+676: type=4, value=param 1
+677: type=14, value=sys:__shl__
+678: type=12, value=return
+679: type=0, value=<undefined>
+680: type=12, value=return
+Function name=global:>>, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=681
+681: type=4, value=param 0
+682: type=6, value=global:isObject
+683: type=13, value=beqz 7
+684: type=4, value=param 1
+685: type=3, value=.shr
+686: type=4, value=param 0
+687: type=9, value=2 CAL2
+688: type=15, value=2 CAL2
+689: type=12, value=return
+690: type=2, value=1
+691: type=13, value=beqz 5
+692: type=4, value=param 0
+693: type=4, value=param 1
+694: type=14, value=sys:__shr__
+695: type=12, value=return
+696: type=0, value=<undefined>
+697: type=12, value=return
+Function name=global:map, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=702
+702: type=4, value=param 1
+703: type=3, value=.map
+704: type=4, value=param 0
+705: type=4, value=param 0
+706: type=6, value=global:isObject
+707: type=6, value=global:onlyIf
+708: type=9, value=2 CAL2
+709: type=9, value=2 CAL2
+710: type=4, value=param 0
+711: type=4, value=param 1
+712: type=7, value=global:map:
+713: type=8, value=CAP
+714: type=14, value=global:else
+715: type=12, value=return
+Function name=global:flatmap, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=716
+716: type=4, value=param 0
+717: type=6, value=global:isObject
+718: type=13, value=beqz 7
+719: type=4, value=param 1
+720: type=3, value=.flatmap
+721: type=4, value=param 0
+722: type=9, value=2 CAL2
+723: type=15, value=2 CAL2
+724: type=12, value=return
+725: type=2, value=1
+726: type=13, value=beqz 8
+727: type=4, value=param 0
+728: type=4, value=param 1
+729: type=6, value=global:map
+730: type=6, value=global:Unit
+731: type=7, value=global:++
+732: type=14, value=global:fold
+733: type=12, value=return
+734: type=0, value=<undefined>
+735: type=12, value=return
+Function name=global:then, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=736
+736: type=4, value=param 0
+737: type=4, value=param 1
+738: type=6, value=global:_const
+739: type=14, value=global:flatmap
+740: type=12, value=return
+Function name=global:filter, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=745
+745: type=4, value=param 1
+746: type=3, value=.filter
+747: type=4, value=param 0
+748: type=4, value=param 0
+749: type=6, value=global:isObject
+750: type=6, value=global:onlyIf
+751: type=9, value=2 CAL2
+752: type=9, value=2 CAL2
+753: type=4, value=param 0
+754: type=4, value=param 1
+755: type=7, value=global:filter:
+756: type=8, value=CAP
+757: type=14, value=global:else
+758: type=12, value=return
+Function name=global:takeWhile, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=759
+759: type=4, value=param 0
+760: type=6, value=global:isObject
+761: type=13, value=beqz 7
+762: type=4, value=param 1
+763: type=3, value=.takeWhile
+764: type=4, value=param 0
+765: type=9, value=2 CAL2
+766: type=15, value=2 CAL2
+767: type=12, value=return
+768: type=2, value=1
+769: type=13, value=beqz 5
+770: type=4, value=param 0
+771: type=4, value=param 1
+772: type=14, value=sys:__take__
+773: type=12, value=return
+774: type=0, value=<undefined>
+775: type=12, value=return
+Function name=global:skipWhile, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=776
+776: type=4, value=param 0
+777: type=6, value=global:isObject
+778: type=13, value=beqz 7
+779: type=4, value=param 1
+780: type=3, value=.skipWhile
+781: type=4, value=param 0
+782: type=9, value=2 CAL2
+783: type=15, value=2 CAL2
+784: type=12, value=return
+785: type=2, value=1
+786: type=13, value=beqz 5
+787: type=4, value=param 0
+788: type=4, value=param 1
+789: type=14, value=sys:__skip__
+790: type=12, value=return
+791: type=0, value=<undefined>
+792: type=12, value=return
+Function name=global:fold, arity=3, capture=0, locals=0, fixing=i, varargs=false, offset=793
+793: type=4, value=param 0
+794: type=6, value=global:isObject
+795: type=13, value=beqz 8
+796: type=4, value=param 1
+797: type=4, value=param 2
+798: type=3, value=.fold
+799: type=4, value=param 0
+800: type=9, value=2 CAL2
+801: type=15, value=3 CAL2
+802: type=12, value=return
+803: type=2, value=1
+804: type=13, value=beqz 6
+805: type=4, value=param 0
+806: type=4, value=param 1
+807: type=4, value=param 2
+808: type=14, value=sys:__fold__
+809: type=12, value=return
+810: type=0, value=<undefined>
+811: type=12, value=return
+Function name=global:reduce, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=812
+812: type=4, value=param 0
+813: type=6, value=global:tail
+814: type=4, value=param 0
+815: type=6, value=global:head
+816: type=4, value=param 1
+817: type=14, value=global:fold
+818: type=12, value=return
+Function name=global:++, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=819
+819: type=4, value=param 1
+820: type=6, value=global:Unit
+821: type=6, value=sys:__eq__
+822: type=13, value=beqz 3
+823: type=4, value=param 0
+824: type=12, value=return
+825: type=4, value=param 0
+826: type=6, value=global:Unit
+827: type=6, value=sys:__eq__
+828: type=13, value=beqz 3
+829: type=4, value=param 1
+830: type=12, value=return
+831: type=4, value=param 0
+832: type=6, value=global:isObject
+833: type=13, value=beqz 7
+834: type=4, value=param 1
+835: type=3, value=.cat
+836: type=4, value=param 0
+837: type=9, value=2 CAL2
+838: type=15, value=2 CAL2
+839: type=12, value=return
+840: type=2, value=1
+841: type=13, value=beqz 5
+842: type=4, value=param 0
+843: type=4, value=param 1
+844: type=14, value=sys:__concat__
+845: type=12, value=return
+846: type=0, value=<undefined>
+847: type=12, value=return
+Function name=global:zip, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=853
+853: type=4, value=param 0
+854: type=6, value=global:len
+855: type=2, value=0
+856: type=6, value=sys:__eq__
+857: type=4, value=param 0
+858: type=4, value=param 1
+859: type=7, value=global:zip:
+860: type=8, value=CAP
+861: type=6, value=global:||
+862: type=13, value=beqz 3
+863: type=14, value=global:Unit
+864: type=12, value=return
+865: type=4, value=param 0
+866: type=6, value=global:isObject
+867: type=13, value=beqz 7
+868: type=4, value=param 1
+869: type=3, value=.zip
+870: type=4, value=param 0
+871: type=9, value=2 CAL2
+872: type=15, value=2 CAL2
+873: type=12, value=return
+874: type=4, value=param 0
+875: type=6, value=sys:typeof
+876: type=32, value=vect
+877: type=6, value=global:=
+878: type=13, value=beqz 5
+879: type=4, value=param 0
+880: type=4, value=param 1
+881: type=14, value=global:_zip
+882: type=12, value=return
+883: type=0, value=<undefined>
+884: type=12, value=return
+Function name=global:_zip:impl, arity=5, capture=4, locals=0, fixing=u, varargs=false, offset=897
+897: type=4, value=param 0
+898: type=4, value=param 3
+899: type=6, value=sys:__eq__
+900: type=4, value=param 0
+901: type=4, value=param 1
+902: type=4, value=param 2
+903: type=4, value=param 3
+904: type=4, value=param 4
+905: type=7, value=global:_zip:impl:
+906: type=8, value=CAP
+907: type=6, value=global:||
+908: type=13, value=beqz 3
+909: type=10, value=0 VECT
+910: type=12, value=return
+911: type=2, value=1
+912: type=13, value=beqz 19
+913: type=4, value=param 0
+914: type=4, value=param 1
+915: type=9, value=2 CAL2
+916: type=4, value=param 0
+917: type=4, value=param 2
+918: type=9, value=2 CAL2
+919: type=10, value=2 VECT
+920: type=10, value=1 VECT
+921: type=4, value=param 0
+922: type=2, value=1
+923: type=6, value=global:+
+924: type=4, value=param 1
+925: type=4, value=param 2
+926: type=4, value=param 3
+927: type=4, value=param 4
+928: type=6, value=global:_zip:impl
+929: type=14, value=sys:__concat__
+930: type=12, value=return
+931: type=0, value=<undefined>
+932: type=12, value=return
+Function name=global:_zip, arity=2, capture=0, locals=2, fixing=u, varargs=false, offset=885
+885: type=4, value=param 0
+886: type=6, value=sys:__len__
+887: type=5, value=put 2
+888: type=4, value=param 1
+889: type=6, value=sys:__len__
+890: type=5, value=put 3
+891: type=1, value=0
+892: type=13, value=beqz 41
+893: type=4, value=param 0
+894: type=4, value=param 4
+895: type=6, value=sys:__eq__
+896: type=12, value=return
+897: type=4, value=param 0
+898: type=4, value=param 3
+899: type=6, value=sys:__eq__
+900: type=4, value=param 0
+901: type=4, value=param 1
+902: type=4, value=param 2
+903: type=4, value=param 3
+904: type=4, value=param 4
+905: type=7, value=global:_zip:impl:
+906: type=8, value=CAP
+907: type=6, value=global:||
+908: type=13, value=beqz 3
+909: type=10, value=0 VECT
+910: type=12, value=return
+911: type=2, value=1
+912: type=13, value=beqz 19
+913: type=4, value=param 0
+914: type=4, value=param 1
+915: type=9, value=2 CAL2
+916: type=4, value=param 0
+917: type=4, value=param 2
+918: type=9, value=2 CAL2
+919: type=10, value=2 VECT
+920: type=10, value=1 VECT
+921: type=4, value=param 0
+922: type=2, value=1
+923: type=6, value=global:+
+924: type=4, value=param 1
+925: type=4, value=param 2
+926: type=4, value=param 3
+927: type=4, value=param 4
+928: type=6, value=global:_zip:impl
+929: type=14, value=sys:__concat__
+930: type=12, value=return
+931: type=0, value=<undefined>
+932: type=12, value=return
+933: type=2, value=0
+934: type=4, value=param 0
+935: type=4, value=param 1
+936: type=4, value=param 2
+937: type=4, value=param 3
+938: type=7, value=global:_zip:impl
+939: type=8, value=CAP
+940: type=15, value=2 CAL2
+941: type=12, value=return
+Function name=global:slice, arity=3, capture=0, locals=0, fixing=i, varargs=false, offset=947
+947: type=4, value=param 1
+948: type=4, value=param 2
+949: type=3, value=.slice
+950: type=4, value=param 0
+951: type=4, value=param 0
+952: type=6, value=global:isObject
+953: type=6, value=global:onlyIf
+954: type=9, value=2 CAL2
+955: type=9, value=3 CAL2
+956: type=4, value=param 0
+957: type=4, value=param 1
+958: type=4, value=param 2
+959: type=7, value=global:slice:
+960: type=8, value=CAP
+961: type=14, value=global:else
+962: type=12, value=return
+Function name=global:limit, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=968
+968: type=4, value=param 1
+969: type=3, value=.limit
+970: type=4, value=param 0
+971: type=4, value=param 0
+972: type=6, value=global:isObject
+973: type=6, value=global:onlyIf
+974: type=9, value=2 CAL2
+975: type=9, value=2 CAL2
+976: type=4, value=param 0
+977: type=4, value=param 1
+978: type=7, value=global:limit:
+979: type=8, value=CAP
+980: type=14, value=global:else
+981: type=12, value=return
+Function name=global:in, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=982
+982: type=4, value=param 1
+983: type=6, value=sys:typeof
+984: type=32, value=vect
+985: type=6, value=sys:__eq__
+986: type=13, value=beqz 9
+987: type=4, value=param 0
+988: type=4, value=param 1
+989: type=4, value=param 1
+990: type=6, value=sys:__len__
+991: type=2, value=1
+992: type=6, value=sys:__sub__
+993: type=14, value=global:_in_vect
+994: type=12, value=return
+995: type=4, value=param 1
+996: type=6, value=sys:typeof
+997: type=32, value=string
+998: type=6, value=sys:__eq__
+999: type=13, value=beqz 17
+1000: type=4, value=param 0
+1001: type=4, value=param 1
+1002: type=4, value=param 1
+1003: type=6, value=sys:__len__
+1004: type=4, value=param 0
+1005: type=6, value=sys:__len__
+1006: type=6, value=sys:__sub__
+1007: type=4, value=param 0
+1008: type=6, value=sys:__len__
+1009: type=14, value=global:_in_str
+1010: type=12, value=return
+1011: type=3, value=.in
+1012: type=4, value=param 1
+1013: type=9, value=2 CAL2
+1014: type=6, value=sys:defined
+1015: type=12, value=return
+1016: type=4, value=param 1
+1017: type=6, value=global:isObject
+1018: type=4, value=param 0
+1019: type=4, value=param 1
+1020: type=7, value=global:in:
+1021: type=8, value=CAP
+1022: type=6, value=global:&&
+1023: type=13, value=beqz 7
+1024: type=4, value=param 0
+1025: type=3, value=.in
+1026: type=4, value=param 1
+1027: type=9, value=2 CAL2
+1028: type=15, value=2 CAL2
+1029: type=12, value=return
+1030: type=4, value=param 1
+1031: type=6, value=sys:typeof
+1032: type=32, value=map
+1033: type=6, value=sys:__eq__
+1034: type=13, value=beqz 6
+1035: type=4, value=param 0
+1036: type=4, value=param 1
+1037: type=9, value=2 CAL2
+1038: type=14, value=sys:defined
+1039: type=12, value=return
+1040: type=0, value=<undefined>
+1041: type=12, value=return
+Function name=global:notin, arity=2, capture=0, locals=0, fixing=i, varargs=false, offset=1042
+1042: type=4, value=param 0
+1043: type=4, value=param 1
+1044: type=6, value=global:in
+1045: type=14, value=global:!
+1046: type=12, value=return
+Function name=global:_in_vect, arity=3, capture=0, locals=0, fixing=u, varargs=false, offset=1047
+1047: type=4, value=param 2
+1048: type=2, value=0
+1049: type=6, value=sys:__lt__
+1050: type=13, value=beqz 3
+1051: type=2, value=0
+1052: type=12, value=return
+1053: type=4, value=param 2
+1054: type=4, value=param 1
+1055: type=9, value=2 CAL2
+1056: type=4, value=param 0
+1057: type=6, value=global:=
+1058: type=13, value=beqz 3
+1059: type=2, value=1
+1060: type=12, value=return
+1061: type=2, value=1
+1062: type=13, value=beqz 8
+1063: type=4, value=param 0
+1064: type=4, value=param 1
+1065: type=4, value=param 2
+1066: type=2, value=1
+1067: type=6, value=sys:__sub__
+1068: type=14, value=global:_in_vect
+1069: type=12, value=return
+1070: type=0, value=<undefined>
+1071: type=12, value=return
+Function name=global:_in_str, arity=4, capture=0, locals=0, fixing=u, varargs=false, offset=1072
+1072: type=4, value=param 2
+1073: type=2, value=0
+1074: type=6, value=sys:__lt__
+1075: type=13, value=beqz 3
+1076: type=2, value=0
+1077: type=12, value=return
+1078: type=4, value=param 1
+1079: type=4, value=param 2
+1080: type=4, value=param 2
+1081: type=4, value=param 3
+1082: type=6, value=sys:__add__
+1083: type=6, value=sys:__slice__
+1084: type=4, value=param 0
+1085: type=6, value=sys:__eq__
+1086: type=13, value=beqz 3
+1087: type=2, value=1
+1088: type=12, value=return
+1089: type=2, value=1
+1090: type=13, value=beqz 9
+1091: type=4, value=param 0
+1092: type=4, value=param 1
+1093: type=4, value=param 2
+1094: type=2, value=1
+1095: type=6, value=sys:__sub__
+1096: type=4, value=param 3
+1097: type=14, value=global:_in_str
+1098: type=12, value=return
+1099: type=0, value=<undefined>
+1100: type=12, value=return
+Function name=global:toVect, arity=1, capture=0, locals=0, fixing=i, varargs=false, offset=1101
+1101: type=4, value=param 0
+1102: type=6, value=sys:typeof
+1103: type=32, value=vect
+1104: type=6, value=sys:__eq__
+1105: type=13, value=beqz 3
+1106: type=4, value=param 0
+1107: type=12, value=return
+1108: type=2, value=1
+1109: type=13, value=beqz 8
+1110: type=3, value=.toVect
+1111: type=4, value=param 0
+1112: type=4, value=param 0
+1113: type=6, value=global:isObject
+1114: type=6, value=global:onlyIf
+1115: type=15, value=2 CAL2
+1116: type=12, value=return
+1117: type=0, value=<undefined>
+1118: type=12, value=return
+Running in debug mode
+Lavender runtime v. 1.0 by Chris Nero
+Open source at https://github.com/kvverti/clavender
+Enter function definitions or expressions
+> 
